@@ -161,17 +161,22 @@ Svara EXAKT i JSON:
 // ── Exporterade funktioner ────────────────────────────────────────
 
 /**
- * aiValidate(q, desc, event, rerender)
+ * aiValidate(q, desc, event, rerender, showLU, showRW, showXPPop, rollReward)
  *
  * Validerar ett quest-svar via AI, sätter q.aiVerdict direkt på quest-objektet,
  * och tilldelar XP proportionellt mot AI-score.
+ * Alla UI-callbacks vidarebefordras till awardXP så level-up och rewards fungerar.
  *
- * q        Quest-objekt
- * desc     Användarens text-svar
- * event    MouseEvent (för XP-pop-position)
- * rerender () => void
+ * q           Quest-objekt
+ * desc        Användarens text-svar
+ * event       MouseEvent (för XP-pop-position, kan vara null)
+ * rerender    () => void
+ * showLU      (level) => void   — level-up overlay (valfri)
+ * showRW      (reward) => void  — reward overlay (valfri)
+ * showXPPop   (xp, event) => void (valfri)
+ * rollReward  (xp) => reward | null (valfri)
  */
-export async function aiValidate(q, desc, event, rerender) {
+export async function aiValidate(q, desc, event, rerender, showLU, showRW, showXPPop, rollReward) {
   const m = MEMBERS[S.me];
   const c = S.chars[S.me];
   if (!m || !c) return;
@@ -182,9 +187,9 @@ export async function aiValidate(q, desc, event, rerender) {
   rerender?.();
 
   try {
-    const txt     = await callClaude(buildValidatePrompt(m, c, q, desc), 150);
-    const score   = parseInt(txt.match(/SCORE:(\d+)/)?.[1]  || '50');
-    const verdict = txt.match(/VERDICT:(accepted|partial|rejected)/)?.[1] || 'partial';
+    const txt      = await callClaude(buildValidatePrompt(m, c, q, desc), 150);
+    const score    = parseInt(txt.match(/SCORE:(\d+)/)?.[1]  || '50');
+    const verdict  = txt.match(/VERDICT:(accepted|partial|rejected)/)?.[1] || 'partial';
     const feedback = txt.match(/FEEDBACK:(.+)/)?.[1]?.trim() || 'Noterat.';
     const xpEarned = Math.round(q.xp * (score / 100));
 
@@ -199,7 +204,7 @@ export async function aiValidate(q, desc, event, rerender) {
     rerender?.();
 
     if (verdict !== 'rejected' && xpEarned > 0) {
-      setTimeout(() => awardXP(q, xpEarned, event, rerender), 1200);
+      setTimeout(() => awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop, rollReward), 1200);
     }
   } catch {
     if (questIdx !== -1) {
@@ -207,7 +212,7 @@ export async function aiValidate(q, desc, event, rerender) {
       S.quests[questIdx].aiVerdict  = { text: 'AI ej tillgänglig — halvt XP tilldelat', cls: 'v-partial' };
     }
     rerender?.();
-    setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, rerender), 800);
+    setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, rerender, showLU, showRW, showXPPop, rollReward), 800);
   }
 }
 
