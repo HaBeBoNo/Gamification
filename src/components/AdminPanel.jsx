@@ -7,6 +7,14 @@ export default function AdminPanel({ rerender, onClose }) {
   const [xpTarget, setXpTarget] = useState('');
   const [xpAmount, setXpAmount] = useState('');
   const [opName, setOpName] = useState(S.operationName || '');
+  const [metrics, setMetrics] = useState({
+    spf: S.metrics.spf,
+    str: S.metrics.str,
+    ig:  S.metrics.ig,
+    x:   S.metrics.x,
+    tix: S.metrics.tix,
+  });
+  const [saved, setSaved] = useState(false);
 
   function handleReset() {
     if (!confirm('Återställ ALL data? Detta kan inte ångras.')) return;
@@ -71,6 +79,23 @@ export default function AdminPanel({ rerender, onClose }) {
     rerender();
   }
 
+  function delta(key) {
+    const diff = metrics[key] - (S.prev?.[key] ?? S.metrics[key]);
+    if (diff === 0) return null;
+    return { value: diff > 0 ? `+${diff}` : `${diff}`, positive: diff > 0 };
+  }
+
+  function saveMetrics() {
+    S.prev    = { ...S.metrics };
+    S.metrics = { ...S.metrics, ...metrics };
+    const ts  = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+    S.feed.push({ who: S.me, action: 'uppdaterade metrics', xp: 0, time: ts });
+    save();
+    rerender();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
@@ -95,8 +120,7 @@ export default function AdminPanel({ rerender, onClose }) {
               className="admin-input"
               value={xpTarget}
               onChange={e => setXpTarget(e.target.value)}
-              style={{ flex: 0, minWidth: 120 }}
-            >
+              style={{ flex: 0, minWidth: 120 }}>
               <option value="">Välj spelare</option>
               {Object.entries(MEMBERS).map(([id, m]) => (
                 <option key={id} value={id}>{m.name}</option>
@@ -115,9 +139,7 @@ export default function AdminPanel({ rerender, onClose }) {
 
           <div className="admin-section-title">Uppdrag</div>
           <div className="admin-row">
-            <button className="admin-btn" onClick={handleResetQuests}>
-              ÅTERSTÄLL UPPDRAG
-            </button>
+            <button className="admin-btn" onClick={handleResetQuests}>ÅTERSTÄLL UPPDRAG</button>
           </div>
 
           <div className="admin-section-title">Data</div>
@@ -126,6 +148,40 @@ export default function AdminPanel({ rerender, onClose }) {
             <button className="admin-btn" onClick={handleImport}>IMPORTERA</button>
             <button className="admin-btn danger" onClick={handleReset}>FULL RESET</button>
           </div>
+
+          {(S.me === 'hannes' || S.me === 'nisse') && (
+            <div className="admin-metrics-form">
+              <div className="admin-section-title">Uppdatera metrics</div>
+
+              {[
+                { key: 'spf', label: 'Spotify followers' },
+                { key: 'str', label: 'Spotify streams totalt' },
+                { key: 'ig',  label: 'Instagram followers' },
+                { key: 'x',   label: 'X / Twitter followers' },
+                { key: 'tix', label: 'Biljetter' },
+              ].map(({ key, label }) => {
+                const d = delta(key);
+                return (
+                  <div key={key} className="admin-metrics-field">
+                    <label className="admin-metrics-label">{label}</label>
+                    <input
+                      type="number"
+                      className="admin-input"
+                      value={metrics[key]}
+                      onChange={e => setMetrics(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
+                    />
+                    {d && (
+                      <span className={d.positive ? 'delta-pos' : 'delta-neg'}>{d.value} sedan senast</span>
+                    )}
+                  </div>
+                );
+              })}
+
+              <button className="admin-btn admin-metrics-save-btn" onClick={saveMetrics}>Spara metrics</button>
+
+              {saved && <span className="metrics-saved-msg">Metrics sparade ✓</span>}
+            </div>
+          )}
         </div>
       </div>
     </div>
