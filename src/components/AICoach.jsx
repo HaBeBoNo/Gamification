@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { S } from '../state/store';
-import { MEMBERS } from '../data/members';
 import { refreshCoach } from '../hooks/useAI';
 
 export default function AICoach({ rerender }) {
   const [loading, setLoading] = useState(false);
+  const [text, setText] = useState(S.coachText || '');
 
-  function handleRefresh() {
+  useEffect(() => {
+    if (!S.coachText) {
+      handleRefresh();
+    }
+  }, []);
+
+  async function handleRefresh() {
     setLoading(true);
-    refreshCoach(S, MEMBERS, (text) => {
-      S.coachText = text;
-      setLoading(false);
-      rerender();
-    });
+    try {
+      const result = await refreshCoach();
+      S.coachText = result;
+      setText(result);
+    } catch {
+      // keep existing text
+    }
+    setLoading(false);
+    rerender?.();
   }
 
   return (
@@ -21,7 +31,7 @@ export default function AICoach({ rerender }) {
       <div className="coach-text">
         {loading
           ? 'Hämtar coaching-insikt...'
-          : (S.coachText || 'Klicka "UPPDATERA" för att få en coaching-insikt från din AI-coach.')}
+          : (text || 'Klicka "UPPDATERA" för att få en coaching-insikt från din AI-coach.')}
       </div>
       <button className="coach-refresh" onClick={handleRefresh} disabled={loading}>
         {loading ? '...' : 'UPPDATERA'}

@@ -5,8 +5,6 @@ import { getRoleHidden } from '../data/quests';
 import QuestCard from './QuestCard';
 import WeeklyCheckout from './WeeklyCheckout';
 import { showSidequestNudge, generatePersonalQuests } from '../hooks/useAI';
-import { ROLE_TYPES, ROLE_TYPE_LABEL } from '../data/members';
-import { HIDDEN_BY_TYPE } from '../data/quests';
 
 const TABS = [
   { id:'personal',  label:'MINA'       },
@@ -25,44 +23,44 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
   const char = me ? S.chars[me] : null;
   const roleType = char?.roleType || MEMBERS[me]?.roleType || 'amplifier';
 
+  // Base: only my quests, undone
+  const myQuests = (S.quests || []).filter(q => q.owner === S.me && !q.done);
+
   function getVisibleQuests() {
-    const quests = S.quests || [];
-    if (tab === 'all') return quests;
-    if (tab === 'personal') return quests.filter(q => q.personal || q.cat === 'personal');
-    if (tab === 'daily') return quests.filter(q => q.cat === 'daily');
-    if (tab === 'strategic') return quests.filter(q => q.cat === 'strategic');
+    if (tab === 'all')       return myQuests;
+    if (tab === 'personal')  return myQuests.filter(q => q.personal === true);
+    if (tab === 'daily')     return myQuests.filter(q => q.recur === 'daily');
+    if (tab === 'strategic') return myQuests.filter(q => q.type === 'strategic' && !q.personal);
     if (tab === 'hidden') {
       const hidden = getRoleHidden(roleType);
       const hiddenIds = new Set(hidden.map(h => h.id));
-      return quests.filter(q => q.cat === 'hidden' || hiddenIds.has(q.id));
+      return myQuests.filter(q => q.type === 'hidden' || hiddenIds.has(q.id));
     }
-    if (tab === 'sidequest') return quests.filter(q => q.cat === 'sidequest');
-    return quests;
+    if (tab === 'sidequest') return myQuests.filter(q => q.type === 'sidequest' || q.cat === 'sidequest');
+    // standard fallback
+    return myQuests.filter(q => q.type === 'standard' && q.recur !== 'daily' && !q.personal);
   }
 
   const visible = getVisibleQuests();
-  const allDone = visible.length > 0 && visible.every(q => q.done);
+  const allDone = myQuests.length > 0 && myQuests.every(q => q.done);
 
-  function handleRefreshPersonal() {
+  async function handleRefreshPersonal() {
     if (!me) return;
     setRefreshing(true);
-    generatePersonalQuests(
-      S, MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL, HIDDEN_BY_TYPE, getRoleHidden,
-      true,
-      {
-        onStart: () => {},
-        onProgress: () => {},
-        onDone: () => { save(); setRefreshing(false); rerender(); },
-        onError: () => { setRefreshing(false); },
-      }
-    );
+    try {
+      await generatePersonalQuests(true, () => {});
+      save();
+      rerender();
+    } catch {
+      // silently ignore
+    }
+    setRefreshing(false);
   }
 
-  function handleSidequestNudge() {
+  async function handleSidequestNudge() {
     const weekKey = `w${S.weekNum}`;
-    showSidequestNudge(weekKey, S, MEMBERS, (quests) => {
-      onSidequestNudge?.(quests);
-    });
+    const quests = await showSidequestNudge(weekKey);
+    onSidequestNudge?.(quests);
   }
 
   return (
@@ -92,7 +90,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
 
       {allDone && (
         <div className="all-done-nudge">
-          ✅ Alla synliga uppdrag slutförda! Bra jobbat.
+          ✅ Alla dina uppdrag slutförda! Bra jobbat.
         </div>
       )}
 
