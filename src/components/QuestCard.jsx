@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import { S, save } from '../state/store';
-import { MEMBERS } from '../data/members';
-import { getRoleHidden } from '../data/quests';
 import { awardXP } from '../hooks/useXP';
 import { aiValidate } from '../hooks/useAI';
-import { calcQuestXP } from '../hooks/useXP';
 
 const CAT_BADGE = {
   daily:     'badge-daily',
@@ -17,6 +14,7 @@ const CAT_BADGE = {
   health:    'badge-hidden',
   tech:      'badge-hidden',
   money:     'badge-hidden',
+  global:    'badge-daily',
 };
 
 const CAT_LABEL = {
@@ -30,91 +28,108 @@ const CAT_LABEL = {
   health:    'HÄLSA',
   tech:      'TECH',
   money:     'EKONOMI',
+  global:    'GLOBAL',
 };
 
-export default function QuestCard({ quest, rerender, showLU, showRW, showQuestModal }) {
-  const [aiDesc, setAiDesc] = useState('');
+const TYPE_BORDER = {
+  strategic: 'rgba(144,96,224,0.3)',
+  hidden:    'rgba(64,128,224,0.25)',
+  ghost:     'rgba(100,120,180,0.3)',
+};
+
+export default function QuestCard({ quest, rerender, showLU, showRW }) {
+  const [aiDesc, setAiDesc]     = useState('');
   const [thinking, setThinking] = useState(false);
-  const [verdict, setVerdict] = useState(quest.aiVerdict || null);
+  const [verdict, setVerdict]   = useState(quest.aiVerdict || null);
 
-  const me = S.me;
+  const me     = S.me;
   const isDone = quest.done;
-  const needsAI = quest.aiRequired;
 
-  function handleComplete() {
+  // Strategic quests and any quest with aiRequired need AI validation
+  const needsAI = quest.type === 'strategic' || quest.aiRequired;
+
+  function handleComplete(event) {
     if (isDone || !me) return;
-
-    if (needsAI && !verdict?.approved) {
-      // Need to validate first
-      return;
-    }
-
-    const xpEarned = calcQuestXP(me, quest.xp || 30);
+    const xp  = quest.xp || 30;
     const idx = S.quests.findIndex(q => q.id === quest.id);
-    if (idx >= 0) {
-      S.quests[idx] = { ...quest, done: true };
-    }
-    awardXP(
-      quest, xpEarned, null, S, save, rerender,
-      null,
-      (level) => showLU?.(level),
-      (reward, tier) => showRW?.(reward, tier),
-    );
+    if (idx >= 0) S.quests[idx].done = true;
+    // useXP.js signature: awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop, rollReward)
+    awardXP(quest, xp, event, rerender, showLU, showRW);
     save();
     rerender();
   }
 
-  function handleAIValidate() {
+  async function handleAIValidate() {
     if (!aiDesc.trim() || !me) return;
     setThinking(true);
-    aiValidate(quest, aiDesc, S, MEMBERS, (result) => {
-      setThinking(false);
-      setVerdict(result);
-      const idx = S.quests.findIndex(q => q.id === quest.id);
-      if (idx >= 0) {
-        S.quests[idx] = { ...S.quests[idx], aiVerdict: result };
-      }
-      save();
-    });
+    try {
+      // useAI.js signature: aiValidate(q, desc, event, rerender, showLU, showRW, showXPPop, rollReward)
+      await aiValidate(quest, aiDesc, null, rerender, showLU, showRW);
+      // aiValidate mutates S.quests[idx].aiVerdict directly — read it back
+      const updated = S.quests.find(q => q.id === quest.id);
+      setVerdict(updated?.aiVerdict || null);
+    } catch {
+      // silently ignore — aiValidate has its own internal error handling
+    }
+    setThinking(false);
   }
 
-  const badgeClass = CAT_BADGE[quest.cat] || 'badge-daily';
-  const badgeLabel = CAT_LABEL[quest.cat] || quest.cat?.toUpperCase() || 'UPPDRAG';
+  const badgeClass  = CAT_BADGE[quest.cat] || 'badge-daily';
+  const badgeLabel  = CAT_LABEL[quest.cat]  || quest.cat?.toUpperCase() || 'UPPDRAG';
+  const borderColor = TYPE_BORDER[quest.type] || (quest.personal ? 'rgba(240,192,64,0.2)' : undefined);
+
+  // Always read live verdict from S (aiValidate mutates it) — fall back to local state
+  const liveVerdict = S.quests.find(q => q.id === quest.id)?.aiVerdict || verdict;
+  const isThinking  = S.quests.find(q => q.id === quest.id)?.aiThinking || thinking;
 
   return (
     <div
-      className={`quest-card ${isDone ? 'done' : ''}`}
-      style={quest.personal ? { borderColor:'rgba(240,192,64,0.2)' } : {}}
+      className={`quest-card ${isDone ? 'done' : ''} ${quest.type === 'ghost' ? 'ghost' : ''}`}
+      style={borderColor ? { borderColor } : {}}
     >
       {isDone && <div className="done-stamp">✓ KLAR</div>}
+
       <div className="quest-card-head">
-        <span className="quest-icon">{quest.icon || '⭐'}</span>
-        <div>
+        <span className="quest-icon">
+          {quest.stars || (quest.type === 'hidden' ? '🔵' : quest.type === 'strategic' ? '🔥' : '⭐')}
+        </span>
+        <div style={{ flex:1, minWidth:0 }}>
           <span className={`quest-badge ${badgeClass}`}>{badgeLabel}</span>
-          <div className="quest-title" style={{ marginTop: 4 }}>
-            {quest.title}
-          </div>
+          {quest.type && quest.type !== 'standard' && (
+            <span className="quest-type-badge">{quest.type.toUpperCase()}</span>
+          )}
+          <div className="quest-title" style={{ marginTop:4 }}>{quest.title}</div>
         </div>
       </div>
+
       <div className="quest-desc">{quest.desc}</div>
+
       <div className="quest-meta">
         <span className="quest-xp">⚡ {quest.xp} XP</span>
-        {quest.recur && <span className="quest-recur">{quest.recur}</span>}
+        {quest.recur && quest.recur !== 'none' && (
+          <span className="quest-recur">{quest.recur}</span>
+        )}
         {quest.region && quest.region !== 'all' && (
           <span className="quest-region">{quest.region}</span>
         )}
       </div>
 
-      {needsAI && !isDone && (
+      {/* Live AI verdict — shown whenever present */}
+      {liveVerdict && (
+        <div className={`quest-ai-verdict ${liveVerdict.cls || ''}`}>{liveVerdict.text}</div>
+      )}
+
+      {/* AI reflection area — only shown for strategic/aiRequired quests before verdict */}
+      {needsAI && !isDone && !liveVerdict && (
         <div className="quest-ai-area">
           <textarea
             className="quest-ai-input"
             placeholder="Beskriv hur du genomförde uppdraget..."
             value={aiDesc}
             onChange={e => setAiDesc(e.target.value)}
-            disabled={thinking || verdict?.approved}
+            disabled={isThinking}
           />
-          {thinking && (
+          {isThinking ? (
             <div className="quest-ai-thinking">
               <div className="refresh-spinner" style={{
                 width:14, height:14,
@@ -125,17 +140,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showQuestMo
               }} />
               AI granskar...
             </div>
-          )}
-          {verdict && (
-            <div className={`quest-ai-verdict ${verdict.approved ? 'approved' : 'rejected'}`}>
-              {verdict.approved ? '✓' : '✗'} {verdict.message}
-            </div>
-          )}
-          {!verdict && !thinking && (
+          ) : (
             <button
               className="complete-btn"
               onClick={handleAIValidate}
-              disabled={!aiDesc.trim()}
+              disabled={aiDesc.trim().length < 10}
             >
               VALIDERA MED AI
             </button>
@@ -143,7 +152,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showQuestMo
         </div>
       )}
 
-      {!isDone && (!needsAI || verdict?.approved) && (
+      {/* Complete button — shown when not done, and either no AI needed or verdict arrived */}
+      {!isDone && (!needsAI || liveVerdict) && (
         <button className="complete-btn" onClick={handleComplete}>
           SLUTFÖR
         </button>
