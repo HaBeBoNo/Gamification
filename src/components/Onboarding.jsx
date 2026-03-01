@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { S, save, defChar } from '../state/store';
-import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '../data/members';
-import { HIDDEN_BY_TYPE, getRoleHidden } from '../data/quests';
+import { MEMBERS } from '../data/members';
 import { generatePersonalQuests } from '../hooks/useAI';
+import { BASE_QUESTS } from '../data/quests';
 
 const TOTAL_STEPS = 8;
 
@@ -53,28 +53,18 @@ export default function Onboarding({ rerender }) {
     next();
   }
 
-  function startGenerate() {
+  async function startGenerate() {
     setGenerating(true);
     setError('');
-    generatePersonalQuests(
-      S, MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL, HIDDEN_BY_TYPE, getRoleHidden,
-      false,
-      {
-        onStart: () => setGenMsg('Genererar personliga uppdrag...'),
-        onProgress: (msg) => setGenMsg(msg),
-        onDone: (quests) => {
-          save();
-          setGenerating(false);
-          next();
-        },
-        onError: (msg) => {
-          setError(msg);
-          setGenerating(false);
-          // Continue without personal quests
-          next();
-        },
-      }
-    );
+    setGenMsg('Genererar personliga uppdrag...');
+    try {
+      await generatePersonalQuests(false, () => {});
+      save();
+    } catch (e) {
+      setError('Kunde inte generera uppdrag — fortsätter utan AI.');
+    }
+    setGenerating(false);
+    finish();
   }
 
   function finish() {
