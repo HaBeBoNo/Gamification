@@ -20,7 +20,8 @@
 export const BASE_QUESTS = [
 
   // ── HANNES — Creative Director / Amplifier ──────────────────
-  // Varumärkesidentitet, digital närvaro, strategisk planering.
+  // AMPLIFIER: Tar det som finns och gör det större. Berättelsen
+  // runt musiken är lika viktig som musiken själv. Frekvens belönas.
   // Bandets meta-konto, content, biografi, tidsplaner.
   { id:101, owner:'hannes',
     title:'Uppdatera bandets biografi',
@@ -29,7 +30,8 @@ export const BASE_QUESTS = [
   { id:102, owner:'hannes',
     title:'Publicera ett inlägg på bandkontot',
     desc:'Ett inlägg på bandets Instagram eller X. Kan vara ett clip, ett foto eller en text. Äkthet före perfektion. Tagga relevanta members.',
-    cat:'social', xp:50, region:'🌐 Global', recur:'weekly', type:'standard' },
+    cat:'social', xp:50, region:'🌐 Global', recur:'weekly', type:'standard',
+    synergyTrigger: true },  // → aktiverar Nisse id:401
   { id:103, owner:'hannes',
     title:'Brand konsistens-check',
     desc:'Spotify, Instagram, X — ser det ut som samma band överallt? Profilbild, header, bio, länk. Notera och åtgärda det som är off.',
@@ -56,7 +58,9 @@ export const BASE_QUESTS = [
     cat:'wisdom', xp:75, region:'🌐 Global', recur:'weekly', type:'standard' },
 
   // ── LUDVIG — Ordförande / Builder ───────────────────────────
-  // Övergripande ledning, projektledning, strategi.
+  // BUILDER: Bygger strukturer som lever längre än han själv.
+  // Sällsynta strategiska leveranser > dagliga aktiviteter.
+  // XP-logik: milestone-bonus på quests ≥150 XP.
   // Bollplank, enabler, maskot — poäng för delaktighet i processer.
   // Startade merch-konceptet av ren vilja — det erkänns.
   // Impact-språk alltid. Aldrig organisatoriskt.
@@ -94,12 +98,14 @@ export const BASE_QUESTS = [
     cat:'wisdom', xp:200, region:'🌐 Global', recur:'none', type:'strategic' },
 
   // ── MARTIN — Head of Production / Enabler ───────────────────
-  // Övergripande kvalitetsansvar. Koordinerar EP-inspelningar.
+  // ENABLER: Multiplicerar bandets kapacitet. Utan Martin låter
+  // ingen bra. Djup och kvalitet belönas mer än frekvens.
   // Senior adviser. Saxofonist. Inget eget socialt konto.
   { id:301, owner:'martin',
     title:'Leverera ett studio-clip till bildbanken',
     desc:'30–60 sek autentiskt studiomaterial. Naturligt ljud. Inget filter. Skicka till den delade bildbanken — övriga repurposar det.',
-    cat:'tech', xp:75, region:'🌐 Global', recur:'weekly', type:'standard' },
+    cat:'tech', xp:75, region:'🌐 Global', recur:'weekly', type:'standard',
+    synergyTrigger: true },  // → aktiverar Nisse id:407
   { id:302, owner:'martin',
     title:'EP-inspelningsschema: bekräfta session',
     desc:'Boka och kommunicera nästa inspelningssession. Datum, vilka låtar, vilka medlemmar behövs. En veckas förvarning.',
@@ -140,35 +146,35 @@ export const BASE_QUESTS = [
   { id:311, owner:'martin', title:'STEMS — Album II, Arms',
     desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Arms_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:312, owner:'martin', title:'STEMS — Album II, låt 2',
-    desc:'Exportera fullständiga multitracks. En låt åt gången. Varje leverans är ett steg mot IFPI-registrering.',
+  { id:312, owner:'martin', title:'STEMS — Album II, Praise You',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_PraiseYou_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:313, owner:'martin', title:'STEMS — Album II, låt 3',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:313, owner:'martin', title:'STEMS — Album II, Daisies',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Daisies_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:314, owner:'martin', title:'STEMS — Album II, låt 4',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:314, owner:'martin', title:'STEMS — Album II, Altitude',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Altitude_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:315, owner:'martin', title:'STEMS — Album II, låt 5',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:315, owner:'martin', title:'STEMS — Album II, Down Below',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_DownBelow_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:316, owner:'martin', title:'STEMS — Album II, låt 6',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:316, owner:'martin', title:'STEMS — Album II, In Patience',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_InPatience_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:317, owner:'martin', title:'STEMS — Album II, låt 7',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:317, owner:'martin', title:'STEMS — Album II, Absentee',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Absentee_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:318, owner:'martin', title:'STEMS — Album II, låt 8',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:318, owner:'martin', title:'STEMS — Album II, Mashallidad',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Mashallidad_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:319, owner:'martin', title:'STEMS — Album II, låt 9',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:319, owner:'martin', title:'STEMS — Album II, Next Up',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_NextUp_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:320, owner:'martin', title:'STEMS — Album II, låt 10',
-    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_[Titel]_STEMS.',
+  { id:320, owner:'martin', title:'STEMS — Album II, Ignited',
+    desc:'Exportera fullständiga multitracks. Namnstandard: Sektionen_AlbumII_Ignited_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:120, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:321, owner:'martin', title:'STEMS — Album II, klar',
-    desc:'Sista låten på Album II. Hela albumet är nu berett. Milstolpe — IFPI-registrering kan påbörjas.',
+  { id:321, owner:'martin', title:'STEMS — Album II, Finest Hour',
+    desc:'Sista låten. Hela Album II är nu berett. Milstolpe — IFPI-registrering kan påbörjas.',
     cat:'tech', xp:200, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
 
   // Singlar — 5 låtar
@@ -189,26 +195,44 @@ export const BASE_QUESTS = [
     cat:'tech', xp:150, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
 
   // Industriteatern — Album I (utan Johannes, antal låtar TBD)
-  { id:331, owner:'martin', title:'STEMS — Industriteatern, låt 1',
-    desc:'Album I, utan Johannes. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:331, owner:'martin', title:'STEMS — Industriteatern, Vakuum',
+    desc:'Album I, utan Johannes. Namnstandard: Sektionen_AlbumI_Vakuum_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:332, owner:'martin', title:'STEMS — Industriteatern, låt 2',
-    desc:'Album I. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:332, owner:'martin', title:'STEMS — Industriteatern, Stormen',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Stormen_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:333, owner:'martin', title:'STEMS — Industriteatern, låt 3',
-    desc:'Album I. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:333, owner:'martin', title:'STEMS — Industriteatern, Utan att vi letar',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_UtanAttViLetar_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:334, owner:'martin', title:'STEMS — Industriteatern, låt 4',
-    desc:'Album I. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:334, owner:'martin', title:'STEMS — Industriteatern, Tankar',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Tankar_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:335, owner:'martin', title:'STEMS — Industriteatern, låt 5',
-    desc:'Album I. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:335, owner:'martin', title:'STEMS — Industriteatern, Låt oss',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_LatOss_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:336, owner:'martin', title:'STEMS — Industriteatern, låt 6',
-    desc:'Album I. Namnstandard: Sektionen_AlbumI_[Titel]_STEMS.',
+  { id:336, owner:'martin', title:'STEMS — Industriteatern, Sänket',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Sanket_STEMS. Arkivera på delad plats.',
     cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
-  { id:337, owner:'martin', title:'STEMS — Industriteatern, klar',
-    desc:'Hela katalogen beredd. IFPI-registrering kan nu påbörjas för samtliga verk.',
+  { id:337, owner:'martin', title:'STEMS — Industriteatern, Claro',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Claro_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:338, owner:'martin', title:'STEMS — Industriteatern, Ingen är',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_IngenAr_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:339, owner:'martin', title:'STEMS — Industriteatern, Mnneslund',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Mnneslund_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:340, owner:'martin', title:'STEMS — Industriteatern, Seltan',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Seltan_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:347, owner:'martin', title:'STEMS — Industriteatern, Som Du',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_SomDu_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:348, owner:'martin', title:'STEMS — Industriteatern, Sommardäng',
+    desc:'Album I. Namnstandard: Sektionen_AlbumI_Sommardan_STEMS. Arkivera på delad plats.',
+    cat:'tech', xp:110, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+  { id:349, owner:'martin', title:'STEMS — Industriteatern, Väntan',
+    desc:'Sista låten. Hela Industriteatern-katalogen beredd. IFPI-registrering kan nu påbörjas för samtliga verk.',
     cat:'tech', xp:250, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
 
   // Juridik
@@ -220,7 +244,8 @@ export const BASE_QUESTS = [
     cat:'money', xp:150, region:'🇸🇪 Sverige', recur:'none', type:'strategic' },
 
   // ── NISSE — Outreach / Amplifier ────────────────────────────
-  // Mediekontakter, spellistor, press-pitch, community.
+  // AMPLIFIER: Räckvidd och resonans är hans valuta. Varje pitch,
+  // varje Japan-post, varje press-kontakt multiplicerar synligheten.
   // Japan X är ett verktyg under Outreach — inte hela rollen.
   // Personligt konto: PR-perspektiv, community. Musiker: stämsång, bas.
   { id:401, owner:'nisse',
@@ -265,13 +290,15 @@ export const BASE_QUESTS = [
     cat:'health', xp:50, region:'🇸🇪 Sverige', recur:'weekly', type:'standard' },
 
   // ── SIMON — Business Manager / Builder ──────────────────────
-  // Bokning, förhandling, externa samarbeten, sponsorer.
+  // BUILDER: Hans beslut avgör om bandet spelar live eller inte.
+  // Varje bokad spelning är en strukturell milstolpe.
   // Relationsbyggande — nya kontakter ger XP även utan direkt effekt.
   // Mål: minst 5 spelningar 2026.
   { id:501, owner:'simon',
     title:'Boka en spelning',
     desc:'Kontakta en arrangör. Förhandla datum, arvode och villkor. Bekräftat datum = completad quest. Mål: 5 spelningar 2026.',
-    cat:'money', xp:200, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
+    cat:'money', xp:200, region:'🇸🇪 Sverige', recur:'none', type:'standard',
+    synergyTrigger: true },  // → aktiverar Johannes id:605
   { id:502, owner:'simon',
     title:'Kontakta en potentiell samarbetspartner',
     desc:'Näringsliv, förening eller sponsor. Inte ett avtal — ett samtal. Vad kan de bidra med? Dokumentera kontakten.',
@@ -318,7 +345,8 @@ export const BASE_QUESTS = [
     cat:'money', xp:150, region:'🇸🇪 Sverige', recur:'none', type:'strategic' },
 
   // ── JOHANNES — Logistics & Merch / Enabler ──────────────────
-  // Merch-drift, webshop, emblem-kollektion, vinyl, platsansvar.
+  // ENABLER: Gör att konserten faktiskt händer. Hans osynliga
+  // arbete är förutsättningen för allt annat på scen.
   // Tar över merch-driften från Ludvig som startade konceptet.
   // Personligt konto: osynligt arbete synligt.
   { id:601, owner:'johannes',
@@ -371,7 +399,8 @@ export const BASE_QUESTS = [
     cat:'money', xp:50, region:'🇸🇪 Sverige', recur:'weekly', type:'standard' },
 
   // ── CARL — Grant Manager / Builder ──────────────────────────
-  // Söker kulturbidrag för att involvera externa kreatörer.
+  // BUILDER: Bygger finansiell kapacitet för kreativa investeringar.
+  // Iteration är metoden — varje avslag är data.
   // Mål: bli skicklig på att ansöka — iteration är metoden.
   // Saklig, välgrundad, itererad feedback i varje quest.
   { id:701, owner:'carl',
@@ -416,7 +445,8 @@ export const BASE_QUESTS = [
     cat:'money', xp:250, region:'🇸🇪 Sverige', recur:'none', type:'strategic' },
 
   // ── NIKLAS — Tech & Facilities / Enabler ─────────────────────
-  // Replokal, studio, gemensam utrustning.
+  // ENABLER: Infrastrukturen som håller allt igång. Snabba,
+  // specificerade leveranser. Omedelbar belöning viktig.
   // Snabba, specificerade leveranser — omedelbar belöning.
   // Personligt konto: tech-nörderi.
   { id:801, owner:'niklas',
@@ -434,7 +464,8 @@ export const BASE_QUESTS = [
   { id:804, owner:'niklas',
     title:'Deploya Gamification för bandet',
     desc:'GitHub Pages eller Netlify. Alla 8 ska ha en länk de kan öppna. Dokumentera deploy-processen kort.',
-    cat:'tech', xp:200, region:'🌐 Global', recur:'none', type:'standard' },
+    cat:'tech', xp:200, region:'🌐 Global', recur:'none', type:'standard',
+    synergyTrigger: true },  // → bonus XP till alla
   { id:805, owner:'niklas',
     title:'TikTok Business + Analytics: aktiverat',
     desc:'Konfigurera TikTok Business-konto. Länka till Instagram. Aktivera analytics. Kommunicera när det är klart.',
