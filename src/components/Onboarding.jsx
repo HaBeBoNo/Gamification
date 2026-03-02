@@ -4,7 +4,7 @@ import { MEMBERS } from '../data/members';
 import { generatePersonalQuests } from '../hooks/useAI';
 import { BASE_QUESTS } from '../data/quests';
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 export default function Onboarding({ rerender }) {
   const [step, setStep] = useState(0);
@@ -14,7 +14,6 @@ export default function Onboarding({ rerender }) {
   const [roleDrain, setRoleDrain] = useState('');
   const [hiddenValue, setHiddenValue] = useState('');
   const [gap, setGap] = useState('');
-  const [apiKey, setApiKey] = useState(localStorage.getItem('anthropic-key') || '');
   const [generating, setGenerating] = useState(false);
   const [genMsg, setGenMsg] = useState('');
   const [error, setError] = useState('');
@@ -43,13 +42,6 @@ export default function Onboarding({ rerender }) {
     char.hiddenValue = hiddenValue;
     char.gap = gap;
     save();
-    next();
-  }
-
-  function saveApiKey() {
-    if (apiKey.trim()) {
-      localStorage.setItem('anthropic-key', apiKey.trim());
-    }
     next();
   }
 
@@ -82,10 +74,12 @@ export default function Onboarding({ rerender }) {
 
         {step === 0 && (
           <>
-            <div className="ob-title">SEKTIONEN<br />WAR ROOM</div>
+            <div className="ob-title">HEADQUARTERS</div>
             <div className="ob-subtitle">
-              Välkommen till bandets gamification-system. Slutför uppdrag,
-              samla XP och nå nya nivåer tillsammans.
+              Sektionen är på väg från ideell förening till professionellt band.
+              Operation POST II pågår — EP till juli 2026.<br /><br />
+              Det här systemet hjälper dig bidra på dina egna villkor.
+              Svara ärligt — dina svar formar dina personliga uppdrag.
             </div>
             <button className="ob-btn" onClick={next}>BÖRJA →</button>
           </>
@@ -115,13 +109,14 @@ export default function Onboarding({ rerender }) {
 
         {step === 2 && (
           <>
-            <div className="ob-title">DIN MOTIVATION</div>
+            <div className="ob-title">VARFÖR SPELAR DU MUSIK?</div>
             <div className="ob-subtitle">
-              Varför är du med i Sektionen? Vad driver dig?
+              Inte vad du tror att du borde svara — vad som faktiskt driver dig
+              när ingen annan ser på. Känslan, inte målet.
             </div>
             <textarea
               className="ob-input"
-              placeholder="Beskriv din motivation..."
+              placeholder="T.ex: Känslan av att ett rum lyssnar. Att ett riff faller på plats. Att vara del av något som är större än mig själv."
               value={motivation}
               onChange={e => setMotivation(e.target.value)}
             />
@@ -131,13 +126,14 @@ export default function Onboarding({ rerender }) {
 
         {step === 3 && (
           <>
-            <div className="ob-title">DIN ROLL</div>
+            <div className="ob-title">DIN ROLL I VERKLIGHETEN</div>
             <div className="ob-subtitle">
-              Vad njuter du mest av i din roll som {member?.role}?
+              Din titel är {member?.role}. Men vad gör du faktiskt —
+              det du gör med glädje, utan att det känns som jobb?
             </div>
             <textarea
               className="ob-input"
-              placeholder="Det jag njuter mest av..."
+              placeholder="T.ex: Jag gillar att lösa praktiska problem. Att vara den som fixar det ingen annan tänkt på. Att se ett system växa fram."
               value={roleEnjoy}
               onChange={e => setRoleEnjoy(e.target.value)}
             />
@@ -147,13 +143,14 @@ export default function Onboarding({ rerender }) {
 
         {step === 4 && (
           <>
-            <div className="ob-title">UTMANINGAR</div>
+            <div className="ob-title">VAD KOSTAR MER ÄN DET GER?</div>
             <div className="ob-subtitle">
-              Vad är jobbigt eller dränerar din energi?
+              Det finns säkert saker i din roll som dränerar dig.
+              Det är viktig information — AI:n skapar inga uppdrag i de kategorierna.
             </div>
             <textarea
               className="ob-input"
-              placeholder="Det som är jobbigt..."
+              placeholder="T.ex: Att skriva formella mail. Att följa upp andra. Möten utan tydligt syfte. Att vara på sociala medier."
               value={roleDrain}
               onChange={e => setRoleDrain(e.target.value)}
             />
@@ -165,18 +162,29 @@ export default function Onboarding({ rerender }) {
           <>
             <div className="ob-title">DITT DOLDA VÄRDE</div>
             <div className="ob-subtitle">
-              Vad kan du som ingen annan vet om? Vad är ditt gap att fylla?
+              Vad gör du för bandet som ingen lägger märke till?
+              Det osynliga arbetet som skulle saknas om du försvann.
             </div>
             <textarea
               className="ob-input"
-              placeholder="Mitt dolda värde / styrka..."
+              placeholder="T.ex: Jag är den som alltid har koll på detaljer ingen annan orkar hålla i. Jag påminner bandet om saker utan att göra det till ett nummer."
               value={hiddenValue}
               onChange={e => setHiddenValue(e.target.value)}
             />
+            <button className="ob-btn" onClick={next}>NÄSTA →</button>
+          </>
+        )}
+
+        {step === 6 && (
+          <>
+            <div className="ob-title">VAD SER DU ATT INGEN GÖR?</div>
+            <div className="ob-subtitle">
+              Det finns säkert ett gap i bandet — något som borde hända
+              men som ingen tagit ansvar för. Vad ser du?
+            </div>
             <textarea
               className="ob-input"
-              style={{ marginTop: 8 }}
-              placeholder="Gap jag vill fylla..."
+              placeholder="T.ex: Vi har ingen som aktivt bevakar vad andra band i Göteborg gör. Ingen har koll på vilka spelplatser som är rätt för oss nu."
               value={gap}
               onChange={e => setGap(e.target.value)}
             />
@@ -184,33 +192,18 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <>
-            <div className="ob-title">AI-NYCKEL</div>
+            <div className="ob-title">PROFIL SPARAD</div>
             <div className="ob-subtitle">
-              Ange din Anthropic API-nyckel för att aktivera AI-coaching och
-              personliga uppdrag. (Valfritt — hoppa över för att fortsätta utan AI.)
+              Dina svar är sparade. Nu genererar vi personliga uppdrag
+              baserade på vad du berättat.
             </div>
-            <input
-              type="password"
-              className="ob-input"
-              style={{ resize: 'none', minHeight: 'unset', height: 40 }}
-              placeholder="sk-ant-..."
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-            />
-            <div style={{ display:'flex', gap:8 }}>
-              <button className="ob-btn" style={{ flex:1 }} onClick={next}>
-                HOPPA ÖVER
-              </button>
-              <button className="ob-btn" style={{ flex:1 }} onClick={saveApiKey}>
-                SPARA NYCKEL →
-              </button>
-            </div>
+            <button className="ob-btn" onClick={next}>FORTSÄTT →</button>
           </>
         )}
 
-        {step === 7 && (
+        {step === 8 && (
           <>
             <div className="ob-title">GENERERA UPPDRAG</div>
             <div className="ob-subtitle">
@@ -228,7 +221,7 @@ export default function Onboarding({ rerender }) {
                 <div className="ob-generating-text">{genMsg}</div>
               </div>
             ) : (
-              <>
+              <>  
                 {error && (
                   <div style={{ color:'var(--red)', fontSize:'0.8rem' }}>{error}</div>
                 )}
