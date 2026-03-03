@@ -25,6 +25,7 @@ export default function Onboarding({ rerender }) {
   const [roleDrain, setRoleDrain] = useState('');
   const [hiddenValue, setHiddenValue] = useState('');
   const [gap, setGap] = useState('');
+  const [roleReaction, setRoleReaction] = useState('');
   const [generating, setGenerating] = useState(false);
   const [genMsg, setGenMsg] = useState('');
   const [error, setError] = useState('');
@@ -52,6 +53,7 @@ export default function Onboarding({ rerender }) {
     char.roleDrain = roleDrain;
     char.hiddenValue = hiddenValue;
     char.gap = gap;
+    char.roleReaction = roleReaction;
     save();
     next();
   }
@@ -126,7 +128,12 @@ export default function Onboarding({ rerender }) {
             <div className="ob-subtitle" style={{ lineHeight: 1.8, fontSize: '1rem' }}>
               {MEMBER_ROLE_COPY[selectedMember] || ''}
             </div>
-            <button className="ob-btn" onClick={next}>NÄSTA →</button>
+            <div className="ob-role-question">Känner du igen dig i det här?</div>
+            <div className="ob-role-options">
+              <button onClick={() => { setRoleReaction('yes'); next(); }}>Ja, det stämmer</button>
+              <button onClick={() => { setRoleReaction('partly'); next(); }}>Delvis</button>
+              <button onClick={() => { setRoleReaction('no'); next(); }}>Inte riktigt</button>
+            </div>
           </>
         )}
 

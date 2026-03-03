@@ -653,6 +653,35 @@ body::after {
   transition:border-color 0.2s;
 }
 .ob-input:focus { border-color:var(--border-hot); }
+.ob-role-question {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin: 1.5rem 0 0.75rem;
+}
+.ob-role-options {
+  display: flex;
+  gap: 8px;
+}
+.ob-role-options button {
+  flex: 1;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ob-role-options button:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  border-color: rgba(255,255,255,0.2);
+}
+
 .ob-btn {
   padding:12px 24px;
   background:var(--gold-dim);
