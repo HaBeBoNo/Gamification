@@ -64,6 +64,20 @@ function buildQuestGenPrompt(m, c, refreshMode) {
   const rtLabel = ROLE_TYPES[m.roleType]?.label || 'Amplifier';
   const rtDesc  = ROLE_TYPES[m.roleType]?.desc  || '';
 
+  const recentReflections = S.quests
+    .filter(q => q.owner === S.me && q.done && q.lastReflection)
+    .slice(-5)
+    .map(q => `"${q.title}": ${q.lastReflection}`)
+    .join('\n');
+
+  const recentCompleted = S.quests
+    .filter(q => q.owner === S.me && q.done)
+    .slice(-5)
+    .map(q => q.title)
+    .join(', ');
+
+  const prevGenerated = (c.generatedHistory || []).slice(-10).join(', ');
+
   return `Du är en strategisk AI-coach för Sektionen, ett 8-personersband från Göteborg på väg mot professionell verksamhet.
 ${refreshMode ? 'OBS: REFRESH — personen har completat sina förra quests. Skapa nya som bygger vidare, inte samma som sist. Kontexten: Operation POST II, truminspelning juli 2026, ideell → professionell.' : ''}
 
@@ -97,6 +111,18 @@ VIKTIGT: Anpassa strikt till rolltypen.
 - enabler: INGA sociala medier-quests — infrastruktur, teknik, produktion
 - builder: milstolpar och strategiska beslut — INTE dagliga aktiviteter
 
+Vad de faktiskt gjort senast:
+${recentCompleted || 'inga completade quests än'}
+
+Deras egna ord:
+${recentReflections || 'inga reflektioner än'}
+
+VIKTIGT: Generera INTE quests som liknar det de redan gjort.
+Bygg vidare — nästa naturliga steg, inte samma steg igen.
+
+Tidigare genererade quests (upprepa INTE dessa):
+${prevGenerated || 'inga'}
+
 INSTRUKTIONER — skapa 4 personliga quests:
 1. Möt dem där de faktiskt är, inte där rollbeskrivningen säger
 2. Om något dränerar dem: skapa INTE quests i den kategorin
@@ -117,6 +143,18 @@ function buildCoachPrompt(m, c) {
     .map(([k]) => k)
     .join(', ');
 
+  const recentReflections = S.quests
+    .filter(q => q.owner === S.me && q.done && q.lastReflection)
+    .slice(-5)
+    .map(q => `"${q.title}": ${q.lastReflection}`)
+    .join('\n');
+
+  const recentCompleted = S.quests
+    .filter(q => q.owner === S.me && q.done)
+    .slice(-5)
+    .map(q => q.title)
+    .join(', ');
+
   const prevCoaching = (c.coachLog || [])
     .slice(-3)
     .map(e => `Vecka ${e.week}: "${e.text}"`)
@@ -133,6 +171,15 @@ Rollkalibrering:
 
 Status: Level ${c.level || 1}, ${c.totalXp || 0} XP, ${c.streak || 0} dagars streak. Aktiv i: ${completedCats || 'ingen kategori ännu'}.
 ${c.recalibration ? `\nUppdaterad självbild: "${c.recalibration}"` : ''}
+
+Vad de faktiskt gjort senast (completade quests):
+${recentCompleted || 'inga än'}
+
+Deras egna ord om vad de gjort (reflektioner):
+${recentReflections || 'inga reflektioner än'}
+
+VIKTIGT: Om reflektioner finns — utgå från dem, inte från onboarding-svaren.
+Vad de faktiskt gör väger tyngre än vad de trodde att de skulle göra.
 
 Vad du sagt tidigare:
 ${prevCoaching || 'första gången'}
@@ -285,6 +332,13 @@ export async function generatePersonalQuests(refreshMode = false, rerender) {
         personal:  true,
       });
     });
+
+    // Store generated titles so next generation doesn't repeat
+    const newTitles = parsed.map(q => q.title);
+    S.chars[S.me].generatedHistory = [
+      ...(S.chars[S.me].generatedHistory || []),
+      ...newTitles
+    ].slice(-20);
   } catch {
     // Fallback: minimal quest om AI misslyckas
     S.quests.push({
