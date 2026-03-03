@@ -155,8 +155,11 @@ export default function Onboarding({ rerender }) {
           <>
             <div className="ob-title">DIN ROLL I VERKLIGHETEN</div>
             <div className="ob-subtitle">
-              Din titel är {member?.role}. Men vad gör du faktiskt —
-              det du gör med glädje, utan att det känns som jobb?
+              {selectedMember === 'ludvig'
+                ? 'Vad gör du faktiskt — det som känns naturligt, inte det som står i din titel?'
+                : selectedMember === 'carl'
+                ? `Vad gör du i din roll som ${member?.role}? Om du inte vet än — vad skulle du vilja att det var?`
+                : `Vad gör du faktiskt — det du gör med glädje, utan att det känns som jobb?`}
             </div>
             <textarea
               className="ob-input"
@@ -189,12 +192,19 @@ export default function Onboarding({ rerender }) {
           <>
             <div className="ob-title">DITT DOLDA VÄRDE</div>
             <div className="ob-subtitle">
-              Vad gör du för bandet som ingen lägger märke till?
-              Det osynliga arbetet som skulle saknas om du försvann.
+              {selectedMember === 'ludvig'
+                ? 'Vad skulle saknas om du försvann — inte rollen, utan du?'
+                : selectedMember === 'martin'
+                ? 'Vad kan du som ingen annan vet om? Det kan vara erfarenhet, ett nätverk, ett sätt att tänka.'
+                : selectedMember === 'niklas'
+                ? 'Vad kan du som ingen annan i bandet ens förstår att de behöver?'
+                : 'Vad gör du för bandet som ingen lägger märke till?'}
             </div>
             <textarea
               className="ob-input"
-              placeholder="Det ingen ber om men som skulle saknas..."
+              placeholder={selectedMember === 'johannes'
+                ? 'Det jag alltid gör som ingen ber om...'
+                : 'Det ingen ber om men som skulle saknas...'}
               value={hiddenValue}
               onChange={e => setHiddenValue(e.target.value)}
             />
@@ -206,8 +216,11 @@ export default function Onboarding({ rerender }) {
           <>
             <div className="ob-title">VAD SER DU ATT INGEN GÖR?</div>
             <div className="ob-subtitle">
-              Det finns säkert ett gap i bandet — något som borde hända
-              men som ingen tagit ansvar för. Vad ser du?
+              {selectedMember === 'ludvig'
+                ? 'Vad saknar bandet som ingen pratar om?'
+                : selectedMember === 'carl'
+                ? 'Det jag ser att ingen gör — eller vad jag önskar att någon tog tag i.'
+                : 'Det finns säkert ett gap i bandet — något som borde hända men som ingen tagit ansvar för. Vad ser du?'}
             </div>
             <textarea
               className="ob-input"
