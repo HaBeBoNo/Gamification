@@ -89,6 +89,9 @@ ROLLKALIBRERING:
 - Vad i rollen kostar mer än det ger: "${c.roleDrain || 'ej angiven'}"
 - Dold insats som ingen förväntar sig: "${c.hiddenValue || 'ej angiven'}"
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
+${c.roleReaction ? `\nDe reagerade på sin rollbeskrivning med: "${c.roleReaction}"
+${c.roleReaction === 'no' ? 'VIKTIGT: Deras roll är annorlunda än systemet antog. Var försiktig med antaganden.' : ''}
+${c.roleReaction === 'partly' ? 'Deras roll är delvis som beskrivet — håll quests öppna och utforskande.' : ''}` : ''}
 
 Sektionens läge:
 Album II ute 1 mars 2026. Releasekonsert genomförd 7 mars Ölslanda Södergård.
@@ -168,6 +171,9 @@ Rollkalibrering:
 - Vad som kostar mer än det ger: "${c.roleDrain || 'ej angiven'}"
 - Dold insats ingen förväntar sig: "${c.hiddenValue || 'ej angiven'}"
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
+${c.roleReaction ? `\nDe reagerade på sin rollbeskrivning med: "${c.roleReaction}"
+${c.roleReaction === 'no' ? 'VIKTIGT: Deras roll är annorlunda än systemet antog. Var försiktig med antaganden.' : ''}
+${c.roleReaction === 'partly' ? 'Deras roll är delvis som beskrivet — håll quests öppna och utforskande.' : ''}` : ''}
 
 Status: Level ${c.level || 1}, ${c.totalXp || 0} XP, ${c.streak || 0} dagars streak. Aktiv i: ${completedCats || 'ingen kategori ännu'}.
 ${c.recalibration ? `\nUppdaterad självbild: "${c.recalibration}"` : ''}
