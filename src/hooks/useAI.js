@@ -117,6 +117,11 @@ function buildCoachPrompt(m, c) {
     .map(([k]) => k)
     .join(', ');
 
+  const prevCoaching = (c.coachLog || [])
+    .slice(-3)
+    .map(e => `Vecka ${e.week}: "${e.text}"`)
+    .join('\n');
+
   return `Du är AI-coach för ${m.name} i Sektionen. Operation POST II: ideell → professionell. truminspelning juli 2026.
 
 Rollkalibrering:
@@ -127,6 +132,11 @@ Rollkalibrering:
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
 
 Status: Level ${c.level || 1}, ${c.totalXp || 0} XP, ${c.streak || 0} dagars streak. Aktiv i: ${completedCats || 'ingen kategori ännu'}.
+
+Vad du sagt tidigare:
+${prevCoaching || 'första gången'}
+VIKTIGT: Bygg vidare på tidigare insikter. Upprepa aldrig samma poäng.
+Om du sagt något om X — gå djupare eller byt riktning.
 
 Ge en personlig coaching-insikt, max 2 meningar på svenska. Utgå från rollkalibreringen — inte bara motivationen. Om något dränerar dem, adressera det direkt. Ibland utmanande, ibland stöttande, alltid konkret.
 
