@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { S } from '../state/store';
+import { S, save } from '../state/store';
 import { refreshCoach } from '../hooks/useAI';
 
 export default function AICoach({ rerender }) {
@@ -18,6 +18,13 @@ export default function AICoach({ rerender }) {
       const result = await refreshCoach();
       S.coachText = result;
       setText(result);
+      if (S.me && S.chars[S.me]) {
+        const log = S.chars[S.me].coachLog || [];
+        log.push({ text: result, ts: Date.now(), week: S.weekNum || 0 });
+        if (log.length > 10) log.splice(0, log.length - 10);
+        S.chars[S.me].coachLog = log;
+        save();
+      }
     } catch {
       // keep existing text
     }
