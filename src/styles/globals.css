@@ -555,6 +555,10 @@ body::after {
   transition:all 0.2s;
 }
 .coach-refresh:hover { background:rgba(144,96,224,0.25); }
+.coach-feedback { display:flex; gap:4px; }
+.coach-vote { background:none; border:none; cursor:pointer; font-size:0.85rem; opacity:0.5; padding:2px 4px; transition:opacity 0.2s; }
+.coach-vote:hover:not(:disabled) { opacity:1; }
+.coach-vote.voted { opacity:0.25; cursor:default; }
 
 /* ── WEEKLY CHECKOUT ─────────────────────────────────────────────────────── */
 .checkout-bar {

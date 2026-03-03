@@ -138,6 +138,10 @@ ${prevCoaching || 'första gången'}
 VIKTIGT: Bygg vidare på tidigare insikter. Upprepa aldrig samma poäng.
 Om du sagt något om X — gå djupare eller byt riktning.
 
+Feedback på tidigare coaching:
+${c.coachFeedback?.positive || 0} positiva, ${c.coachFeedback?.negative || 0} negativa.
+${(c.coachFeedback?.negative || 0) > (c.coachFeedback?.positive || 0) ? 'Din ton eller riktning har inte landat — prova något annat.' : ''}
+
 Ge en personlig coaching-insikt, max 2 meningar på svenska. Utgå från rollkalibreringen — inte bara motivationen. Om något dränerar dem, adressera det direkt. Ibland utmanande, ibland stöttande, alltid konkret.
 
 VIKTIGT för Ludvig: tala aldrig om roller eller funktioner — tala alltid om vad som sker TACK VARE honom, vad han möjliggör, vad som är hans fingeravtryck på det bandet bygger.
