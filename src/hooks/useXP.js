@@ -180,3 +180,21 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
 
   return { totalXP, leveled, level: c.level };
 }
+
+/**
+ * awardMetricPts(memberId, deltas)
+ * Awards scoreboard pts based on metric changes (called from MetricsModal).
+ * deltas: { spf, str, ig, x, tix } — positive = increase
+ */
+export function awardMetricPts(memberId, deltas) {
+  const c = S.chars[memberId];
+  if (!c) return;
+  c.pts = c.pts || { work: 0, spotify: 0, social: 0, bonus: 0 };
+  if (deltas.spf > 0) c.pts.spotify += Math.round(deltas.spf * 0.1);
+  if (deltas.str > 0) c.pts.spotify += Math.round(deltas.str * 0.001);
+  if (deltas.ig  > 0) c.pts.social  += Math.round(deltas.ig  * 0.1);
+  if (deltas.x   > 0) c.pts.social  += Math.round(deltas.x   * 0.2);
+  if (deltas.tix > 0) c.pts.bonus   += Math.round(deltas.tix * 1.0);
+  S.chars[memberId] = c;
+  save();
+}

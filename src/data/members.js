@@ -132,6 +132,13 @@ export const MEMBERS = {
 
 };
 
+// Alias used by Leaderboard and Scoreboard — same shape as ROLE_TYPES
+export const ROLE_TYPE_LABEL = {
+  amplifier: { label: 'Amplifier', color: 'rgba(200,100,50,0.8)' },
+  enabler:   { label: 'Enabler',   color: 'rgba(64,128,224,0.8)' },
+  builder:   { label: 'Builder',   color: 'rgba(64,192,80,0.8)'  },
+};
+
 // ── Hjälpfunktioner ──────────────────────────────────────────────
 
 // Alla member-ids som array
