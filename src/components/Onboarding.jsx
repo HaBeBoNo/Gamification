@@ -6,10 +6,15 @@ import { BASE_QUESTS } from '../data/quests';
 
 const TOTAL_STEPS = 10;
 
-const ROLE_DESC = {
-  amplifier: 'Du tar det som finns och gör det större. Din valuta är räckvidd och resonans. Utan dig når musiken ingen.',
-  enabler:   'Ditt arbete är det som gör att andras arbete räknas. Du multiplicerar kapaciteten hos alla runt dig. Utan dig finns musiken men den når aldrig fram.',
-  builder:   'Du bygger strukturer som lever längre än du själv. Ett beslut du tar idag kan spara hundra timmar nästa kvartal. Du tänker i system, inte i uppgifter.',
+const MEMBER_ROLE_COPY = {
+  hannes:   "Du ser vad bandet är innan det vet det självt. Berättelsen runt musiken är lika viktig som musiken — och det är du som håller den levande.",
+  ludvig:   "Bandet håller ihop för att du finns. Inte för att du bestämmer — utan för att du bryr dig på riktigt. Det är svårare än det låter och vanligare än du tror att det saknas.",
+  martin:   "Du är anledningen till att det låter som det gör. Men du är också den med mest erfarenhet i rummet — det är ett verktyg ingen annan har. Använd det.",
+  nisse:    "Du tar energi och gör den till rörelse. En låt når Japan för att du finns. En följare blir en fan för att du bryr dig om att berätta varför musiken spelar roll.",
+  simon:    "Du öppnar dörrar. Inte med charm — med förtroende. Folk litar på dig och det är därför bandet spelar live. Utan dig finns musiken men den stannar i studion.",
+  johannes: "Ingenting händer på scen utan dig. Det är inte en överdrift — det är logistikens sanning. Du är den som gör att allt annat kan ske.",
+  carl:     "Du bygger kapacitet för andras kreativitet. Varje bidrag du söker är en investering i något som annars aldrig hade hänt. Du är ny i rollen — men iteration är metoden och du har redan börjat.",
+  niklas:   "Systemen fungerar för att du tar hand om dem. Det är inte glamoröst men det är avgörande. Replocalen, utrustningen, infrastrukturen — det är din domän och alla tar det för givet tills det slutar fungera.",
 };
 
 export default function Onboarding({ rerender }) {
@@ -115,9 +120,8 @@ export default function Onboarding({ rerender }) {
 
         {step === 2 && member && (
           <>
-            <div className="ob-title">{member.roleType?.toUpperCase()}</div>
-            <div className="ob-subtitle">
-              {ROLE_DESC[member.roleType] || ''}
+            <div className="ob-subtitle" style={{ lineHeight: 1.8, fontSize: '1rem' }}>
+              {MEMBER_ROLE_COPY[selectedMember] || ''}
             </div>
             <button className="ob-btn" onClick={next}>NÄSTA →</button>
           </>
@@ -132,7 +136,7 @@ export default function Onboarding({ rerender }) {
             </div>
             <textarea
               className="ob-input"
-              placeholder="T.ex: Känslan av att ett rum lyssnar. Att ett riff faller på plats. Att vara del av något som är större än mig själv."
+              placeholder="Det som får mig att stanna kvar..."
               value={motivation}
               onChange={e => setMotivation(e.target.value)}
             />
@@ -149,7 +153,7 @@ export default function Onboarding({ rerender }) {
             </div>
             <textarea
               className="ob-input"
-              placeholder="T.ex: Jag gillar att lösa praktiska problem. Att vara den som fixar det ingen annan tänkt på. Att se ett system växa fram."
+              placeholder="Det jag gör utan att kalla det jobb..."
               value={roleEnjoy}
               onChange={e => setRoleEnjoy(e.target.value)}
             />
@@ -166,7 +170,7 @@ export default function Onboarding({ rerender }) {
             </div>
             <textarea
               className="ob-input"
-              placeholder="T.ex: Att skriva formella mail. Att följa upp andra. Möten utan tydligt syfte. Att vara på sociala medier."
+              placeholder="Det som tömmer mig..."
               value={roleDrain}
               onChange={e => setRoleDrain(e.target.value)}
             />
@@ -183,7 +187,7 @@ export default function Onboarding({ rerender }) {
             </div>
             <textarea
               className="ob-input"
-              placeholder="T.ex: Jag är den som alltid har koll på detaljer ingen annan orkar hålla i. Jag påminner bandet om saker utan att göra det till ett nummer."
+              placeholder="Det ingen ber om men som skulle saknas..."
               value={hiddenValue}
               onChange={e => setHiddenValue(e.target.value)}
             />
@@ -200,7 +204,7 @@ export default function Onboarding({ rerender }) {
             </div>
             <textarea
               className="ob-input"
-              placeholder="T.ex: Vi har ingen som aktivt bevakar vad andra band i Göteborg gör. Ingen har koll på vilka spelplatser som är rätt för oss nu."
+              placeholder="Det jag ser att ingen gör..."
               value={gap}
               onChange={e => setGap(e.target.value)}
             />
