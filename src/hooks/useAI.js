@@ -132,6 +132,7 @@ Rollkalibrering:
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
 
 Status: Level ${c.level || 1}, ${c.totalXp || 0} XP, ${c.streak || 0} dagars streak. Aktiv i: ${completedCats || 'ingen kategori ännu'}.
+${c.recalibration ? `\nUppdaterad självbild: "${c.recalibration}"` : ''}
 
 Vad du sagt tidigare:
 ${prevCoaching || 'första gången'}

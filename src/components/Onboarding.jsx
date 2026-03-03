@@ -72,6 +72,9 @@ export default function Onboarding({ rerender }) {
 
   function finish() {
     S.onboarded = true;
+    if (selectedMember && S.chars[selectedMember]) {
+      S.chars[selectedMember].onboardedAt = Date.now();
+    }
     save();
     rerender();
   }

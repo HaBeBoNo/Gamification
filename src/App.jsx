@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { S } from './state/store';
 
 import Onboarding from './components/Onboarding';
@@ -16,6 +16,7 @@ import RewardOverlay from './components/overlays/RewardOverlay';
 import MetricsModal from './components/overlays/MetricsModal';
 import RefreshOverlay from './components/overlays/RefreshOverlay';
 import SidequestNudge from './components/overlays/SidequestNudge';
+import RecalibrationPrompt from './components/overlays/RecalibrationPrompt';
 
 export default function App() {
   const [tick, setTick] = useState(0);
@@ -31,6 +32,17 @@ export default function App() {
   const [refreshMsg, setRefreshMsg] = useState('');
   const [sidequestNudge, setSidequestNudge] = useState(null); // quests array
   const [showAdmin, setShowAdmin] = useState(false);
+  const [recalibrationWeeks, setRecalibrationWeeks] = useState(null);
+
+  useEffect(() => {
+    if (!S.me || !S.chars[S.me]) return;
+    const c = S.chars[S.me];
+    if (!c.onboardedAt) return;
+    const weeksSince = Math.floor((Date.now() - c.onboardedAt) / (7 * 24 * 60 * 60 * 1000));
+    if (weeksSince > 0 && weeksSince % 4 === 0 && c.recalibratedWeek !== weeksSince) {
+      setRecalibrationWeeks(weeksSince);
+    }
+  }, []);
 
   function showLU(level) { setLevelUp(level); }
   function showRW(rw, tier) { setReward({ reward: rw, tier }); }
@@ -106,6 +118,12 @@ export default function App() {
         <AdminPanel
           rerender={rerender}
           onClose={() => setShowAdmin(false)}
+        />
+      )}
+      {recalibrationWeeks && (
+        <RecalibrationPrompt
+          weeksSince={recalibrationWeeks}
+          onClose={() => setRecalibrationWeeks(null)}
         />
       )}
     </div>
