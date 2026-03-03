@@ -7,14 +7,14 @@ import { BASE_QUESTS } from '../data/quests';
 const TOTAL_STEPS = 10;
 
 const MEMBER_ROLE_COPY = {
-  hannes:   "Du ser vad bandet är innan det vet det självt. Berättelsen runt musiken är lika viktig som musiken — och det är du som håller den levande.",
-  ludvig:   "Bandet håller ihop för att du finns. Inte för att du bestämmer — utan för att du bryr dig på riktigt. Det är svårare än det låter och vanligare än du tror att det saknas.",
-  martin:   "Du är anledningen till att det låter som det gör. Men du är också den med mest erfarenhet i rummet — det är ett verktyg ingen annan har. Använd det.",
-  nisse:    "Du tar energi och gör den till rörelse. En låt når Japan för att du finns. En följare blir en fan för att du bryr dig om att berätta varför musiken spelar roll.",
-  simon:    "Du öppnar dörrar. Inte med charm — med förtroende. Folk litar på dig och det är därför bandet spelar live. Utan dig finns musiken men den stannar i studion.",
-  johannes: "Ingenting händer på scen utan dig. Det är inte en överdrift — det är logistikens sanning. Du är den som gör att allt annat kan ske.",
-  carl:     "Du bygger kapacitet för andras kreativitet. Varje bidrag du söker är en investering i något som annars aldrig hade hänt. Du är ny i rollen — men iteration är metoden och du har redan börjat.",
-  niklas:   "Systemen fungerar för att du tar hand om dem. Det är inte glamoröst men det är avgörande. Replocalen, utrustningen, infrastrukturen — det är din domän och alla tar det för givet tills det slutar fungera.",
+  hannes:   "Det verkar som att du ofta ser vad bandet behöver kommunicera innan någon annan formulerat det. Berättelsen runt musiken — är det något du känner dig hemma i, eller är det en roll du tagit på dig av andra anledningar?",
+  ludvig:   "Det verkar som att du ofta är den folk söker upp när något behöver landas. Det är ett sätt att vara i ett band som är svårt att sätta ord på — och svårt att ersätta. Hur upplever du din roll just nu?",
+  martin:   "Det verkar som att du har ett öga för när något inte är helt rätt ännu — och att du inte släpper det förrän det är det. Den här säsongen, vad är det som kräver den noggrannheten mest?",
+  nisse:    "Streams, räckvidd, nya lyssnare — oavsett var de kommer ifrån. Det är det som rör sig framåt. Ser du att det du gör faktiskt ger resultat, gör du det med allt du har. Vad rör sig just nu?",
+  simon:    "Det verkar som att folk litar på dig — och att det är därifrån dina bästa affärsmöjligheter växer fram. Bokningar, samarbeten, sponsorer. Stämmer det med hur du upplever din roll, eller är det något annat som känns viktigare just nu?",
+  johannes: "Merch, logistik, konsertuppbyggnad — det är ditt territorium. Ingen annan i bandet har den överblicken. Den här säsongen, vad är det första du vill sätta din prägel på?",
+  carl:     "Bidragsansökningar är en konstform — det handlar lika mycket om att förstå vem som läser som vad du skriver. Du verkar ha ett naturligt öga för hur folk tänker. Stämmer det med hur du upplever dig själv?",
+  niklas:   "Varje kabel som sitter rätt, varje system som fungerar, varje replokal som är redo — det är grunden som allt annat vilar på. Utan den grunden händer ingenting av det som syns. Den här säsongen bygger vi något. Du är en del av det från grunden upp.",
 };
 
 export default function Onboarding({ rerender }) {
