@@ -65,7 +65,7 @@ function buildQuestGenPrompt(m, c, refreshMode) {
   const rtDesc  = ROLE_TYPES[m.roleType]?.desc  || '';
 
   return `Du är en strategisk AI-coach för Sektionen, ett 8-personersband från Göteborg på väg mot professionell verksamhet.
-${refreshMode ? 'OBS: REFRESH — personen har completat sina förra quests. Skapa nya som bygger vidare, inte samma som sist. Kontexten: Operation POST II, EP till juli, ideell → professionell.' : ''}
+${refreshMode ? 'OBS: REFRESH — personen har completat sina förra quests. Skapa nya som bygger vidare, inte samma som sist. Kontexten: Operation POST II, truminspelning juli 2026, ideell → professionell.' : ''}
 
 Styrelsemedlem: ${m.name} (${m.role})
 
@@ -76,7 +76,20 @@ ROLLKALIBRERING:
 - Dold insats som ingen förväntar sig: "${c.hiddenValue || 'ej angiven'}"
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
 
-Sektionens läge: Album II ute 1 mars 2026. Operation POST II: ideell → professionell. EP till juli 2026. Individuella kanaler aktiveras. Japan X-konto aktivt.
+Sektionens läge:
+Album II ute 1 mars 2026. Releasekonsert genomförd 7 mars Ölslanda Södergård.
+Vi är nu i post-release fasen — fokus skiftar från lansering till momentum-byggande.
+
+Nästa produktionsmilstolpe: truminspelning klar juli 2026.
+Vägen dit: låtskrivande, arrangemang och övning behöver mogna organiskt.
+Materialet till EP:n är odefinierat — det växer fram på rep, i stunden, av vad som lever.
+Ingen låt är låst. Inget innehåll är bestämt än.
+
+VIKTIGT för quest-generering:
+- Kreativt arbete (övning, låtskrivande, repande) ska ALDRIG vara obligatoriska quests
+- Kreativa quests är alltid type:"creative" — process, inte produkt
+- Peka mot förutsättningar och närvaro, aldrig mot specifika leveranser
+- "Repa utan agenda" är en bättre quest än "skriv en låt till EP:n"
 
 Rolltyp: ${rtLabel} — ${rtDesc}
 VIKTIGT: Anpassa strikt till rolltypen.
@@ -104,7 +117,7 @@ function buildCoachPrompt(m, c) {
     .map(([k]) => k)
     .join(', ');
 
-  return `Du är AI-coach för ${m.name} i Sektionen. Operation POST II: ideell → professionell. EP till juli 2026.
+  return `Du är AI-coach för ${m.name} i Sektionen. Operation POST II: ideell → professionell. truminspelning juli 2026.
 
 Rollkalibrering:
 - Motivation: "${c.motivation || 'ej angiven'}"
@@ -122,7 +135,7 @@ LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer dir
 }
 
 function buildGhostPrompt(m, c, daysSince) {
-  return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — EP till juli 2026.
+  return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — truminspelning juli 2026.
 
 ${m.name} har inte loggat in på ${Math.floor(daysSince)} dagar. Det betyder inte att de inte arbetat — systemet vet bara inte vad de gjort.
 
@@ -138,7 +151,7 @@ Svara EXAKT i JSON:
 }
 
 function buildSidequestPrompt(m, c) {
-  return `Du är AI-coach för ${m.name} i Sektionen, ett indie-band från Göteborg i Operation POST II — EP till juli 2026.
+  return `Du är AI-coach för ${m.name} i Sektionen, ett indie-band från Göteborg i Operation POST II — truminspelning juli 2026.
 
 De har precis checkat in sin obligatoriska timme för veckan. Nu frågar du om de vill göra mer — ett sidequest.
 

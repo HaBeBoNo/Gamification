@@ -11,6 +11,7 @@ const TABS = [
   { id:'daily',     label:'DAGLIGA'    },
   { id:'strategic', label:'STRATEGISKA'},
   { id:'hidden',    label:'DOLDA'      },
+  { id:'creative',  label:'✦ KREATIVT' },
   { id:'sidequest', label:'SIDEQUEST'  },
   { id:'all',       label:'ALLA'       },
 ];
@@ -36,6 +37,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       const hiddenIds = new Set(hidden.map(h => h.id));
       return myQuests.filter(q => q.type === 'hidden' || hiddenIds.has(q.id));
     }
+    if (tab === 'creative')  return myQuests.filter(q => q.type === 'creative');
     if (tab === 'sidequest') return myQuests.filter(q => q.type === 'sidequest' || q.cat === 'sidequest');
     // standard fallback
     return myQuests.filter(q => q.type === 'standard' && q.recur !== 'daily' && !q.personal);
@@ -91,6 +93,12 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       {allDone && (
         <div className="all-done-nudge">
           ✅ Alla dina uppdrag slutförda! Bra jobbat.
+        </div>
+      )}
+
+      {tab === 'creative' && (
+        <div className="creative-tab-note">
+          Frivilligt. Ingen deadline. Ingen AI-validering. Bara närvaro.
         </div>
       )}
 

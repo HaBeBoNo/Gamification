@@ -50,6 +50,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW }) {
 
   function handleComplete(event) {
     if (isDone || !me) return;
+    if (quest.type === 'creative') {
+      // Direct complete — no modal, no AI validation
+      awardXP(quest, quest.xp, event, rerender, showLU, showRW, null, null);
+      return;
+    }
     const xp  = quest.xp || 30;
     const idx = S.quests.findIndex(q => q.id === quest.id);
     if (idx >= 0) S.quests[idx].done = true;

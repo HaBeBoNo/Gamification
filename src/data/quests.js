@@ -94,7 +94,7 @@ export const BASE_QUESTS = [
     cat:'social', xp:50, region:'🇸🇪 Sverige', recur:'weekly', type:'standard' },
   { id:208, owner:'ludvig',
     title:'EP-strategi: vad är bandets nästa kapitel?',
-    desc:'Du är ansvarig för visionen kring bandets produkter. EP till juli — vad innebär det för Sektionen som helhet? Presentera din bild på nästa styrelsemöte.',
+    desc:'Du är ansvarig för visionen kring bandets produkter. Truminspelning juli 2026 — materialet växer fram organiskt på rep. Vad innebär det för Sektionen som helhet? Presentera din bild på nästa styrelsemöte.',
     cat:'wisdom', xp:200, region:'🌐 Global', recur:'none', type:'strategic' },
 
   // ── MARTIN — Head of Production / Enabler ───────────────────
@@ -119,8 +119,8 @@ export const BASE_QUESTS = [
     desc:'Tre album som definierar produktionsestetiken. En mening om varje. Dela med Hannes som underlag för visuell identitet.',
     cat:'wisdom', xp:100, region:'🌐 Global', recur:'none', type:'strategic' },
   { id:305, owner:'martin',
-    title:'Mixfil levererad — en EP-låt',
-    desc:'En låt från EP:n färdigmixad och godkänd. Klar för mastering. Dokumentera låttitel och datum i bandets logg.',
+    title:'Mixfil levererad — en låt',
+    desc:'Truminspelning klar juli 2026 — materialet växer fram organiskt på rep. När en låt är redo: färdigmixa och dokumentera titel och datum i bandets logg.',
     cat:'tech', xp:150, region:'🇸🇪 Sverige', recur:'none', type:'standard' },
   { id:306, owner:'martin',
     title:'Kvalitetsgranskning: Album II-produktionen',
@@ -502,6 +502,41 @@ export const BASE_QUESTS = [
     title:'Testlyssna på bandets mix i hörlurar',
     desc:'Lyssna på en låt från Album II eller EP:n i hörlurar — inte studion. Hur låter det? Notera något konkret.',
     cat:'tech', xp:30, region:'🌐 Global', recur:'weekly', type:'standard' },
+
+  // ── KREATIVA QUESTS — Martin ─────────────────────────────────
+  { id:350, owner:'martin',
+    title:'Repa utan agenda',
+    desc:'Spela utan mål. Inget ska bli något. Bara närvaro i rummet och i instrumentet. Det är här materialet föds.',
+    cat:'health', xp:30, region:'🇸🇪 Sverige', recur:'weekly', type:'creative' },
+
+  { id:351, owner:'martin',
+    title:'Spela in repet — hela',
+    desc:'Sätt på inspelningen innan ni börjar. Lyssna igenom efteråt och markera ett ögonblick som levde. Det är nog.',
+    cat:'wisdom', xp:40, region:'🇸🇪 Sverige', recur:'weekly', type:'creative' },
+
+  { id:352, owner:'martin',
+    title:'Lyssna aktivt på ett referensverk',
+    desc:'Välj ett album du respekterar. Lyssna med headphones, utan distraktioner. Notera ett produktionsbeslut du inte hört förut.',
+    cat:'wisdom', xp:30, region:'🇸🇪 Sverige', recur:'weekly', type:'creative' },
+
+  // ── KREATIVA QUESTS — Hannes ─────────────────────────────────
+  { id:109, owner:'hannes',
+    title:'Skriv ett låtfragment',
+    desc:'Inte en hel låt. Inte ens en vers. Ett fragment — en rad, en känsla, ett ord som sitter. Sparas eller försvinner, spelar ingen roll.',
+    cat:'wisdom', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
+
+  { id:110, owner:'hannes',
+    title:'Lyssna på ett rep med nya öron',
+    desc:'Ta en inspelning från senaste repet. Lyssna som om du hörde bandet för första gången. Vad lever?',
+    cat:'wisdom', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
+
+  // ── KREATIVA QUESTS — Alla members ───────────────────────────
+  { id:900, owner:'ludvig',   title:'Var med på ett rep utan agenda',      desc:'Kom. Spela. Var där. Inget mer krävs.',                                                          cat:'health', xp:25, region:'🇸🇪 Sverige', recur:'weekly', type:'creative' },
+  { id:901, owner:'nisse',    title:'Öva bas utan mål i 30 minuter',       desc:'Inget låtmaterial. Ingen teknik att bemästra. Bara instrumentet och du.',                       cat:'health', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
+  { id:902, owner:'simon',    title:'Lyssna på Album II från början',       desc:'Hela albumet, i rätt ordning, utan att göra något annat. Kom ihåg varför ni gör det här.',      cat:'health', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
+  { id:903, owner:'johannes', title:'Var med på ett rep',                   desc:'Närvaro är nog. Du behöver inte göra något — bara vara i rummet där musiken händer.',           cat:'health', xp:25, region:'🇸🇪 Sverige', recur:'weekly', type:'creative' },
+  { id:904, owner:'carl',     title:'Lyssna på ett album du inte känner',   desc:'Välj något utanför din komfortzon. Lyssna färdigt. Notera en känsla.',                          cat:'wisdom', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
+  { id:905, owner:'niklas',   title:'Testlyssna i hörlurar — hela albumet', desc:'Album II från början till slut i dina bästa hörlurar. Du hör saker ingen annan hör.',          cat:'tech',   xp:30, region:'🌐 Personal', recur:'weekly', type:'creative' },
 
 ];
 
