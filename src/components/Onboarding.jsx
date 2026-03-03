@@ -4,7 +4,13 @@ import { MEMBERS } from '../data/members';
 import { generatePersonalQuests } from '../hooks/useAI';
 import { BASE_QUESTS } from '../data/quests';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
+
+const ROLE_DESC = {
+  amplifier: 'Du tar det som finns och gör det större. Din valuta är räckvidd och resonans. Utan dig når musiken ingen.',
+  enabler:   'Ditt arbete är det som gör att andras arbete räknas. Du multiplicerar kapaciteten hos alla runt dig. Utan dig finns musiken men den når aldrig fram.',
+  builder:   'Du bygger strukturer som lever längre än du själv. Ett beslut du tar idag kan spara hundra timmar nästa kvartal. Du tänker i system, inte i uppgifter.',
+};
 
 export default function Onboarding({ rerender }) {
   const [step, setStep] = useState(0);
@@ -107,7 +113,17 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 2 && (
+        {step === 2 && member && (
+          <>
+            <div className="ob-title">{member.roleType?.toUpperCase()}</div>
+            <div className="ob-subtitle">
+              {ROLE_DESC[member.roleType] || ''}
+            </div>
+            <button className="ob-btn" onClick={next}>NÄSTA →</button>
+          </>
+        )}
+
+        {step === 3 && (
           <>
             <div className="ob-title">VARFÖR SPELAR DU MUSIK?</div>
             <div className="ob-subtitle">
@@ -124,7 +140,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <div className="ob-title">DIN ROLL I VERKLIGHETEN</div>
             <div className="ob-subtitle">
@@ -141,7 +157,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <>
             <div className="ob-title">VAD KOSTAR MER ÄN DET GER?</div>
             <div className="ob-subtitle">
@@ -158,7 +174,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <>
             <div className="ob-title">DITT DOLDA VÄRDE</div>
             <div className="ob-subtitle">
@@ -175,7 +191,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <>
             <div className="ob-title">VAD SER DU ATT INGEN GÖR?</div>
             <div className="ob-subtitle">
@@ -192,7 +208,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 7 && (
+        {step === 8 && (
           <>
             <div className="ob-title">PROFIL SPARAD</div>
             <div className="ob-subtitle">
@@ -203,7 +219,7 @@ export default function Onboarding({ rerender }) {
           </>
         )}
 
-        {step === 8 && (
+        {step === 9 && (
           <>
             <div className="ob-title">GENERERA UPPDRAG</div>
             <div className="ob-subtitle">
