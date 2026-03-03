@@ -129,14 +129,21 @@ export default function Onboarding({ rerender }) {
 
         {step === 3 && (
           <>
-            <div className="ob-title">VARFÖR SPELAR DU MUSIK?</div>
+            <div className="ob-title">
+              {selectedMember === 'ludvig'
+                ? 'VARFÖR ÄR DU MED I SEKTIONEN?'
+                : 'VARFÖR SPELAR DU MUSIK?'}
+            </div>
             <div className="ob-subtitle">
-              Inte vad du tror att du borde svara — vad som faktiskt driver dig
-              när ingen annan ser på. Känslan, inte målet.
+              {selectedMember === 'ludvig'
+                ? 'Inte den officiella anledningen — den äkta. Vad håller dig kvar?'
+                : 'Inte vad du tror att du borde svara — vad som faktiskt driver dig när ingen annan ser på.'}
             </div>
             <textarea
               className="ob-input"
-              placeholder="Det som får mig att stanna kvar..."
+              placeholder={selectedMember === 'ludvig'
+                ? 'Det som får mig att fortsätta...'
+                : 'Det som får mig att stanna kvar...'}
               value={motivation}
               onChange={e => setMotivation(e.target.value)}
             />
