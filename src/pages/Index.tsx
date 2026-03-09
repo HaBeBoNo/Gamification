@@ -1,49 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { S } from '@/state/store';
-import { Home, Compass, Bot, Activity, User, Lightbulb } from 'lucide-react';
+import { MEMBERS } from '@/data/members';
+import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
 import QuestGrid from '@/components/game/QuestGrid';
 import Scoreboard from '@/components/game/Scoreboard';
-import Leaderboard from '@/components/game/Leaderboard';
+import LeaderboardView from '@/components/game/LeaderboardView';
 import ActivityFeed from '@/components/game/ActivityFeed';
 import AICoach from '@/components/game/AICoach';
+import CoachChat from '@/components/game/CoachChat';
+import IdeasView from '@/components/game/IdeasView';
+import BandHub from '@/components/game/BandHub';
 import AdminPanel from '@/components/game/AdminPanel';
+import AdminCenter from '@/components/game/AdminCenter';
 import InstallPrompt from '@/components/game/InstallPrompt';
 import OfflineBanner from '@/components/game/OfflineBanner';
 import NetworkToast from '@/components/game/NetworkToast';
+import CommandPalette from '@/components/game/CommandPalette';
+import NotificationPanel from '@/components/game/NotificationPanel';
+import QuestDetail from '@/components/game/QuestDetail';
+import SeasonView from '@/components/game/SeasonView';
+import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
 
 import LevelUpOverlay from '@/components/game/overlays/LevelUpOverlay';
 import RewardOverlay from '@/components/game/overlays/RewardOverlay';
 import MetricsModal from '@/components/game/overlays/MetricsModal';
 import RefreshOverlay from '@/components/game/overlays/RefreshOverlay';
 import SidequestNudge from '@/components/game/overlays/SidequestNudge';
+import XPOverlay from '@/components/game/overlays/XPOverlay';
 
-const TABS_BASE = [
-  { id: 'home', icon: Home },
-  { id: 'quests', icon: Compass },
-  { id: 'coach', icon: Bot },
-  { id: 'activity', icon: Activity },
-  { id: 'profile', icon: User },
+const PRIMARY_TABS = [
+  { id: 'quests', icon: CheckSquare },
+  { id: 'skilltree', icon: GitBranch },
+  { id: 'leaderboard', icon: Trophy },
+  { id: 'more', icon: MoreHorizontal },
 ];
 
-const TABS_CARL = [
-  { id: 'home', icon: Home },
-  { id: 'quests', icon: Compass },
-  { id: 'coach', icon: Bot },
-  { id: 'activity', icon: Activity },
-  { id: 'ideas', icon: Lightbulb },
-  { id: 'profile', icon: User },
+const OVERFLOW_ITEMS = [
+  { id: 'coach', icon: MessageCircle, label: 'Coach', subtitle: 'Din personliga AI-coach' },
+  { id: 'home', icon: Home, label: 'Hem', subtitle: 'Bandets översikt och metrics' },
+  { id: 'activity', icon: Activity, label: 'Aktivitet', subtitle: 'Senaste händelser' },
+  { id: 'bandhub', icon: Globe, label: 'Band Hub', subtitle: 'Filer, kalender och dokument' },
+  { id: 'season', icon: BarChart2, label: 'Säsong', subtitle: 'Säsongsöversikt och XP-kurva' },
+  { id: 'profile', icon: User, label: 'Profil', subtitle: 'Inställningar och din data' },
 ];
+
+const OVERFLOW_ITEMS_CARL = [
+  ...OVERFLOW_ITEMS,
+  { id: 'ideas', icon: Lightbulb, label: 'Idéer', subtitle: 'Lösa tankar' },
+];
+
+const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
+const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
 
 export default function Index() {
   const [tick, setTick] = useState(0);
   const rerender = () => setTick(t => t + 1);
 
   const [activeTab, setActiveTab] = useState('quests');
-  const [mobileTab, setMobileTab] = useState('home');
+  const [mobileTab, setMobileTab] = useState('quests');
+  const [showMore, setShowMore] = useState(false);
 
   const [levelUp, setLevelUp] = useState<number | null>(null);
   const [reward, setReward] = useState<{ reward: any; tier?: string } | null>(null);
@@ -51,16 +73,134 @@ export default function Index() {
   const [refreshMsg, setRefreshMsg] = useState('');
   const [sidequestNudge, setSidequestNudge] = useState<any[] | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [xpAmount, setXpAmount] = useState<number | null>(null);
+  const [showCmd, setShowCmd] = useState(false);
+  const [showAdminCenter, setShowAdminCenter] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [detailQuest, setDetailQuest] = useState<any | null>(null);
+  const [unreadCount, setUnreadCount] = useState(getUnreadCount());
+
+  const isAdmin = S.me === 'hannes';
+  const isCurl = S.me === 'carl';
+
+  // Track unread notifications for dot on ••• icon
+  useEffect(() => {
+    return subscribeNotifications(() => setUnreadCount(getUnreadCount()));
+  }, []);
 
   function showLU(level: number) { setLevelUp(level); }
   function showRW(rw: any, tier?: string) { setReward({ reward: rw, tier }); }
+  function showXP(amount: number) { setXpAmount(amount); }
+
+  const closeAll = useCallback(() => {
+    setShowCmd(false);
+    setShowAdminCenter(false);
+    setShowNotifications(false);
+    setDetailQuest(null);
+    setShowAdmin(false);
+    setShowMetrics(false);
+    setSidequestNudge(null);
+    setShowMore(false);
+  }, []);
+
+  const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts({
+    setMobileTab,
+    setActiveTab,
+    setShowCmd,
+    closeAll,
+    isCurl,
+  });
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCmd(v => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isAdmin]);
+
+  const logoLongPressRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node || !isAdmin) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const start = () => { timer = setTimeout(() => setShowAdminCenter(true), 2000); };
+    const cancel = () => clearTimeout(timer);
+    node.addEventListener('touchstart', start, { passive: true });
+    node.addEventListener('touchend', cancel);
+    node.addEventListener('touchcancel', cancel);
+    return () => {
+      node.removeEventListener('touchstart', start);
+      node.removeEventListener('touchend', cancel);
+      node.removeEventListener('touchcancel', cancel);
+    };
+  }, [isAdmin]);
 
   if (!S.onboarded) {
     return <Onboarding rerender={rerender} />;
   }
 
-  const isCurl = S.me === 'carl';
-  const tabs = isCurl ? TABS_CARL : TABS_BASE;
+  function handleOverflowSelect(id: string) {
+    setShowMore(false);
+    setMobileTab(id);
+    setActiveTab(id);
+  }
+
+  function handleTabTap(tabId: string) {
+    if (tabId === 'more') {
+      setShowMore(true);
+      return;
+    }
+    setMobileTab(tabId);
+    setActiveTab(tabId);
+  }
+
+  function getMobileContent() {
+    switch (mobileTab) {
+      case 'quests': return (
+        <QuestGrid
+          rerender={rerender}
+          showLU={showLU}
+          showRW={showRW}
+          showXP={showXP}
+          showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
+          onQuestTap={(q: any) => setDetailQuest(q)}
+        />
+      );
+      case 'skilltree': return <Scoreboard />;
+      case 'leaderboard': return <LeaderboardView />;
+      case 'coach': return <CoachChat rerender={rerender} />;
+      case 'activity': return <ActivityFeed />;
+      case 'ideas': return <IdeasView />;
+      case 'bandhub': return <BandHub />;
+      case 'season': return (
+        <div style={{ padding: 'var(--space-lg)' }}>
+          <SeasonView />
+        </div>
+      );
+      case 'home': return (
+        <div>
+          <MetricsBar onMetricClick={() => setShowMetrics(true)} rerender={rerender} />
+          <AICoach rerender={rerender} />
+        </div>
+      );
+      default: return (
+        <QuestGrid
+          rerender={rerender}
+          showLU={showLU}
+          showRW={showRW}
+          showXP={showXP}
+          showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
+          onQuestTap={(q: any) => setDetailQuest(q)}
+        />
+      );
+    }
+  }
+
+  const overflowItems = isCurl ? OVERFLOW_ITEMS_CARL : OVERFLOW_ITEMS;
+  const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
   return (
     <div className="app-shell">
@@ -72,25 +212,44 @@ export default function Index() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAdmin={() => setShowAdmin(true)}
+        logoRef={logoLongPressRef}
+        onNotifications={() => setShowNotifications(true)}
       />
-      <MetricsBar onMetricClick={() => setShowMetrics(true)} rerender={rerender} />
 
-      <div className="body-grid">
+      <div className="body-grid body-grid-no-sidebar">
         <div className="sidebar-l">
-          <div className="stagger-1"><Leaderboard /></div>
-          <div className="stagger-2"><AICoach rerender={rerender} /></div>
+          <div className="stagger-1"><AICoach rerender={rerender} /></div>
         </div>
 
         <div className="quest-center-wrapper stagger-1">
-          {activeTab === 'quests' && (
-            <QuestGrid
-              rerender={rerender}
-              showLU={showLU}
-              showRW={showRW}
-              showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
-            />
-          )}
-          {activeTab === 'scoreboard' && <Scoreboard />}
+          <div className="desktop-content">
+            {activeTab === 'quests' && (
+              <QuestGrid
+                rerender={rerender}
+                showLU={showLU}
+                showRW={showRW}
+                showXP={showXP}
+                showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
+                onQuestTap={(q: any) => setDetailQuest(q)}
+              />
+            )}
+            {activeTab === 'leaderboard' && <LeaderboardView />}
+            {activeTab === 'skilltree' && <Scoreboard />}
+          </div>
+
+          <div className="mobile-content">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={mobileTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={viewTransition}
+              >
+                {getMobileContent()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
 
         <div className="sidebar-r">
@@ -98,27 +257,85 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Mobile bottom tab bar */}
+      {/* ── 4-slot bottom tab bar ── */}
       <div className="bottom-tab-bar">
-        {tabs.map(tab => {
+        {PRIMARY_TABS.map(tab => {
           const Icon = tab.icon;
-          const isActive = mobileTab === tab.id;
+          const isActive = tab.id === 'more' ? showMore : mobileTab === tab.id;
           return (
             <button
               key={tab.id}
               className={`bottom-tab-bar-item ${isActive ? 'active' : ''}`}
-              onClick={() => {
-                setMobileTab(tab.id);
-                if (tab.id === 'home' || tab.id === 'quests') setActiveTab('quests');
-                if (tab.id === 'profile') setActiveTab('scoreboard');
-              }}
+              onClick={() => handleTabTap(tab.id)}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+              <span className="tab-badge-wrap">
+                <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
+                {tab.id === 'more' && unreadCount > 0 && (
+                  <span className="more-notif-dot" />
+                )}
+              </span>
             </button>
           );
         })}
       </div>
 
+      {/* ── Overflow bottom sheet ── */}
+      <AnimatePresence>
+        {showMore && (
+          <>
+            <motion.div
+              className="overflow-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMore(false)}
+            />
+            <motion.div
+              className="overflow-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={sheetSpring}
+              drag="y"
+              dragDirectionLock
+              dragElastic={0.12}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 90 || info.velocity.y > 700) {
+                  setShowMore(false);
+                }
+              }}
+            >
+              <div className="overflow-handle" />
+              {overflowItems.map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <React.Fragment key={item.id}>
+                    {i > 0 && <div className="overflow-sep" />}
+                    <button className="overflow-row" onClick={() => handleOverflowSelect(item.id)}>
+                      <Icon
+                        size={20}
+                        className="overflow-row-icon"
+                        style={item.id === 'coach' ? { color: coachIconColor } : undefined}
+                      />
+                      <div className="overflow-row-text">
+                        <span className="overflow-row-label">{item.label}</span>
+                        <span className="overflow-row-sub">{item.subtitle}</span>
+                      </div>
+                      <ChevronRight size={16} className="overflow-row-chevron" />
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Overlays */}
+      {xpAmount !== null && (
+        <XPOverlay amount={xpAmount} onDone={() => setXpAmount(null)} />
+      )}
       {levelUp && (
         <LevelUpOverlay level={levelUp} onClose={() => setLevelUp(null)} />
       )}
@@ -135,9 +352,7 @@ export default function Index() {
           rerender={rerender}
         />
       )}
-      {refreshMsg && (
-        <RefreshOverlay message={refreshMsg} />
-      )}
+      {refreshMsg && <RefreshOverlay message={refreshMsg} />}
       {sidequestNudge && (
         <SidequestNudge
           quests={sidequestNudge}
@@ -151,6 +366,49 @@ export default function Index() {
           onClose={() => setShowAdmin(false)}
         />
       )}
+      {showCmd && (
+        <CommandPalette
+          onClose={() => setShowCmd(false)}
+          isMobile={window.innerWidth < 768}
+          onOpenAdminCenter={() => { setShowCmd(false); setShowAdminCenter(true); }}
+        />
+      )}
+      {showAdminCenter && (
+        <AdminCenter
+          onClose={() => setShowAdminCenter(false)}
+          rerender={rerender}
+        />
+      )}
+
+      <NotificationPanel
+        open={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+
+      {detailQuest && !detailQuest.__season && (
+        <QuestDetail
+          quest={detailQuest}
+          onClose={() => setDetailQuest(null)}
+          rerender={rerender}
+          showLU={showLU}
+          showRW={showRW}
+          showXP={showXP}
+        />
+      )}
+
+      {detailQuest?.__season && (
+        <div className="overlay-backdrop" onClick={() => setDetailQuest(null)}>
+          <div className="overlay-card" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <button className="overlay-close" onClick={() => setDetailQuest(null)}>✕</button>
+            <SeasonView />
+          </div>
+        </div>
+      )}
+
+      <ShortcutsOverlay
+        open={showShortcutsOverlay}
+        onClose={() => setShowShortcutsOverlay(false)}
+      />
     </div>
   );
 }

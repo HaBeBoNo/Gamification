@@ -1,6 +1,6 @@
 import React from 'react';
 import { S, save } from '@/state/store';
-import { CalendarCheck } from 'lucide-react';
+import { CalendarCheck, Check } from 'lucide-react';
 
 export default function WeeklyCheckout({ rerender }: { rerender: () => void }) {
   const weekKey = `w${S.weekNum}`;
@@ -21,7 +21,7 @@ export default function WeeklyCheckout({ rerender }: { rerender: () => void }) {
     <div className="checkout-bar">
       <CalendarCheck size={20} strokeWidth={1.5} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
       <div className="checkout-text">
-        {isDone ? `Vecka ${S.weekNum} incheckad ✓` : `Vecka ${S.weekNum} — checka in dina timmar`}
+        {isDone ? <><Check size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Vecka {S.weekNum} incheckad</> : `Vecka ${S.weekNum} — checka in dina timmar`}
       </div>
       <button
         className={`checkout-btn ${isDone ? 'done' : ''}`}
