@@ -11,9 +11,12 @@ import {
   FolderOpen, Calendar, FileText, Table2, Upload,
   Search, Music, Image, MoreHorizontal, ChevronLeft,
   ChevronRight, Plus, FilePlus, BarChart2, List, X, Loader2,
+  CheckCircle, Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { S } from '../../state/store';
+import { checkIn } from '../../hooks/useCheckIn';
 import {
   isAuthenticated, loadToken, GoogleTokenData,
 } from '../../lib/googleAuth';
@@ -169,6 +172,24 @@ function getCalendarDays(year: number, month: number) {
   return days;
 }
 
+/* ── Check-in helpers ── */
+
+/** Returns true if now is within the check-in window:
+ *  30 min before start → 2 hours after start (timed events only). */
+function isInCheckInWindow(ev: CalendarEvent): boolean {
+  const raw = ev.start.dateTime;
+  if (!raw) return false; // all-day events have no check-in window
+  const start = new Date(raw).getTime();
+  const now = Date.now();
+  return now >= start - 30 * 60 * 1000 && now <= start + 2 * 60 * 60 * 1000;
+}
+
+/** Returns true if the current member has already checked in to this event. */
+function isCheckedIn(eventId: string): boolean {
+  const checkIns: any[] = (S as any).checkIns || [];
+  return checkIns.some((c: any) => c.eventId === eventId && c.member === (S as any).me);
+}
+
 /* ── Spinner ── */
 function Spinner() {
   return <Loader2 size={20} style={{ color: 'var(--color-text-muted)', animation: 'spin 1s linear infinite' }} />;
@@ -180,6 +201,8 @@ function Spinner() {
 function BandHubInner() {
   const [tab, setTab] = useState('drive');
   const [showBanner, setShowBanner] = useState(true);
+  const [, setTick] = useState(0);
+  const forceUpdate = useCallback(() => setTick(t => t + 1), []);
 
   // Auth state
   const [tokenData, setTokenData] = useState<GoogleTokenData | null>(
@@ -525,17 +548,53 @@ function BandHubInner() {
             <>
               <div className="bh-section-label" style={{ marginTop: 'var(--space-lg)' }}>KOMMANDE</div>
               <div className="bh-upcoming-list">
-                {events.slice(0, 8).map((ev) => (
-                  <div key={ev.id} className="bh-upcoming-row">
-                    <span className="bh-date-pill">{formatEventDate(ev)}</span>
-                    <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text-primary)', flex: 1 }}>
-                      {ev.summary}
-                    </span>
-                    <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-                      {formatEventTime(ev)}
-                    </span>
-                  </div>
-                ))}
+                {events.slice(0, 8).map((ev) => {
+                  const inWindow  = isInCheckInWindow(ev);
+                  const checkedIn = isCheckedIn(ev.id);
+                  return (
+                    <div key={ev.id} className="bh-upcoming-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--space-xs)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <span className="bh-date-pill">{formatEventDate(ev)}</span>
+                        <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text-primary)', flex: 1 }}>
+                          {ev.summary}
+                        </span>
+                        <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                          {formatEventTime(ev)}
+                        </span>
+                      </div>
+                      {inWindow && (
+                        checkedIn ? (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            gap: 6, width: '100%', padding: '8px 0',
+                            borderRadius: 'var(--radius-pill)',
+                            background: 'hsla(45, 80%, 55%, 0.18)',
+                            fontSize: 'var(--text-caption)', color: 'var(--color-accent)',
+                            fontWeight: 600,
+                          }}>
+                            <Check size={16} />
+                            Incheckad
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => checkIn(ev.id, ev.summary, forceUpdate)}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              gap: 6, width: '100%', padding: '8px 0',
+                              borderRadius: 'var(--radius-pill)',
+                              background: 'var(--color-primary)',
+                              color: '#fff', border: 'none', cursor: 'pointer',
+                              fontSize: 'var(--text-caption)', fontWeight: 600,
+                            }}
+                          >
+                            <CheckCircle size={16} />
+                            Checka in
+                          </button>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

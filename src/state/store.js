@@ -28,6 +28,7 @@ export function defChar(id) {
 const RAW = (() => { try { return JSON.parse(localStorage.getItem('sek-v6')||'null'); } catch(e) { return null; } })();
 
 export const S = {
+  checkIns: RAW?.checkIns || [],
   me: RAW?.me || null,
   onboarded: RAW?.onboarded || false,
   chars: (() => { const c={}; Object.keys(MEMBERS).forEach(id=>{ c[id]=RAW?.chars?.[id]||defChar(id); }); return c; })(),
