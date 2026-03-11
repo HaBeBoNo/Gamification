@@ -28,3 +28,24 @@ export function markRead(id) {
 export function getNotifications() {
   return notifications;
 }
+
+// Notification type identifiers (used for icon/color mapping in NotificationPanel)
+export const notificationTypes = {
+  DELEGATION_RECEIVED:  'delegation_received',
+  DELEGATION_ACCEPTED:  'delegation_accepted',
+  DELEGATION_DECLINED:  'delegation_declined',
+  SYNERGY_TRIGGERED:    'synergy_triggered',
+  BADGE_UNLOCKED:       'badge_unlocked',
+  GOAL_MILESTONE:       'goal_milestone',
+  QUEST_COMPLETED:      'quest_completed',
+};
+
+/**
+ * @typedef {{
+ *   id: number,
+ *   type: string,
+ *   ts: number,
+ *   read: boolean,
+ *   payload?: Record<string, any>
+ * }} Notification
+ */

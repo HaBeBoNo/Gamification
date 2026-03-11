@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe } from 'lucide-react';
@@ -14,7 +14,6 @@ import ActivityFeed from '@/components/game/ActivityFeed';
 import AICoach from '@/components/game/AICoach';
 import CoachChat from '@/components/game/CoachChat';
 import IdeasView from '@/components/game/IdeasView';
-import BandHub from '@/components/game/BandHub';
 import AdminPanel from '@/components/game/AdminPanel';
 import AdminCenter from '@/components/game/AdminCenter';
 import InstallPrompt from '@/components/game/InstallPrompt';
@@ -34,6 +33,9 @@ import MetricsModal from '@/components/game/overlays/MetricsModal';
 import RefreshOverlay from '@/components/game/overlays/RefreshOverlay';
 import SidequestNudge from '@/components/game/overlays/SidequestNudge';
 import XPOverlay from '@/components/game/overlays/XPOverlay';
+
+// Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
+const BandHub = lazy(() => import('@/components/game/BandHub'));
 
 const PRIMARY_TABS = [
   { id: 'quests', icon: CheckSquare },
@@ -174,7 +176,22 @@ export default function Index() {
       case 'coach': return <CoachChat rerender={rerender} />;
       case 'activity': return <ActivityFeed />;
       case 'ideas': return <IdeasView />;
-      case 'bandhub': return <BandHub />;
+      case 'bandhub': return (
+        <Suspense fallback={
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-3xl)', color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
+            Laddar Band Hub…
+          </div>
+        }>
+          <BandHub />
+        </Suspense>
+      );
+      case 'profile': return (
+        <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-body)' }}>
+          <div style={{ fontSize: 'var(--text-display)', marginBottom: 'var(--space-sm)' }}>👤</div>
+          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 'var(--space-xs)' }}>{S.me}</div>
+          <div style={{ fontSize: 'var(--text-caption)' }}>Profilinställningar kommer snart</div>
+        </div>
+      );
       case 'season': return (
         <div style={{ padding: 'var(--space-lg)' }}>
           <SeasonView />
