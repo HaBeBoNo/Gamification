@@ -104,6 +104,9 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     setShowWelcome(true);
     setTimeout(() => {
       S.onboarded = true;
+      if (selectedMember && S.chars[selectedMember]) {
+        S.chars[selectedMember].onboarded = true;
+      }
       save();
       rerender();
     }, 2400);
