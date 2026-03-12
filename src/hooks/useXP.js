@@ -146,6 +146,25 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
   const questIdx = S.quests.findIndex(sq => sq.id === q.id);
   if (questIdx !== -1 && S.quests[questIdx].recur === 'none') {
     S.quests[questIdx].done = true;
+    /* ── temporalBehavior tracking ── */
+  const _tq = S.quests.find(q => q.id === questId);
+  if (_tq?.deadline) {
+    const totalWindow = _tq.deadline - (_tq.createdAt || (_tq.deadline - 7 * 86400000));
+    const remaining   = _tq.deadline - Date.now();
+    const urgency     = Math.max(0, Math.min(1, 1 - remaining / totalWindow));
+
+    if (!S.chars[S.me].temporalBehavior) {
+      S.chars[S.me].temporalBehavior = { history: [], pattern: 'unknown', avgUrgency: 0.5, anomaly: false };
+    }
+    const tb = S.chars[S.me].temporalBehavior;
+    tb.history = [...(tb.history || []), urgency].slice(-20);
+
+    const avg = tb.history.reduce((a, b) => a + b, 0) / tb.history.length;
+    tb.avgUrgency = avg;
+    tb.pattern    = avg < 0.35 ? 'early' : avg > 0.7 ? 'deadline-driven' : 'steady';
+    tb.anomaly    = Math.abs(urgency - avg) > 0.4;
+    tb.lastUpdated = Date.now();
+  }
   }
   // Recurring quests: QuestCard ansvarar för att återaktivera kortet via setTimeout
 

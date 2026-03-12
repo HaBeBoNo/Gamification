@@ -145,6 +145,13 @@ function buildCoachPrompt(m, c) {
     .slice(0, 2)
     .map(([k]) => k)
     .join(', ');
+/* ── responseProfile context ── */
+  const profile = S.chars[S.me]?.responseProfile;
+  const profileContext = profile ? `\n\nKommunikationsprofil för ${S.me}: register=${profile.register}, ton=${profile.tone}, komplexitet=${profile.languageComplexity}, metaforisk=${profile.metaphorical}, pronomen=${profile.pronounDominance}. Dominanttema: "${profile.dominantTheme}". Engagemang: ${profile.engagement}. Tystnad kring: ${(profile.silences||[]).join(', ')||'–'}. Anpassa svar exakt efter detta mönster.` : '';
+
+  /* ── temporalBehavior context ── */
+  const temporal = S.chars[S.me]?.temporalBehavior;
+  const temporalContext = temporal ? `\n\nTemporalt beteendemönster: ${temporal.pattern}. Snitturgency: ${temporal.avgUrgency?.toFixed(2)}. ${temporal.anomaly ? 'Avvikelse detekterad — uppmärksamma om detta är ett nytt mönster.' : ''}` : '';
 
   const recentReflections = S.quests
     .filter(q => q.owner === S.me && q.done && q.lastReflection)
@@ -205,6 +212,7 @@ LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer dir
 function buildGhostPrompt(m, c, daysSince) {
   return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — truminspelning juli 2026.
 
+  return `${baseContext}...${profileContext}${temporalContext}`;
 ${m.name} har inte loggat in på ${Math.floor(daysSince)} dagar. Det betyder inte att de inte arbetat — systemet vet bara inte vad de gjort.
 
 Rollkalibrering:
