@@ -147,8 +147,8 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
   if (questIdx !== -1 && S.quests[questIdx].recur === 'none') {
     S.quests[questIdx].done = true;
     /* ── temporalBehavior tracking ── */
-  const _tq = S.quests.find(q => q.id === questId);
-  if (_tq?.deadline) {
+    const _tq = S.quests.find(sq => sq.id === q.id);
+    if (_tq?.deadline) {
     const totalWindow = _tq.deadline - (_tq.createdAt || (_tq.deadline - 7 * 86400000));
     const remaining   = _tq.deadline - Date.now();
     const urgency     = Math.max(0, Math.min(1, 1 - remaining / totalWindow));
@@ -164,8 +164,8 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
     tb.pattern    = avg < 0.35 ? 'early' : avg > 0.7 ? 'deadline-driven' : 'steady';
     tb.anomaly    = Math.abs(urgency - avg) > 0.4;
     tb.lastUpdated = Date.now();
-  }
-  }
+    }
+    }
   // Recurring quests: QuestCard ansvarar för att återaktivera kortet via setTimeout
 
   // 9. Activity feed
