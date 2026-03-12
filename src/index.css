@@ -3803,6 +3803,18 @@ button, input, textarea {
   flex-direction: column;
   overflow: hidden;
 }
+.ob-overlay * {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+}
+.ob-overlay button {
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  min-height: 44px;
+  min-width: 44px;
+}
 .ob-progress-track {
   position: absolute;
   top: 0;
