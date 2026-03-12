@@ -7,7 +7,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 8;
 
 /* ── Five universal onboarding questions ── */
 const ONBOARDING_QUESTIONS = [
@@ -18,7 +18,7 @@ const ONBOARDING_QUESTIONS = [
   'Vad gör du som ingen annan i bandet gör på samma sätt?',
 ];
 
-/* Step 0=welcome 1=member 2-6=questions 7=apikey 8=generate */
+/* Step 0=welcome 1=member 2-6=questions 7=generate */
 const STEP_META = [
   { label: '',          bg: 'hsla(38, 66%, 47%, 0.08)' },
   { label: 'KARAKTÄR',  bg: 'hsla(258, 90%, 66%, 0.08)' },
@@ -27,7 +27,6 @@ const STEP_META = [
   { label: 'ENERGI',    bg: 'hsla(45, 80%, 55%, 0.08)' },
   { label: 'TILLVÄXT',  bg: 'hsla(0, 91%, 71%, 0.08)' },
   { label: 'IDENTITET', bg: 'hsla(258, 90%, 66%, 0.08)' },
-  { label: 'AI',        bg: 'hsla(239, 84%, 67%, 0.08)' },
   { label: 'GENERERA',  bg: 'hsla(38, 66%, 47%, 0.08)' },
 ];
 
@@ -39,7 +38,6 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   /* One state slot per question */
   const [answers, setAnswers] = useState(['', '', '', '', '']);
 
-  const [apiKey, setApiKey] = useState(localStorage.getItem('anthropic-key') || '');
   const [generating, setGenerating] = useState(false);
   const [genMsg, setGenMsg] = useState('');
   const [error, setError] = useState('');
@@ -60,7 +58,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     next();
   }
 
-  /** Called after the last question (step 6). Saves answers, builds profile, then advances. */
+  /** Called after the last question (step 6). Saves answers, builds profile, then advances to generate. */
   async function finishQuestions() {
     if (!selectedMember) return;
 
@@ -85,12 +83,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       /* Fail silently — app continues without profile */
     }
     setBuildingProfile(false);
-    next(); // → API key step
-  }
-
-  function saveApiKey() {
-    if (apiKey.trim()) localStorage.setItem('anthropic-key', apiKey.trim());
-    next();
+    next(); // → generate step (step 7)
   }
 
   async function startGenerate() {
@@ -129,7 +122,6 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       case 5: return answers[3].trim().length > 0;
       case 6: return answers[4].trim().length > 0;
       case 7: return true;
-      case 8: return true;
       default: return true;
     }
   }
@@ -137,7 +129,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   function getButtonLabel() {
     if (step === 0) return 'Börja →';
     if (step === 1) return `Välj ${member?.name || '—'} →`;
-    if (step === 8) return 'Kom igång →';
+    if (step === 7) return 'Kom igång →';
     return 'Fortsätt';
   }
 
@@ -145,9 +137,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     switch (step) {
       case 0: next(); break;
       case 1: confirmMember(); break;
-      case 6: finishQuestions(); break;  // triggers profile build
-      case 7: saveApiKey(); break;
-      case 8: startGenerate(); break;
+      case 6: finishQuestions(); break;  // triggers profile build → advances to step 7
+      case 7: startGenerate(); break;
       default: next(); break;
     }
   }
@@ -319,27 +310,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
               </>
             )}
 
-            {/* ── Step 7: API key ── */}
+            {/* ── Step 7: Generate quests ── */}
             {step === 7 && (
-              <>
-                <div className="ob-question">AI-nyckel</div>
-                <div className="ob-desc">
-                  Ange din Anthropic API-nyckel för AI-coaching och personliga uppdrag. (Valfritt)
-                </div>
-                <input
-                  type="password"
-                  className="ob-textarea"
-                  style={{ minHeight: 'unset', height: 48 }}
-                  placeholder="sk-ant-..."
-                  value={apiKey}
-                  onChange={e => setApiKey(e.target.value)}
-                  autoFocus
-                />
-              </>
-            )}
-
-            {/* ── Step 8: Generate quests ── */}
-            {step === 8 && (
               <>
                 <div className="ob-question">Generera uppdrag</div>
                 <div className="ob-desc">AI skapar personliga uppdrag baserade på din profil.</div>
@@ -359,13 +331,6 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           {!generating && (
             <div className="ob-bottom-actions">
               {step === 7 && (
-                <button
-                className="ob-skip-btn"
-                onClick={next}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              >Hoppa över</button>
-              )}
-              {step === 8 && (
                 <button
                   className="ob-skip-btn"
                   onClick={triggerWelcome}
