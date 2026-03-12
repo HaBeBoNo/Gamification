@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe } from 'lucide-react';
@@ -24,6 +24,7 @@ import NotificationPanel from '@/components/game/NotificationPanel';
 import QuestDetail from '@/components/game/QuestDetail';
 import SeasonView from '@/components/game/SeasonView';
 import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
+import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
 
@@ -41,6 +42,7 @@ const PRIMARY_TABS = [
   { id: 'quests', icon: CheckSquare },
   { id: 'skilltree', icon: GitBranch },
   { id: 'leaderboard', icon: Trophy },
+  { id: 'bandhub', icon: Globe },
   { id: 'more', icon: MoreHorizontal },
 ];
 
@@ -48,7 +50,6 @@ const OVERFLOW_ITEMS = [
   { id: 'coach', icon: MessageCircle, label: 'Coach', subtitle: 'Din personliga AI-coach' },
   { id: 'home', icon: Home, label: 'Hem', subtitle: 'Bandets översikt och metrics' },
   { id: 'activity', icon: Activity, label: 'Aktivitet', subtitle: 'Senaste händelser' },
-  { id: 'bandhub', icon: Globe, label: 'Band Hub', subtitle: 'Filer, kalender och dokument' },
   { id: 'season', icon: BarChart2, label: 'Säsong', subtitle: 'Säsongsöversikt och XP-kurva' },
   { id: 'profile', icon: User, label: 'Profil', subtitle: 'Inställningar och din data' },
 ];
@@ -140,7 +141,8 @@ export default function Index() {
     };
   }, [isAdmin]);
 
-  if (!S.onboarded) {
+  const shouldOnboard = !S.me || !S.chars[S.me] || !S.onboarded;
+  if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
   }
 
@@ -219,6 +221,25 @@ export default function Index() {
   const overflowItems = isCurl ? OVERFLOW_ITEMS_CARL : OVERFLOW_ITEMS;
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
+  // ── Swipe between main tabs ──────────────────────────────────────
+  const touchStartX = useRef(0);
+  const SWIPE_TAB_IDS = ['quests', 'skilltree', 'leaderboard', 'bandhub'];
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    const currentIndex = SWIPE_TAB_IDS.indexOf(mobileTab);
+    if (currentIndex === -1) return; // non-swipeable tab (e.g. coach, activity…)
+    if (delta > 50 && currentIndex < SWIPE_TAB_IDS.length - 1) {
+      handleTabTap(SWIPE_TAB_IDS[currentIndex + 1]);
+    } else if (delta < -50 && currentIndex > 0) {
+      handleTabTap(SWIPE_TAB_IDS[currentIndex - 1]);
+    }
+  }
+
   return (
     <div className="app-shell">
       <OfflineBanner />
@@ -254,7 +275,12 @@ export default function Index() {
             {activeTab === 'skilltree' && <Scoreboard />}
           </div>
 
-          <div className="mobile-content">
+          <div
+            className="mobile-content"
+            style={{ paddingBottom: 80 }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={mobileTab}
@@ -274,27 +300,14 @@ export default function Index() {
         </div>
       </div>
 
-      {/* ── 4-slot bottom tab bar ── */}
-      <div className="bottom-tab-bar">
-        {PRIMARY_TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = tab.id === 'more' ? showMore : mobileTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              className={`bottom-tab-bar-item ${isActive ? 'active' : ''}`}
-              onClick={() => handleTabTap(tab.id)}
-            >
-              <span className="tab-badge-wrap">
-                <Icon size={24} strokeWidth={isActive ? 2.5 : 1.5} />
-                {tab.id === 'more' && unreadCount > 0 && (
-                  <span className="more-notif-dot" />
-                )}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* ── Bottom tab bar ── */}
+      <BottomNav
+        activeTab={mobileTab}
+        onTabChange={handleTabTap}
+        showMore={showMore}
+        onMoreTap={() => setShowMore(true)}
+        unreadCount={unreadCount}
+      />
 
       {/* ── Overflow bottom sheet ── */}
       <AnimatePresence>

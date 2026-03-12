@@ -29,20 +29,6 @@ export default function Topbar({ rerender, activeTab, setActiveTab, onAdmin, log
         <div className="topbar-op-name">{S.operationName}</div>
         <div className="topbar-week">VECKA {S.weekNum}</div>
       </div>
-      <nav className="topbar-nav">
-        <button
-          className={`nav-pill ${activeTab === 'quests' ? 'active' : ''}`}
-          onClick={() => setActiveTab('quests')}
-        >QUESTS</button>
-        <button
-          className={`nav-pill ${activeTab === 'skilltree' ? 'active' : ''}`}
-          onClick={() => setActiveTab('skilltree')}
-        >SKILLTREE</button>
-        <button
-          className={`nav-pill ${activeTab === 'leaderboard' ? 'active' : ''}`}
-          onClick={() => setActiveTab('leaderboard')}
-        >LEADERBOARD</button>
-      </nav>
       {char && char.streak > 0 && (
         <div className={`topbar-streak streak-tier-${char.streak >= 14 ? 'max' : char.streak >= 7 ? 'high' : char.streak >= 3 ? 'mid' : 'low'}`}>
           <Flame size={16} />
