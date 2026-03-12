@@ -117,17 +117,31 @@
    ══════════════════════════════════════ */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+html, body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+
 body {
   background: var(--color-base);
   font-family: var(--font-body);
   color: var(--color-text-primary);
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-size: var(--text-body);
   line-height: 1.5;
+}
+
+button, input, textarea {
+  touch-action: manipulation;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 --gold: #f0c040;
@@ -2451,9 +2465,9 @@ body {
   padding: var(--space-xs);
 }
 
-@media (min-width: 769px) {
+/* @media (min-width: 769px) {
   .install-banner { display: none; }
-}
+} */
 
 --gold: #f0c040;
   --red: #e05040;

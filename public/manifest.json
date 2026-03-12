@@ -7,6 +7,8 @@
   "orientation": "portrait",
   "background_color": "#0d0d14",
   "theme_color": "#7c6af7",
+  "categories": ["music", "entertainment"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -20,5 +22,18 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quests",
+      "short_name": "Quests",
+      "description": "Gå till dina uppdrag",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/screenshot-1.png", "sizes": "1280x720", "type": "image/png" },
+    { "src": "/screenshots/screenshot-2.png", "sizes": "1280x720", "type": "image/png" }
   ]
 }

@@ -1,39 +1,81 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Share } from 'lucide-react';
+
+const DISMISS_KEY = 'sektionen_install_dismissed';
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+type Platform = 'android-native' | 'android-fallback' | 'ios' | 'hidden';
+
+function getPlatform(deferredPrompt: Event | null): Platform {
+  // Already running as installed PWA — don't show
+  if (window.matchMedia('(display-mode: standalone)').matches) return 'hidden';
+  // navigator.standalone covers iOS home-screen launch
+  if ((navigator as any).standalone) return 'hidden';
+
+  if (deferredPrompt) return 'android-native';
+
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  if (isIOS) return 'ios';
+
+  // Android/Chrome without beforeinstallprompt (already installed, or not eligible)
+  const isAndroid = /android/.test(ua);
+  const isChrome  = /chrome/.test(ua) && !/edg/.test(ua);
+  if (isAndroid && isChrome) return 'android-fallback';
+
+  return 'hidden';
+}
+
+function wasDismissedRecently(): boolean {
+  const ts = localStorage.getItem(DISMISS_KEY);
+  if (!ts) return false;
+  return Date.now() - parseInt(ts, 10) < DISMISS_DURATION_MS;
+}
 
 export default function InstallPrompt() {
   const [show, setShow] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
+  const [platform, setPlatform] = useState<Platform>('hidden');
 
   useEffect(() => {
-    if (localStorage.getItem('hq-install-dismissed')) return;
+    if (wasDismissedRecently()) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShow(true);
+      const p = getPlatform(e);
+      if (p !== 'hidden') {
+        setPlatform(p);
+        setShow(true);
+      }
     };
     window.addEventListener('beforeinstallprompt', handler);
 
-    // iOS fallback: show banner if standalone not detected
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (isIOS && !isStandalone) {
-      setTimeout(() => setShow(true), 2000);
-    }
+    // Detect iOS / Android-fallback after a short delay (UA check)
+    const timer = setTimeout(() => {
+      if (wasDismissedRecently()) return;
+      const p = getPlatform(null);
+      if (p !== 'hidden') {
+        setPlatform(p);
+        setShow(true);
+      }
+    }, 2500);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      clearTimeout(timer);
+    };
   }, []);
 
   function dismiss() {
     setShow(false);
-    localStorage.setItem('hq-install-dismissed', '1');
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
   }
 
   async function handleInstall() {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+      (deferredPrompt as any).prompt();
+      await (deferredPrompt as any).userChoice;
     }
     dismiss();
   }
@@ -42,19 +84,32 @@ export default function InstallPrompt() {
 
   return (
     <div className="install-banner">
-      <Download size={18} style={{ flexShrink: 0, color: 'var(--color-primary)' }} />
-      <div className="install-banner-text">
-        <strong>Installera HQ</strong>
-        <span>Lägg till appen på hemskärmen</span>
-      </div>
-      {deferredPrompt ? (
-        <button className="install-banner-btn" onClick={handleInstall}>INSTALLERA</button>
+      {platform === 'ios' ? (
+        <Share size={18} style={{ flexShrink: 0, color: 'var(--color-primary)' }} />
       ) : (
-        <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', maxWidth: 120 }}>
-          Dela → Lägg till på hemskärmen
-        </span>
+        <Download size={18} style={{ flexShrink: 0, color: 'var(--color-primary)' }} />
       )}
-      <button className="install-banner-close" onClick={dismiss}>
+
+      <div className="install-banner-text">
+        <strong>Installera Sektionen</strong>
+        {platform === 'android-native' && (
+          <span>Lägg till appen på hemskärmen</span>
+        )}
+        {platform === 'android-fallback' && (
+          <span>Tryck på Meny (⋮) och välj "Lägg till på startskärmen"</span>
+        )}
+        {platform === 'ios' && (
+          <span>Tryck på dela-ikonen och välj "Lägg till på hemskärmen"</span>
+        )}
+      </div>
+
+      {platform === 'android-native' ? (
+        <button className="install-banner-btn" onClick={handleInstall}>
+          INSTALLERA
+        </button>
+      ) : null}
+
+      <button className="install-banner-close" onClick={dismiss} aria-label="Stäng">
         <X size={16} />
       </button>
     </div>
