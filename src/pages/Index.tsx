@@ -141,7 +141,7 @@ export default function Index() {
     };
   }, [isAdmin]);
 
-  const shouldOnboard = !S.me || !S.chars[S.me] || !S.chars[S.me].onboarded;
+  const shouldOnboard = !S.me || !S.onboarded;
   if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
   }
