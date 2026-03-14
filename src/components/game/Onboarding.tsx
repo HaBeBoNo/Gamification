@@ -7,7 +7,18 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
+
+const DEFAULT_COACH_NAMES: Record<string, string> = {
+  hannes:   'VERA',
+  ludvig:   'MAX',
+  martin:   'KARL',
+  nisse:    'ATLAS',
+  simon:    'NOVA',
+  johannes: 'BIRK',
+  carl:     'LEXA',
+  niklas:   'GRID',
+};
 
 /* ── Five universal onboarding questions ── */
 const ONBOARDING_QUESTIONS = [
@@ -18,7 +29,7 @@ const ONBOARDING_QUESTIONS = [
   'Vad gör du som ingen annan i bandet gör på samma sätt?',
 ];
 
-/* Step 0=welcome 1=member 2-6=questions 7=generate */
+/* Step 0=welcome 1=member 2-6=questions 7=coach 8=generate */
 const STEP_META = [
   { label: '',          bg: 'hsla(38, 66%, 47%, 0.08)' },
   { label: 'KARAKTÄR',  bg: 'hsla(258, 90%, 66%, 0.08)' },
@@ -27,6 +38,7 @@ const STEP_META = [
   { label: 'ENERGI',    bg: 'hsla(45, 80%, 55%, 0.08)' },
   { label: 'TILLVÄXT',  bg: 'hsla(0, 91%, 71%, 0.08)' },
   { label: 'IDENTITET', bg: 'hsla(258, 90%, 66%, 0.08)' },
+  { label: 'COACH',     bg: 'hsla(258, 90%, 66%, 0.08)' },
   { label: 'GENERERA',  bg: 'hsla(38, 66%, 47%, 0.08)' },
 ];
 
@@ -37,6 +49,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
 
   /* One state slot per question */
   const [answers, setAnswers] = useState(['', '', '', '', '']);
+
+  const [coachName, setCoachName] = useState('');
 
   const [generating, setGenerating] = useState(false);
   const [genMsg, setGenMsg] = useState('');
@@ -55,6 +69,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     if (!selectedMember) return;
     S.me = selectedMember;
     if (!S.chars[selectedMember]) S.chars[selectedMember] = defChar(selectedMember);
+    setCoachName(DEFAULT_COACH_NAMES[selectedMember] || 'COACH');
     next();
   }
 
@@ -84,6 +99,14 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     }
     setBuildingProfile(false);
     next(); // → generate step (step 7)
+  }
+
+  function saveCoachAndNext() {
+    if (!selectedMember) return;
+    const name = coachName.trim() || DEFAULT_COACH_NAMES[selectedMember] || 'COACH';
+    S.chars[selectedMember].coachName = name;
+    save();
+    next();
   }
 
   async function startGenerate() {
@@ -124,7 +147,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       case 4: return answers[2].trim().length > 0;
       case 5: return answers[3].trim().length > 0;
       case 6: return answers[4].trim().length > 0;
-      case 7: return true;
+      case 7: return coachName.trim().length > 0;
+      case 8: return true;
       default: return true;
     }
   }
@@ -132,7 +156,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   function getButtonLabel() {
     if (step === 0) return 'Börja →';
     if (step === 1) return `Välj ${member?.name || '—'} →`;
-    if (step === 7) return 'Kom igång →';
+    if (step === 7) return 'Spara namn →';
+    if (step === 8) return 'Kom igång →';
     return 'Fortsätt';
   }
 
@@ -140,8 +165,9 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     switch (step) {
       case 0: next(); break;
       case 1: confirmMember(); break;
-      case 6: finishQuestions(); break;  // triggers profile build → advances to step 7
-      case 7: startGenerate(); break;
+      case 6: finishQuestions(); break;  // triggers profile build → advances to step 7 (coach)
+      case 7: saveCoachAndNext(); break;  // saves coach name → advances to step 8 (generate)
+      case 8: startGenerate(); break;
       default: next(); break;
     }
   }
@@ -313,8 +339,27 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
               </>
             )}
 
-            {/* ── Step 7: Generate quests ── */}
+            {/* ── Step 7: Coach name ── */}
             {step === 7 && (
+              <>
+                <div className="ob-question">Din coach</div>
+                <div className="ob-desc">
+                  Din personliga coach är redo. Du kan byta namn när som helst — håll inne på namnet i chatten.
+                </div>
+                <input
+                  className="ob-textarea"
+                  style={{ resize: 'none', fontSize: 'var(--text-heading)', letterSpacing: '0.08em', textAlign: 'center' }}
+                  value={coachName}
+                  onChange={e => setCoachName(e.target.value.toUpperCase())}
+                  maxLength={20}
+                  autoFocus
+                  placeholder={selectedMember ? DEFAULT_COACH_NAMES[selectedMember] : 'COACH'}
+                />
+              </>
+            )}
+
+            {/* ── Step 8: Generate quests ── */}
+            {step === 8 && (
               <>
                 <div className="ob-question">Generera uppdrag</div>
                 <div className="ob-desc">AI skapar personliga uppdrag baserade på din profil.</div>
@@ -333,7 +378,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           {/* Bottom actions */}
           {!generating && (
             <div className="ob-bottom-actions">
-              {step === 7 && (
+              {step === 8 && (
                 <button
                   className="ob-skip-btn"
                   onClick={triggerWelcome}

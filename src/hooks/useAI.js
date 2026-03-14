@@ -12,6 +12,30 @@ import { awardXP } from './useXP';
 const API_URL = '/api/claude';
 const MODEL   = 'claude-sonnet-4-20250514';
 
+// ── Coach-identiteter ──────────────────────────────────────────────
+
+export const DEFAULT_COACH_NAMES = {
+  hannes:   'VERA',
+  ludvig:   'MAX',
+  martin:   'KARL',
+  nisse:    'ATLAS',
+  simon:    'NOVA',
+  johannes: 'BIRK',
+  carl:     'LEXA',
+  niklas:   'GRID',
+};
+
+const COACH_PERSONALITIES = {
+  hannes:   'Du heter VERA. Du är skarp, varumärkesfokuserad och poetisk. Hannes arbetar bäst ensam, sent på natten — han analyserar redan allt. Ge honom ett nytt perspektiv, inte en lista. Kortfattat och precist.',
+  ludvig:   'Du heter MAX. Du talar alltid om impact och möjliggörande — aldrig om titel eller funktion. Vad sker tack vare Ludvig? Det är din enda vinkel. Direkt, varm, fokuserad på fingeravtrycket han lämnar.',
+  martin:   'Du heter KARL. Du är koncis, faktabaserad och precis. Martin är disciplinerad — matcha hans ton. Inga floskler. Vad är scope? Vad är deadline? Leverera det han behöver för att leverera.',
+  nisse:    'Du heter ATLAS. Nisse söker struktur, inte motivation. Ge konkreta nästa steg. Hans energi är redan hög — möt det med klarhet, inte uppmuntran. Direkt och handlingsorienterad.',
+  simon:    'Du heter NOVA. Simon är en relationsmästare som levererar när han förstår att det behövs. Hjälp honom se varför det spelar roll just nu. Varm men kravställande.',
+  johannes: 'Du heter BIRK. Johannes levererar vid tydlig deadline. Var specifik och jordnära. Erkänn det osynliga arbetet — han gör det ingen förväntar sig. Lojal, konkret.',
+  carl:     'Du heter LEXA. Carl har ADD och är introvert men genuint likeable. Låg tröskel, hög respekt. Iterera sakligt. Ge ett steg i taget, aldrig ett helt system.',
+  niklas:   'Du heter GRID. Niklas har ADHD — var kristallklar och avgränsa scope hårt. En sak åt gången. Snabb, specificerad feedback. Omedelbar bekräftelse när något är klart.',
+};
+
 // ── Intern hjälp ─────────────────────────────────────────────────
 
 async function callClaude(prompt, maxTokens = 400) {
@@ -142,6 +166,8 @@ Svara EXAKT i JSON (inget annat):
 }
 
 function buildCoachPrompt(m, c) {
+  const coachName    = c.coachName || DEFAULT_COACH_NAMES[S.me] || 'Coach';
+  const personality  = COACH_PERSONALITIES[S.me] || `Du heter ${coachName}. Du är en personlig AI-coach för ${m.name} i Sektionen.`;
   const completedCats = Object.entries(c.categoryCount || {})
     .sort((a, b) => b[1] - a[1])
     .slice(0, 2)
@@ -180,7 +206,9 @@ function buildCoachPrompt(m, c) {
     .map(e => `Vecka ${e.week}: "${e.text}"`)
     .join('\n');
 
-  return `Du är AI-coach för ${m.name} i Sektionen. Operation POST II: ideell → professionell. truminspelning juli 2026.
+  return `${personality}
+
+Du coachar ${m.name} i Sektionen. Operation POST II: ideell → professionell. Truminspelning juli 2026.
 
 Rollkalibrering:
 - Motivation: "${c.motivation || 'ej angiven'}"
@@ -216,7 +244,8 @@ ${(c.coachFeedback?.negative || 0) > (c.coachFeedback?.positive || 0) ? 'Din ton
 Ge en personlig coaching-insikt, max 2 meningar på svenska. Utgå från rollkalibreringen — inte bara motivationen. Om något dränerar dem, adressera det direkt. Ibland utmanande, ibland stöttande, alltid konkret.
 
 VIKTIGT för Ludvig: tala aldrig om roller eller funktioner — tala alltid om vad som sker TACK VARE honom, vad han möjliggör, vad som är hans fingeravtryck på det bandet bygger.
-LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer direktiv och konkret. Personen behöver riktning, inte frihet.${profileContext}${temporalContext}${insightContext}`;
+LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer direktiv och konkret. Personen behöver riktning, inte frihet.
+Signera ALDRIG med namn — avsluta bara med insikten.${profileContext}${temporalContext}${insightContext}`;
 }
 
 function buildGhostPrompt(m, c, daysSince) {

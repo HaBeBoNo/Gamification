@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { S } from '@/state/store';
-import { refreshCoach } from '@/hooks/useAI';
+import { S, save } from '@/state/store';
+import { refreshCoach, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
 import { Send, Bot, MessageCircle } from 'lucide-react';
 
 interface Message {
@@ -20,8 +20,34 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
     if (S.coachText) return [{ type: 'ai' as const, text: S.coachText, ts: now() }];
     return [];
   });
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const coachName = S.chars[S.me]?.coachName || DEFAULT_COACH_NAMES[S.me] || 'COACH';
+
+  function onNamePressStart() {
+    pressTimer.current = setTimeout(() => {
+      setNameInput(coachName);
+      setEditingName(true);
+    }, 500);
+  }
+
+  function onNamePressEnd() {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  }
+
+  function saveName() {
+    const n = nameInput.trim().toUpperCase();
+    if (n && S.chars[S.me]) {
+      S.chars[S.me].coachName = n;
+      save();
+      rerender();
+    }
+    setEditingName(false);
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -55,6 +81,31 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
 
   return (
     <div className="coach-chat">
+      <div className="coach-chat-header">
+        {editingName ? (
+          <input
+            className="coach-name-edit"
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value.toUpperCase())}
+            onBlur={saveName}
+            onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
+            maxLength={20}
+            autoFocus
+          />
+        ) : (
+          <span
+            className="coach-name-label"
+            onMouseDown={onNamePressStart}
+            onMouseUp={onNamePressEnd}
+            onMouseLeave={onNamePressEnd}
+            onTouchStart={onNamePressStart}
+            onTouchEnd={onNamePressEnd}
+            title="Håll inne för att byta namn"
+          >
+            {coachName}
+          </span>
+        )}
+      </div>
       <div className="coach-chat-scroll" ref={scrollRef}>
         {messages.length === 0 && !loading && (
           <div className="empty-state">

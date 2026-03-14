@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { refreshCoach } from '@/hooks/useAI';
+import { refreshCoach, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
 import { RefreshCw, Bot, MessageCircle, FileText } from 'lucide-react';
 import CoachSkeleton from './skeletons/CoachSkeleton';
 
 export default function AICoach({ rerender }: { rerender: () => void }) {
   const [loading, setLoading] = useState(false);
+  const coachName = S.chars[S.me]?.coachName || DEFAULT_COACH_NAMES[S.me] || 'COACH';
 
   async function handleRefresh() {
     setLoading(true);
@@ -18,8 +19,9 @@ export default function AICoach({ rerender }: { rerender: () => void }) {
 
   return (
     <div className="coach-bar">
-      <span className="coach-icon-wrap">
+      <span className="coach-icon-wrap" title={coachName} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
         <Bot size={20} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--color-accent)', lineHeight: 1 }}>{coachName}</span>
       </span>
       <div className="coach-text">
         {loading ? (
