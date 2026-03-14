@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Zap } from 'lucide-react';
+import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 
