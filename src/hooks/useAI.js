@@ -9,20 +9,16 @@ import { S, save } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { awardXP } from './useXP';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
+const API_URL = '/api/claude';
 const MODEL   = 'claude-sonnet-4-20250514';
 
 // ── Intern hjälp ─────────────────────────────────────────────────
 
 async function callClaude(prompt, maxTokens = 400) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('VITE_ANTHROPIC_API_KEY saknas');
   const res = await fetch(API_URL, {
     method:  'POST',
     headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         apiKey,
-      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model:      MODEL,

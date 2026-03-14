@@ -9,11 +9,6 @@
  * @returns {Promise<Object|null>} Parsed profile JSON, or null on failure
  */
 export async function buildResponseProfile(answers) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-    || localStorage.getItem('anthropic-key');
-
-  if (!apiKey) return null;
-
   const prompt = `Du får fem svar från en onboarding-enkät för en musikband-app.
 Analysera svaren och returnera ENBART ett JSON-objekt med följande struktur.
 Inga förklaringar, ingen text utanför JSON.
@@ -43,12 +38,10 @@ Returnera detta JSON-objekt:
 }`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
