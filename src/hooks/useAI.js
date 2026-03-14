@@ -153,6 +153,14 @@ function buildCoachPrompt(m, c) {
   const temporal = S.chars[S.me]?.temporalBehavior;
   const temporalContext = temporal ? `\n\nTemporalt beteendemönster: ${temporal.pattern}. Snitturgency: ${temporal.avgUrgency?.toFixed(2)}. ${temporal.anomaly ? 'Avvikelse detekterad — uppmärksamma om detta är ett nytt mönster.' : ''}` : '';
 
+  /* ── quest insights context ── */
+  const insights = (S.quests || [])
+    .filter(q => q.owner === S.me && q.insight)
+    .slice(-5)
+    .map(q => `"${q.title}": ${q.insight}`)
+    .join('\n');
+  const insightContext = insights ? `\n\nSenaste reflektioner från ${S.me}:\n${insights}\n\nAnvänd dessa som ingångspunkter i coaching — referera till dem naturligt, aldrig mekaniskt.` : '';
+
   const recentReflections = S.quests
     .filter(q => q.owner === S.me && q.done && q.lastReflection)
     .slice(-5)
@@ -206,7 +214,7 @@ ${(c.coachFeedback?.negative || 0) > (c.coachFeedback?.positive || 0) ? 'Din ton
 Ge en personlig coaching-insikt, max 2 meningar på svenska. Utgå från rollkalibreringen — inte bara motivationen. Om något dränerar dem, adressera det direkt. Ibland utmanande, ibland stöttande, alltid konkret.
 
 VIKTIGT för Ludvig: tala aldrig om roller eller funktioner — tala alltid om vad som sker TACK VARE honom, vad han möjliggör, vad som är hans fingeravtryck på det bandet bygger.
-LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer direktiv och konkret. Personen behöver riktning, inte frihet.${profileContext}${temporalContext}`;
+LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer direktiv och konkret. Personen behöver riktning, inte frihet.${profileContext}${temporalContext}${insightContext}`;
 }
 
 function buildGhostPrompt(m, c, daysSince) {

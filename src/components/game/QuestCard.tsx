@@ -7,6 +7,7 @@ import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
+import QuestCompleteModal from './QuestCompleteModal';
 
 const CAT_DOT: Record<string, string> = {
   daily: 'cat-daily', personal: 'cat-personal', strategic: 'cat-strategic',
@@ -39,6 +40,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const [verdict, setVerdict] = useState<any>(quest.aiVerdict || null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleg, setShowDeleg] = useState(false);
+  const [completingQuest, setCompletingQuest] = useState<any>(null);
+  const [lastXP, setLastXP] = useState(0);
 
   const me = S.me;
   const isDone = quest.done;
@@ -50,7 +53,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     const xpEarned = calcQuestXP(me, quest.xp || 30);
     const idx = S.quests.findIndex((q: any) => q.id === quest.id);
-    if (idx >= 0) S.quests[idx] = { ...quest, done: true };
+    const completedQuest = { ...quest, done: true, completedAt: Date.now() };
+    if (idx >= 0) S.quests[idx] = completedQuest;
 
     showXP?.(xpEarned);
 
@@ -59,7 +63,10 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       (reward, tier) => showRW?.(reward, tier),
     );
     save();
-    rerender();
+
+    // Öppna utvärderingsmodal istället för direkt rerender
+    setLastXP(xpEarned);
+    setCompletingQuest(completedQuest);
   }
 
   function handleAIValidate() {
@@ -168,6 +175,15 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
       {showDeleg && (
         <DelegationSheet quest={quest} onClose={() => setShowDeleg(false)} />
+      )}
+
+      {completingQuest && (
+        <QuestCompleteModal
+          quest={completingQuest}
+          xpGained={lastXP}
+          onClose={() => { setCompletingQuest(null); rerender(); }}
+          rerender={rerender}
+        />
       )}
     </>
   );
