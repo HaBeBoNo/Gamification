@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '@/data/members';
 import { getRoleHidden, HIDDEN_BY_TYPE } from '@/data/quests';
@@ -56,7 +56,14 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
   function getVisibleQuests() {
     const quests = S.quests || [];
     if (tab === 'all') return quests;
-    if (tab === 'personal') return quests.filter((q: any) => q.owner === me || q.personal);
+    if (tab === 'personal') {
+      const personalActive = quests
+        .filter((q: any) => (q.owner === me || q.personal) && !q.done)
+        .sort((a: any, b: any) => (b.id || 0) - (a.id || 0))
+        .slice(0, 7);
+      const personalDone = quests.filter((q: any) => (q.owner === me || q.personal) && q.done);
+      return [...personalActive, ...personalDone];
+    }
     if (tab === 'daily') return quests.filter((q: any) => q.recur === 'daily');
     if (tab === 'strategic') return quests.filter((q: any) => q.type === 'strategic');
     if (tab === 'hidden') {
@@ -131,6 +138,20 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
   };
 
   const [calStripVisible, setCalStripVisible] = useState(true);
+
+  // Auto-generera när aktiva quests sjunker under 3
+  const activePersonalCount = (S.quests || []).filter(
+    (q: any) => q.owner === me && !q.done
+  ).length;
+
+  useEffect(() => {
+    const c = me ? S.chars[me] : null;
+    if (c?.needsQuestRefill) {
+      c.needsQuestRefill = false;
+      save();
+      generatePersonalQuests(false, () => { save(); rerender(); });
+    }
+  }, [activePersonalCount]);
 
   const UPCOMING_EVENTS = [
     { date: '9 mar', name: 'Rep Lerum' },

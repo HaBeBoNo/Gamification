@@ -231,7 +231,29 @@ Senaste reflektioner:
 ${insights}
 Använd som ingångspunkter — aldrig mekaniskt.` : '';
 
-  return `${personality}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}`;
+  /* ── Borttagningshistorik ── */
+  const deletedQuests = (S.chars[memberKey]?.deletedQuests || []).slice(-5);
+  const deletionContext = deletedQuests.length > 0 ? `
+Borttagna uppdrag (member-signaler om kalibrering):
+${deletedQuests.map(d => `- "${d.title}" (${d.cat}): ${
+  d.reason === 'irrelevant' ? 'inte relevant för rollen' :
+  d.reason === 'done'       ? 'redan gjort' :
+  'fel timing'
+}`).join('\n')}
+
+Undvik att generera liknande uppdrag inom samma kategori om reason är 'irrelevant'.
+Om reason är 'timing' — föreslå samma typ av uppdrag igen om 2–3 veckor.` : '';
+
+  /* ── Hyperfokus-signal ── */
+  const activeCount = (S.quests || []).filter(
+    q => q.owner === memberKey && !q.done
+  ).length;
+
+  const focusContext = activeCount <= 3 ? `
+${memberKey} har just ${activeCount} aktiva uppdrag. Det är ett medvetet val — hyperfokus.
+Uppmuntra det. Generera inte fler uppdrag om inte member explicit ber om det.` : '';
+
+  return `${personality}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}\n${deletionContext}\n${focusContext}`;
 }
 
 function buildGhostPrompt(m, c, daysSince) {
