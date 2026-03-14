@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe } from 'lucide-react';
+import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -46,18 +46,6 @@ const PRIMARY_TABS = [
   { id: 'more', icon: MoreHorizontal },
 ];
 
-const OVERFLOW_ITEMS = [
-  { id: 'coach', icon: MessageCircle, label: 'Coach', subtitle: 'Din personliga AI-coach' },
-  { id: 'home', icon: Home, label: 'Hem', subtitle: 'Bandets översikt och metrics' },
-  { id: 'activity', icon: Activity, label: 'Aktivitet', subtitle: 'Senaste händelser' },
-  { id: 'season', icon: BarChart2, label: 'Säsong', subtitle: 'Säsongsöversikt och XP-kurva' },
-  { id: 'profile', icon: User, label: 'Profil', subtitle: 'Inställningar och din data' },
-];
-
-const OVERFLOW_ITEMS_CARL = [
-  ...OVERFLOW_ITEMS,
-  { id: 'ideas', icon: Lightbulb, label: 'Idéer', subtitle: 'Lösa tankar' },
-];
 
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
@@ -148,6 +136,10 @@ export default function Index() {
 
   function handleOverflowSelect(id: string) {
     setShowMore(false);
+    if (id === 'admin') {
+      setShowAdmin(true);
+      return;
+    }
     setMobileTab(id);
     setActiveTab(id);
   }
@@ -218,7 +210,21 @@ export default function Index() {
     }
   }
 
-  const overflowItems = isCurl ? OVERFLOW_ITEMS_CARL : OVERFLOW_ITEMS;
+  const coachName = S.chars[S.me]?.coachName ||
+    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
+       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn'
+    } as Record<string, string>)[S.me || ''] || 'Coach';
+
+  const overflowItems = [
+    { id: 'coach',    icon: MessageCircle, label: coachName,    subtitle: 'Din personliga AI-coach' },
+    { id: 'home',     icon: Home,          label: 'Hem',        subtitle: 'Bandets översikt och metrics' },
+    { id: 'activity', icon: Activity,      label: 'Aktivitet',  subtitle: 'Senaste händelser' },
+    { id: 'season',   icon: BarChart2,     label: 'Säsong',     subtitle: 'Säsongsöversikt och XP-kurva' },
+    { id: 'profile',  icon: User,          label: 'Profil',     subtitle: 'Inställningar och din data' },
+    ...(isCurl  ? [{ id: 'ideas', icon: Lightbulb, label: 'Idéer',  subtitle: 'Lösa tankar' }] : []),
+    ...(isAdmin ? [{ id: 'admin', icon: Settings,  label: 'Admin',  subtitle: 'Systemkontroller' }] : []),
+  ];
+
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
   // ── Swipe between main tabs ──────────────────────────────────────
