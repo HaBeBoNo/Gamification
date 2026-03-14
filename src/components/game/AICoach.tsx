@@ -7,7 +7,9 @@ import CoachSkeleton from './skeletons/CoachSkeleton';
 
 export default function AICoach({ rerender }: { rerender: () => void }) {
   const [loading, setLoading] = useState(false);
-  const coachName = S.chars[S.me]?.coachName || DEFAULT_COACH_NAMES[S.me] || 'COACH';
+  const coachName = S.chars[S.me]?.coachName ||
+    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
+       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' } as Record<string, string>)[S.me] || 'Coach';
 
   async function handleRefresh() {
     setLoading(true);

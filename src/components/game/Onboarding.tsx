@@ -10,14 +10,14 @@ import { ArrowLeft } from 'lucide-react';
 const TOTAL_STEPS = 9;
 
 const DEFAULT_COACH_NAMES: Record<string, string> = {
-  hannes:   'VERA',
-  ludvig:   'MAX',
-  martin:   'KARL',
-  nisse:    'ATLAS',
-  simon:    'NOVA',
-  johannes: 'BIRK',
-  carl:     'LEXA',
-  niklas:   'GRID',
+  hannes:   'Scout',
+  martin:   'Brodern',
+  niklas:   'Arkitekten',
+  carl:     'Analytikern',
+  nisse:    'Spegeln',
+  simon:    'Rådgivaren',
+  johannes: 'Kartläggaren',
+  ludvig:   'Katalysatorn',
 };
 
 /* ── Five universal onboarding questions ── */
@@ -103,8 +103,8 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
 
   function saveCoachAndNext() {
     if (!selectedMember) return;
-    const name = coachName.trim() || DEFAULT_COACH_NAMES[selectedMember] || 'COACH';
-    S.chars[selectedMember].coachName = name;
+    const char = S.chars[selectedMember];
+    char.coachName = coachName.trim() || defaultCoachName;
     save();
     next();
   }
@@ -136,6 +136,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   }
 
   const member = selectedMember ? MEMBERS[selectedMember] : null;
+  const defaultCoachName = DEFAULT_COACH_NAMES[selectedMember || ''] || 'Coach';
   const progressPct = ((step + 1) / TOTAL_STEPS) * 100;
 
   function canProceed() {
@@ -342,18 +343,18 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
             {/* ── Step 7: Coach name ── */}
             {step === 7 && (
               <>
-                <div className="ob-question">Din coach</div>
+                <div className="ob-question">Vad heter din coach?</div>
                 <div className="ob-desc">
-                  Din personliga coach är redo. Du kan byta namn när som helst — håll inne på namnet i chatten.
+                  Du kan alltid byta namn senare.
                 </div>
                 <input
+                  type="text"
                   className="ob-textarea"
-                  style={{ resize: 'none', fontSize: 'var(--text-heading)', letterSpacing: '0.08em', textAlign: 'center' }}
+                  style={{ minHeight: 'unset', height: 48 }}
+                  placeholder={defaultCoachName}
                   value={coachName}
-                  onChange={e => setCoachName(e.target.value.toUpperCase())}
-                  maxLength={20}
+                  onChange={e => setCoachName(e.target.value)}
                   autoFocus
-                  placeholder={selectedMember ? DEFAULT_COACH_NAMES[selectedMember] : 'COACH'}
                 />
               </>
             )}

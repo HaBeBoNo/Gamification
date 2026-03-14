@@ -20,34 +20,26 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
     if (S.coachText) return [{ type: 'ai' as const, text: S.coachText, ts: now() }];
     return [];
   });
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const coachName = S.chars[S.me]?.coachName || DEFAULT_COACH_NAMES[S.me] || 'COACH';
+  const coachName = S.chars[S.me]?.coachName ||
+    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
+       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' } as Record<string, string>)[S.me] || 'Coach';
 
-  function onNamePressStart() {
+  const handlePressStart = () => {
     pressTimer.current = setTimeout(() => {
-      setNameInput(coachName);
-      setEditingName(true);
+      const newName = window.prompt('Byt namn på din coach:', coachName);
+      if (newName?.trim()) {
+        S.chars[S.me].coachName = newName.trim();
+        save();
+        rerender();
+      }
     }, 500);
-  }
+  };
 
-  function onNamePressEnd() {
-    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
-  }
-
-  function saveName() {
-    const n = nameInput.trim().toUpperCase();
-    if (n && S.chars[S.me]) {
-      S.chars[S.me].coachName = n;
-      save();
-      rerender();
-    }
-    setEditingName(false);
-  }
+  const handlePressEnd = () => clearTimeout(pressTimer.current);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -82,29 +74,18 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
   return (
     <div className="coach-chat">
       <div className="coach-chat-header">
-        {editingName ? (
-          <input
-            className="coach-name-edit"
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value.toUpperCase())}
-            onBlur={saveName}
-            onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
-            maxLength={20}
-            autoFocus
-          />
-        ) : (
-          <span
-            className="coach-name-label"
-            onMouseDown={onNamePressStart}
-            onMouseUp={onNamePressEnd}
-            onMouseLeave={onNamePressEnd}
-            onTouchStart={onNamePressStart}
-            onTouchEnd={onNamePressEnd}
-            title="Håll inne för att byta namn"
-          >
-            {coachName}
-          </span>
-        )}
+        <span
+          className="coach-name-label"
+          onMouseDown={handlePressStart}
+          onMouseUp={handlePressEnd}
+          onMouseLeave={handlePressEnd}
+          onTouchStart={handlePressStart}
+          onTouchEnd={handlePressEnd}
+          style={{ cursor: 'default', userSelect: 'none' }}
+          title="Håll inne för att byta namn"
+        >
+          {coachName}
+        </span>
       </div>
       <div className="coach-chat-scroll" ref={scrollRef}>
         {messages.length === 0 && !loading && (

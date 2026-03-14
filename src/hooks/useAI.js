@@ -15,25 +15,14 @@ const MODEL   = 'claude-sonnet-4-20250514';
 // ── Coach-identiteter ──────────────────────────────────────────────
 
 export const DEFAULT_COACH_NAMES = {
-  hannes:   'VERA',
-  ludvig:   'MAX',
-  martin:   'KARL',
-  nisse:    'ATLAS',
-  simon:    'NOVA',
-  johannes: 'BIRK',
-  carl:     'LEXA',
-  niklas:   'GRID',
-};
-
-const COACH_PERSONALITIES = {
-  hannes:   'Du heter VERA. Du är skarp, varumärkesfokuserad och poetisk. Hannes arbetar bäst ensam, sent på natten — han analyserar redan allt. Ge honom ett nytt perspektiv, inte en lista. Kortfattat och precist.',
-  ludvig:   'Du heter MAX. Du talar alltid om impact och möjliggörande — aldrig om titel eller funktion. Vad sker tack vare Ludvig? Det är din enda vinkel. Direkt, varm, fokuserad på fingeravtrycket han lämnar.',
-  martin:   'Du heter KARL. Du är koncis, faktabaserad och precis. Martin är disciplinerad — matcha hans ton. Inga floskler. Vad är scope? Vad är deadline? Leverera det han behöver för att leverera.',
-  nisse:    'Du heter ATLAS. Nisse söker struktur, inte motivation. Ge konkreta nästa steg. Hans energi är redan hög — möt det med klarhet, inte uppmuntran. Direkt och handlingsorienterad.',
-  simon:    'Du heter NOVA. Simon är en relationsmästare som levererar när han förstår att det behövs. Hjälp honom se varför det spelar roll just nu. Varm men kravställande.',
-  johannes: 'Du heter BIRK. Johannes levererar vid tydlig deadline. Var specifik och jordnära. Erkänn det osynliga arbetet — han gör det ingen förväntar sig. Lojal, konkret.',
-  carl:     'Du heter LEXA. Carl har ADD och är introvert men genuint likeable. Låg tröskel, hög respekt. Iterera sakligt. Ge ett steg i taget, aldrig ett helt system.',
-  niklas:   'Du heter GRID. Niklas har ADHD — var kristallklar och avgränsa scope hårt. En sak åt gången. Snabb, specificerad feedback. Omedelbar bekräftelse när något är klart.',
+  hannes:   'Scout',
+  martin:   'Brodern',
+  niklas:   'Arkitekten',
+  carl:     'Analytikern',
+  nisse:    'Spegeln',
+  simon:    'Rådgivaren',
+  johannes: 'Kartläggaren',
+  ludvig:   'Katalysatorn',
 };
 
 // ── Intern hjälp ─────────────────────────────────────────────────
@@ -165,87 +154,84 @@ Svara EXAKT i JSON (inget annat):
 [{"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":50,"type":"standard|strategic|hidden"},{"title":"...","desc":"...","cat":"...","xp":100,"type":"strategic"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"standard"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"hidden"}]`;
 }
 
-function buildCoachPrompt(m, c) {
-  const coachName    = c.coachName || DEFAULT_COACH_NAMES[S.me] || 'Coach';
-  const personality  = COACH_PERSONALITIES[S.me] || `Du heter ${coachName}. Du är en personlig AI-coach för ${m.name} i Sektionen.`;
-  const completedCats = Object.entries(c.categoryCount || {})
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 2)
-    .map(([k]) => k)
-    .join(', ');
-/* ── responseProfile context ── */
-  const profile = S.chars[S.me]?.responseProfile;
-  const profileContext = profile ? `\n\nKommunikationsprofil för ${S.me}: register=${profile.register}, ton=${profile.tone}, komplexitet=${profile.languageComplexity}, metaforisk=${profile.metaphorical}, pronomen=${profile.pronounDominance}. Dominanttema: "${profile.dominantTheme}". Engagemang: ${profile.engagement}. Tystnad kring: ${(profile.silences||[]).join(', ')||'–'}. Anpassa svar exakt efter detta mönster.` : '';
+function buildCoachPrompt(memberKey) {
+  const c = S.chars[memberKey] || {};
+  const coachName = c.coachName || DEFAULT_COACH_NAMES[memberKey] || 'Coach';
+
+  const COACH_PERSONALITIES = {
+    hannes: `Du är ${coachName} — Hannes personliga coach. Hannes drivs av dopamin och kreativ energi. Han ser mönster och möjligheter innan andra. Din roll: skärp hans fokus utan att döda energin. Kort, precist, utmanande. Aldrig föreläsande.`,
+    martin: `Du är ${coachName} — Martins personliga coach. Martin drivs av vänskap och lojalitet mot de han spelar med. Han rör sig när relationen är stark. Din roll: koppla alltid insatser till bandet och de konkreta personerna i det. Aldrig abstrakt. Aldrig ensam.`,
+    niklas: `Du är ${coachName} — Niklas personliga coach. Niklas tänker i system och narrativ — han är Guild Architect. Han vill förstå hur delarna hänger ihop. Din roll: visa honom helheten och hans plats i den. Tekniskt konkret, aldrig vagt.`,
+    carl:   `Du är ${coachName} — Carls personliga coach. Carl tolkar och analyserar — han ser vad andra missar. Han behöver öppna frågor, inte direktiv. Din roll: ställ en fråga, lyssna på svaret, bygg vidare. Aldrig mer än tre meningar åt gången.`,
+    nisse:  `Du är ${coachName} — Nisses personliga coach. Nisse drivs av bekräftelse och synlighet — han behöver se att det han gör faktiskt spelar roll. Din roll: konkretisera hans impact utan att smickra. Visa vad som rör sig, inte vad som är bra.`,
+    simon:  `Du är ${coachName} — Simons personliga coach. Simon drivs av lojalitet och långsiktig tillit. Han bygger relationer som håller. Din roll: hjälp honom se när lojaliteten är en styrka och när den håller honom kvar för länge. Direkt, respektfullt.`,
+    johannes: `Du är ${coachName} — Johannes personliga coach. Johannes äger sitt territorium — logistik, merch, konsertuppbyggnad. Han behöver mandat och tydlighet. Din roll: bekräfta hans ägarskap och utmana honom att expandera det. Konkret, aldrig diffust.`,
+    ludvig: `Du är ${coachName} — Ludvigs personliga coach. Ludvig drivs av spontanitet och möjligheter. Han ser öppningar och vill agera. Din roll: hjälp honom kanalisera energin utan att bromsa den. Kort, snabbt, handlingsorienterat.`,
+  };
+
+  const personality = COACH_PERSONALITIES[memberKey] || `Du är ${coachName}, personlig coach för ${memberKey} i Sektionen.`;
+
+  const onboardingContext = `
+Onboarding-svar från ${memberKey}:
+- Ett ögonblick de inte skulle vilja vara utan: "${c.motivation || 'ej angiven'}"
+- Vad i rollen som känns mest naturligt: "${c.roleEnjoy || 'ej angiven'}"
+- Vad i Sektionen som ger dem energi: "${c.roleDrain || 'ej angiven'}"
+- Vad de vill bli bättre på: "${c.hiddenValue || 'ej angiven'}"
+- Deras unika avtryck i Sektionen: "${c.gap || 'ej angiven'}"`;
+
+  const coachRules = `
+Regler som alltid gäller:
+- Öppna aldrig med beröm, instämmande eller "bra fråga"
+- Inga klichéer. Inga motivationsfraser. Konkret språk alltid
+- Kort och precist — håll dig under 4 meningar om inget annat krävs
+- Läs mellan raderna — vad säger personen egentligen, inte bara vad de skriver
+- Visa konkret gap mellan nuläge och nästa nivå när det är relevant
+- Var ärlig när något inte fungerar — du är inte en cheerleader
+- Om meddelandet är otvetydigt tvetydigt: ställ en enda precis fråga, aldrig fler
+- Svara alltid på svenska`;
+
+  /* ── responseProfile context ── */
+  const profile = c.responseProfile;
+  const profileContext = profile ? `
+Kommunikationsprofil:
+- Register: ${profile.register}
+- Ton: ${profile.tone}
+- Komplexitet: ${profile.languageComplexity}
+- Metaforisk: ${profile.metaphorical}
+- Pronomen: ${profile.pronounDominance}
+- Dominerande tema: ${profile.dominantTheme}
+- Frånvarande dimensioner: ${(profile.silences||[]).join(', ')||'–'}
+- Engagemang: ${profile.engagement}
+
+Kalibrera ton och djup efter profilen. Spegla personens språk utan att imitera.
+Om metaphorical är true — använd bilder naturligt.
+Om languageComplexity är simple — håll dig konkret och kort.
+Om pronounDominance är vi — koppla alltid till bandet.` : '';
 
   /* ── temporalBehavior context ── */
-  const temporal = S.chars[S.me]?.temporalBehavior;
-  const temporalContext = temporal ? `\n\nTemporalt beteendemönster: ${temporal.pattern}. Snitturgency: ${temporal.avgUrgency?.toFixed(2)}. ${temporal.anomaly ? 'Avvikelse detekterad — uppmärksamma om detta är ett nytt mönster.' : ''}` : '';
+  const temporal = c.temporalBehavior;
+  const temporalContext = temporal ? `
+Temporalt mönster: ${temporal.pattern}
+Urgency: ${temporal.currentUrgency}
+Avviker från mönster: ${temporal.anomaly}
+
+Om urgency > 0.7: stödjande och avdramatiserande, aldrig pådrivande.
+Om urgency 0.3–0.7: fokuserad och konkret, inga sidospår.
+Om urgency < 0.3: utforskande och öppen.
+Om anomaly är true: något har förändrats — möt med nyfikenhet.` : '';
 
   /* ── quest insights context ── */
   const insights = (S.quests || [])
-    .filter(q => q.owner === S.me && q.insight)
+    .filter(q => q.owner === memberKey && q.insight)
     .slice(-5)
     .map(q => `"${q.title}": ${q.insight}`)
     .join('\n');
-  const insightContext = insights ? `\n\nSenaste reflektioner från ${S.me}:\n${insights}\n\nAnvänd dessa som ingångspunkter i coaching — referera till dem naturligt, aldrig mekaniskt.` : '';
+  const insightContext = insights ? `
+Senaste reflektioner:
+${insights}
+Använd som ingångspunkter — aldrig mekaniskt.` : '';
 
-  const recentReflections = S.quests
-    .filter(q => q.owner === S.me && q.done && q.lastReflection)
-    .slice(-5)
-    .map(q => `"${q.title}": ${q.lastReflection}`)
-    .join('\n');
-
-  const recentCompleted = S.quests
-    .filter(q => q.owner === S.me && q.done)
-    .slice(-5)
-    .map(q => q.title)
-    .join(', ');
-
-  const prevCoaching = (c.coachLog || [])
-    .slice(-3)
-    .map(e => `Vecka ${e.week}: "${e.text}"`)
-    .join('\n');
-
-  return `${personality}
-
-Du coachar ${m.name} i Sektionen. Operation POST II: ideell → professionell. Truminspelning juli 2026.
-
-Rollkalibrering:
-- Motivation: "${c.motivation || 'ej angiven'}"
-- Vad de gör med glädje i rollen: "${c.roleEnjoy || 'ej angiven'}"
-- Vad som kostar mer än det ger: "${c.roleDrain || 'ej angiven'}"
-- Dold insats ingen förväntar sig: "${c.hiddenValue || 'ej angiven'}"
-- Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
-${c.roleReaction ? `\nDe reagerade på sin rollbeskrivning med: "${c.roleReaction}"
-${c.roleReaction === 'no' ? 'VIKTIGT: Deras roll är annorlunda än systemet antog. Var försiktig med antaganden.' : ''}
-${c.roleReaction === 'partly' ? 'Deras roll är delvis som beskrivet — håll quests öppna och utforskande.' : ''}` : ''}
-
-Status: Level ${c.level || 1}, ${c.totalXp || 0} XP, ${c.streak || 0} dagars streak. Aktiv i: ${completedCats || 'ingen kategori ännu'}.
-${c.recalibration ? `\nUppdaterad självbild: "${c.recalibration}"` : ''}
-
-Vad de faktiskt gjort senast (completade quests):
-${recentCompleted || 'inga än'}
-
-Deras egna ord om vad de gjort (reflektioner):
-${recentReflections || 'inga reflektioner än'}
-
-VIKTIGT: Om reflektioner finns — utgå från dem, inte från onboarding-svaren.
-Vad de faktiskt gör väger tyngre än vad de trodde att de skulle göra.
-
-Vad du sagt tidigare:
-${prevCoaching || 'första gången'}
-VIKTIGT: Bygg vidare på tidigare insikter. Upprepa aldrig samma poäng.
-Om du sagt något om X — gå djupare eller byt riktning.
-
-Feedback på tidigare coaching:
-${c.coachFeedback?.positive || 0} positiva, ${c.coachFeedback?.negative || 0} negativa.
-${(c.coachFeedback?.negative || 0) > (c.coachFeedback?.positive || 0) ? 'Din ton eller riktning har inte landat — prova något annat.' : ''}
-
-Ge en personlig coaching-insikt, max 2 meningar på svenska. Utgå från rollkalibreringen — inte bara motivationen. Om något dränerar dem, adressera det direkt. Ibland utmanande, ibland stöttande, alltid konkret.
-
-VIKTIGT för Ludvig: tala aldrig om roller eller funktioner — tala alltid om vad som sker TACK VARE honom, vad han möjliggör, vad som är hans fingeravtryck på det bandet bygger.
-LEDARSKAPSSIGNAL: Om roleDrain är tomt eller kortare än 10 ord — var mer direktiv och konkret. Personen behöver riktning, inte frihet.
-Signera ALDRIG med namn — avsluta bara med insikten.${profileContext}${temporalContext}${insightContext}`;
+  return `${personality}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}`;
 }
 
 function buildGhostPrompt(m, c, daysSince) {
@@ -421,12 +407,10 @@ export async function generatePersonalQuests(refreshMode = false, rerender) {
  * Returnerar alltid en sträng — aldrig undefined.
  */
 export async function refreshCoach() {
-  const m = MEMBERS[S.me];
-  const c = S.chars[S.me];
-  if (!m || !c) return 'Laddar din profil...';
+  if (!S.me || !S.chars[S.me]) return 'Laddar din profil...';
 
   try {
-    return await callClaude(buildCoachPrompt(m, c), 150);
+    return await callClaude(buildCoachPrompt(S.me), 200);
   } catch {
     return 'Håll ut. Det du bygger nu syns inte ännu — men det spelar roll.';
   }
