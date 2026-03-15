@@ -4,7 +4,5 @@ import Index from './pages/Index'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <Index />
-  </React.StrictMode>
+  <Index />
 )
