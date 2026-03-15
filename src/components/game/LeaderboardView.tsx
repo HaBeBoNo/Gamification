@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { Trophy, Flame, Zap, Check } from 'lucide-react';
@@ -6,6 +6,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import ActivityHeatmap from './ActivityHeatmap';
 import MemberStatusDot from './MemberStatusDot';
+import { supabase } from '@/lib/supabase';
 
 type SortKey = 'xp' | 'week' | 'streak';
 
@@ -64,6 +65,30 @@ const SORT_PILLS: { key: SortKey; label: string }[] = [
 export default function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0);
+  const rerender = () => forceUpdate(n => n + 1);
+
+  // Realtime — uppdatera leaderboard när annan member sparar sin data
+  useEffect(() => {
+    const channel = supabase
+      .channel('member_data_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'member_data' },
+        (payload) => {
+          const remote = (payload.new as any);
+          if (remote?.data?.chars && remote?.member_key !== S.me) {
+            Object.assign(S.chars, remote.data.chars);
+            rerender();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const rows: MemberRow[] = useMemo(() => {
     return Object.entries(S.chars)

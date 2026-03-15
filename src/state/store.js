@@ -1,5 +1,10 @@
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { BASE_QUESTS } from '../data/quests';
+import { syncToSupabase } from '../hooks/useSupabaseSync';
+
+function supabaseSync(memberKey) {
+  syncToSupabase(memberKey).catch(() => {});
+}
 
 export const SEASON_START_DATE = new Date('2026-03-01T00:00:00');
 
@@ -46,8 +51,17 @@ export const S = {
 
 export function save() {
   localStorage.setItem('sek-v6', JSON.stringify({
-    me:S.me, onboarded:S.onboarded, chars:S.chars, quests:S.quests,
-    metrics:S.metrics, prev:S.prev, feed:S.feed, weekNum:S.weekNum,
-    operationName:S.operationName, weeklyCheckouts:S.weeklyCheckouts
+    me: S.me,
+    onboarded: S.onboarded,
+    chars: S.chars,
+    quests: S.quests,
+    feed: S.feed,
+    operationName: S.operationName,
+    weeklyCheckouts: S.weeklyCheckouts,
   }));
+
+  // Sync till Supabase om inloggad
+  if (S.me) {
+    supabaseSync(S.me);
+  }
 }
