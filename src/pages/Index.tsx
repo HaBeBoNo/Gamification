@@ -156,7 +156,8 @@ export default function Index() {
     );
   }
 
-  if (!user) {
+  // Om ej inloggad via Supabase men har lokal data — tillåt ändå
+  if (!user && !S.me) {
     return <AuthScreen />;
   }
 

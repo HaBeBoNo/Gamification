@@ -8,13 +8,19 @@ export function useAuth() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    // Om supabase inte är konfigurerat — skippa auth
+    // Timeout — om auth tar mer än 3 sek, fortsätt ändå
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
     if (!supabase) {
+      clearTimeout(timeout);
       setLoading(false);
       return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchMemberKey(session.user.id);
@@ -25,6 +31,7 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(timeout);
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchMemberKey(session.user.id);
@@ -35,7 +42,10 @@ export function useAuth() {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function fetchMemberKey(userId: string) {
