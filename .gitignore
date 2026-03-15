@@ -5,3 +5,4 @@ dist
 .env.*.local
 FETCH_HEAD
 .claude/
+.vercel

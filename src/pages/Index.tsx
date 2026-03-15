@@ -5,6 +5,7 @@ import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Ac
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
+import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
 import QuestGrid from '@/components/game/QuestGrid';
@@ -27,6 +28,8 @@ import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
 import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
+import { useAuth } from '@/hooks/useAuth';
+import { syncFromSupabase, syncToSupabase } from '@/hooks/useSupabaseSync';
 
 import LevelUpOverlay from '@/components/game/overlays/LevelUpOverlay';
 import RewardOverlay from '@/components/game/overlays/RewardOverlay';
@@ -71,8 +74,18 @@ export default function Index() {
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
 
+  const { user, memberKey, loading: authLoading, createProfile } = useAuth();
+  const [pickerMember, setPickerMember] = useState('');
+  const [pickerLoading, setPickerLoading] = useState(false);
+
+  // Sync från Supabase när member-koppling är känd
+  useEffect(() => {
+    if (!memberKey || !user) return;
+    syncFromSupabase(memberKey).then(() => rerender());
+  }, [memberKey, user?.id]);
+
   const isAdmin = S.me === 'hannes';
-  const isCurl = S.me === 'carl';
+  const isCurl  = S.me === 'carl';
 
   // Track unread notifications for dot on ••• icon
   useEffect(() => {
@@ -128,6 +141,85 @@ export default function Index() {
       node.removeEventListener('touchcancel', cancel);
     };
   }, [isAdmin]);
+
+  // ── Auth gates ──────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', background: 'var(--color-bg)',
+        color: 'var(--color-text-muted)', fontSize: 13,
+        fontFamily: 'var(--font-ui)', letterSpacing: '0.08em',
+      }}>
+        ...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  if (!memberKey) {
+    const memberList = Object.keys(MEMBERS);
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', padding: '32px 24px',
+        background: 'var(--color-bg)',
+      }}>
+        <div style={{ fontSize: 13, letterSpacing: '0.15em', color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)', marginBottom: 8 }}>
+          SEKTIONEN
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+          HEADQUARTERS
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 32 }}>
+          Välj din member för att fortsätta
+        </div>
+        <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {memberList.map(mk => (
+            <button
+              key={mk}
+              onClick={() => setPickerMember(mk)}
+              style={{
+                width: '100%', padding: '12px 16px', textAlign: 'left',
+                background: pickerMember === mk ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: pickerMember === mk ? '#fff' : 'var(--color-text)',
+                border: `1px solid ${pickerMember === mk ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                borderRadius: 'var(--radius-sm)', fontSize: 15,
+                fontFamily: 'var(--font-body)', cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {MEMBERS[mk]?.name || mk}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={async () => {
+            if (!pickerMember || pickerLoading) return;
+            setPickerLoading(true);
+            await createProfile(user.id, pickerMember);
+            setPickerLoading(false);
+          }}
+          disabled={!pickerMember || pickerLoading}
+          style={{
+            width: '100%', maxWidth: 320,
+            background: pickerMember && !pickerLoading ? 'var(--color-primary)' : 'var(--color-border)',
+            color: pickerMember && !pickerLoading ? '#fff' : 'var(--color-text-muted)',
+            border: 'none', borderRadius: 'var(--radius-pill)',
+            padding: '14px', fontSize: 13,
+            fontFamily: 'var(--font-ui)', letterSpacing: '0.08em',
+            cursor: pickerMember && !pickerLoading ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {pickerLoading ? 'SPARAR...' : 'FORTSÄTT'}
+        </button>
+      </div>
+    );
+  }
 
   const shouldOnboard = !S.me || !S.onboarded;
   if (shouldOnboard) {
