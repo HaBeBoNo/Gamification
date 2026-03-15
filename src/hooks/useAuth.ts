@@ -8,7 +8,12 @@ export function useAuth() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    // Hämta initial session
+    // Om supabase inte är konfigurerat — skippa auth
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -18,7 +23,6 @@ export function useAuth() {
       }
     });
 
-    // Lyssna på auth-ändringar (magic link callback, signout, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null);
@@ -35,6 +39,7 @@ export function useAuth() {
   }, []);
 
   async function fetchMemberKey(userId: string) {
+    if (!supabase) return;
     const { data } = await supabase
       .from('profiles')
       .select('member_key')
@@ -47,6 +52,7 @@ export function useAuth() {
 
   /** Skapa profil för ny användare — anropas när member väljer sin roll */
   async function createProfile(userId: string, mk: string) {
+    if (!supabase) return;
     const { error } = await supabase.from('profiles').insert({
       id: userId,
       member_key: mk,

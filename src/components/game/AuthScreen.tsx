@@ -27,6 +27,20 @@ export default function AuthScreen() {
     setLoading(false);
   }
 
+  // Om supabase inte är konfigurerat — visa felmeddelande
+  if (!supabase) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', background: 'var(--color-bg)',
+        color: 'var(--color-text-muted)', fontSize: 13, textAlign: 'center',
+        padding: 24,
+      }}>
+        Konfigurationsfel — kontakta Hannes.
+      </div>
+    );
+  }
+
   if (sent) {
     return (
       <div style={{
