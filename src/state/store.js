@@ -15,7 +15,7 @@ export function calcWeekNum() {
   return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
-export function xpForLevel(n) { return n*n*50+n*50; }
+// xpForLevel borttagen härifrån — auktoritativ version finns i useXP.js
 export function rand(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
 export function now() { return new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'}); }
 
@@ -56,6 +56,9 @@ export function save() {
     chars: S.chars,
     quests: S.quests,
     feed: S.feed,
+    metrics: S.metrics,
+    prev: S.prev,
+    checkIns: S.checkIns,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
   }));

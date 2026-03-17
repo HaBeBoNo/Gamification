@@ -1,9 +1,10 @@
 import { S, save } from '../state/store';
+import { awardXP } from './useXP';
 
 /**
  * checkIn — registrerar närvaro på ett kalenderevent.
- * Skapar retroaktivt sidequest (40 XP), uppdaterar activity feed
- * och sparar check-in i S.checkIns.
+ * Skapar retroaktivt sidequest och tilldelar XP via awardXP
+ * (som hanterar level-up, streak, stats etc).
  *
  * @param {string} eventId    - Google Calendar event id
  * @param {string} eventTitle - Evenemangets titel
@@ -28,39 +29,26 @@ export function checkIn(eventId, eventTitle, rerender) {
     ts: Date.now(),
   });
 
-  // Retroaktivt sidequest med XP
-  const xp = 40;
-  const ts = new Date().toLocaleTimeString('sv-SE', {
-    hour: '2-digit', minute: '2-digit',
-  });
-
-  S.quests.push({
+  // Retroaktivt sidequest
+  const quest = {
     id: Date.now() + 1,
     owner: S.me,
     title: `Närvaro: ${eventTitle}`,
     desc: `Checkade in på ${eventTitle}.`,
     cat: 'health',
-    xp,
+    xp: 40,
     recur: 'none',
     type: 'standard',
     region: '🇸🇪 Sverige',
-    done: true,
+    done: false,
     completedAt: Date.now(),
     retroactive: true,
-  });
+  };
 
-  // XP till member
-  S.chars[S.me].xp = (S.chars[S.me].xp || 0) + xp;
-  S.chars[S.me].totalXp = (S.chars[S.me].totalXp || 0) + xp;
+  S.quests.push(quest);
 
-  // Activity feed
-  S.feed.unshift({
-    who: S.me,
-    action: `checkade in på ${eventTitle} 📍`,
-    xp,
-    time: ts,
-  });
+  // Tilldela XP via awardXP — hanterar level-up, streak, stats, feed
+  awardXP(quest, 40, null, rerender);
 
   save();
-  rerender?.();
 }

@@ -8,6 +8,9 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     chars: S.chars,
     quests: S.quests,
     feed: S.feed.slice(0, 50), // max 50 feed-items
+    metrics: S.metrics,
+    prev: S.prev,
+    checkIns: S.checkIns,
     onboarded: S.onboarded,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
@@ -56,6 +59,9 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
     chars: S.chars,
     quests: S.quests,
     feed: S.feed,
+    metrics: S.metrics,
+    prev: S.prev,
+    checkIns: S.checkIns,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
   }));

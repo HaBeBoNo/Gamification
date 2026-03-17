@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '@/data/members';
-import { getRoleHidden, HIDDEN_BY_TYPE } from '@/data/quests';
+import { getRoleHidden, HIDDEN_BANK } from '@/data/quests';
 import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
