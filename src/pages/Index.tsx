@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { CheckSquare, GitBranch, Trophy, MoreHorizontal, MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Globe, Settings } from 'lucide-react';
+import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -40,15 +40,6 @@ import XPOverlay from '@/components/game/overlays/XPOverlay';
 
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
-
-const PRIMARY_TABS = [
-  { id: 'quests', icon: CheckSquare },
-  { id: 'skilltree', icon: GitBranch },
-  { id: 'leaderboard', icon: Trophy },
-  { id: 'bandhub', icon: Globe },
-  { id: 'more', icon: MoreHorizontal },
-];
-
 
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
@@ -203,7 +194,7 @@ export default function Index() {
       );
       case 'home': return (
         <div>
-          <MetricsBar onMetricClick={() => setShowMetrics(true)} rerender={rerender} />
+          <MetricsBar onMetricClick={() => setShowMetrics(true)} />
           <AICoach rerender={rerender} />
         </div>
       );

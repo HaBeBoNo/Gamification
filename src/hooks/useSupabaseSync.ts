@@ -47,6 +47,9 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   if (remote.chars) Object.assign(S.chars, remote.chars);
   if (remote.quests) S.quests = remote.quests;
   if (remote.feed) S.feed = remote.feed;
+  if (remote.metrics) S.metrics = remote.metrics;
+  if (remote.prev) S.prev = remote.prev;
+  if (remote.checkIns) S.checkIns = remote.checkIns;
   if (remote.onboarded) S.onboarded = remote.onboarded;
   if (remote.operationName) S.operationName = remote.operationName;
   if (remote.weeklyCheckouts) S.weeklyCheckouts = remote.weeklyCheckouts;

@@ -40,7 +40,6 @@ function AnimatedNumber({ value, format }: { value: number; format: (v: number) 
 
 interface MetricsBarProps {
   onMetricClick?: () => void;
-  rerender: () => void;
 }
 
 export default function MetricsBar({ onMetricClick }: MetricsBarProps) {

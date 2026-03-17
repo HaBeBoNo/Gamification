@@ -132,12 +132,8 @@ export const MEMBERS = {
 
 };
 
-// Alias used by Leaderboard and Scoreboard — same shape as ROLE_TYPES
-export const ROLE_TYPE_LABEL = {
-  amplifier: { label: 'Amplifier', color: 'rgba(200,100,50,0.8)' },
-  enabler:   { label: 'Enabler',   color: 'rgba(64,128,224,0.8)' },
-  builder:   { label: 'Builder',   color: 'rgba(64,192,80,0.8)'  },
-};
+// ── Typ-definition för TypeScript-annotations ────────────────────
+/** @typedef {{ name: string, role: string, emoji: string, color: string, xpColor: string, roleType: string }} Member */
 
 // ── Hjälpfunktioner ──────────────────────────────────────────────
 
@@ -149,24 +145,42 @@ export function getMember(id) {
   return MEMBERS[id] || null;
 }
 
-// Rolltyp-metadata för UI och logik
+// Rolltyp-metadata för UI, logik och XP-skalning
+// xpScaling: multiplikator på base XP vid quest completion
+// workMult:  multiplikator på arbetspoäng för scoreboard
 export const ROLE_TYPES = {
   amplifier: {
     label: 'Amplifier',
     color: 'rgba(200,100,50,0.2)',
     border: 'rgba(200,100,50,0.4)',
+    labelColor: 'rgba(200,100,50,0.8)',
     desc: 'Skapar räckvidd och energi utåt',
+    xpScaling: 1.0,
+    workMult: 1.0,
   },
   enabler: {
     label: 'Enabler',
     color: 'rgba(64,128,224,0.2)',
     border: 'rgba(64,128,224,0.4)',
+    labelColor: 'rgba(64,128,224,0.8)',
     desc: 'Möjliggör för andra — osynligt arbete med hög systemvikt',
+    xpScaling: 1.15,
+    workMult: 1.2,
   },
   builder: {
     label: 'Builder',
     color: 'rgba(64,192,80,0.2)',
     border: 'rgba(64,192,80,0.4)',
+    labelColor: 'rgba(64,192,80,0.8)',
     desc: 'Bygger struktur och riktning på lång sikt',
+    xpScaling: 1.1,
+    workMult: 1.1,
   },
+};
+
+// Alias — konsoliderat från ROLE_TYPES för bakåtkompatibilitet
+export const ROLE_TYPE_LABEL = {
+  amplifier: { label: ROLE_TYPES.amplifier.label, color: ROLE_TYPES.amplifier.labelColor },
+  enabler:   { label: ROLE_TYPES.enabler.label,   color: ROLE_TYPES.enabler.labelColor },
+  builder:   { label: ROLE_TYPES.builder.label,    color: ROLE_TYPES.builder.labelColor },
 };
