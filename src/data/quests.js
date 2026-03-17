@@ -538,6 +538,95 @@ export const BASE_QUESTS = [
   { id:904, owner:'carl',     title:'Lyssna på ett album du inte känner',   desc:'Välj något utanför din komfortzon. Lyssna färdigt. Notera en känsla.',                          cat:'wisdom', xp:25, region:'🌐 Personal', recur:'weekly', type:'creative' },
   { id:905, owner:'niklas',   title:'Testlyssna i hörlurar — hela albumet', desc:'Album II från början till slut i dina bästa hörlurar. Du hör saker ingen annan hör.',          cat:'tech',   xp:30, region:'🌐 Personal', recur:'weekly', type:'creative' },
 
+  // ── Säsong 1 startuppdrag ──────────────────────────────────────
+  {
+    id: 921, owner: 'hannes', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 922, owner: 'hannes', title: 'Publicera ett inlägg på bandkontot.',
+    desc: 'Ett inlägg på Sektionens Instagram eller X. Äkthet före perfektion.',
+    cat: 'social', xp: 40, recur: 'none', type: 'standard', region: '🌐 Global', done: false, personal: false,
+  },
+
+  {
+    id: 923, owner: 'martin', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 924, owner: 'martin', title: 'Definiera vad du vill påverka härnäst.',
+    desc: 'Ett spår, en idé, en riktning. Vad är nästa sak du vill sätta ditt ljud på?',
+    cat: 'creative', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+
+  {
+    id: 925, owner: 'ludvig', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 926, owner: 'ludvig', title: 'Ta kontakt med en member du inte pratat med på ett tag.',
+    desc: 'Ett samtal, ett meddelande, en check-in. Håll dialogen levande.',
+    cat: 'social', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
+  {
+    id: 927, owner: 'johannes', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 928, owner: 'johannes', title: 'Kartlägg tre spelplatser i regionen som passar Sektionens sound.',
+    desc: 'Hitta tre möjliga venues — stora som små. Namn, kontakt, känsla. Underlag för Simon att följa upp.',
+    cat: 'wisdom', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
+  {
+    id: 929, owner: 'simon', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 930, owner: 'simon', title: 'Identifiera en konkret aktör att kontakta.',
+    desc: 'Lokal, regional eller nationell. Arrangör, festival, förening eller kulturinstitution. Ett namn, en kontakt.',
+    cat: 'social', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
+  {
+    id: 931, owner: 'nisse', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 932, owner: 'nisse', title: 'Submitta till en spellista eller mediakontakt den här veckan.',
+    desc: 'En submission via Groover, SubmitHub eller direkt kontakt. Håll rörelsen igång.',
+    cat: 'social', xp: 40, recur: 'none', type: 'standard', region: '🌐 Global', done: false, personal: false,
+  },
+
+  {
+    id: 933, owner: 'niklas', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 934, owner: 'niklas', title: 'Gör en teknisk genomgång av något i bandets utrustning.',
+    desc: 'Välj något — ett instrument, ett system, en kabel. Kolla läget. Notera vad som behöver åtgärdas.',
+    cat: 'health', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
+  {
+    id: 935, owner: 'carl', title: 'Vad är det första du vill sätta din prägel på under våren?',
+    desc: 'Skriv ner en konkret ambition för våren. Den behöver inte vara stor — den behöver vara din.',
+    cat: 'wisdom', xp: 50, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: true,
+  },
+  {
+    id: 936, owner: 'carl', title: 'Identifiera en organisation, stiftelse eller fond som skulle kunna stödja Sektionen.',
+    desc: 'Det kan vara kommunalt, regionalt, nationellt eller privat. Ett namn, ett syfte, en möjlig koppling till Sektionen.',
+    cat: 'wisdom', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
 ];
 
 // ── Hidden quest pools per rolltyp ────────────────────────────────

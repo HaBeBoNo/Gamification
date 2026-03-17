@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { S, save, defChar } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { generatePersonalQuests } from '@/hooks/useAI';
+import { generatePersonalQuests, WELCOME_MESSAGES } from '@/hooks/useAI';
 import { buildResponseProfile } from '../../hooks/useResponseProfile';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -321,6 +321,20 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
                     </div>
                   ))}
                 </div>
+
+                {selectedMember && (
+                  <div style={{
+                    marginTop: 20,
+                    fontSize: 13,
+                    color: 'var(--color-text-muted)',
+                    textAlign: 'center',
+                    fontFamily: 'var(--font-ui)',
+                    letterSpacing: '0.05em',
+                    lineHeight: 1.6,
+                  }}>
+                    {(WELCOME_MESSAGES as Record<string, string>)[selectedMember]}
+                  </div>
+                )}
               </>
             )}
 
