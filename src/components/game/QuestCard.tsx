@@ -4,11 +4,11 @@ import { MEMBERS } from '@/data/members';
 import { getRoleHidden } from '@/data/quests';
 import { awardXP, calcQuestXP } from '@/hooks/useXP';
 import { aiValidate } from '@/hooks/useAI';
-import { Check, X, Zap, Paperclip, Trash2 } from 'lucide-react';
+import { Check, X, Zap, Paperclip } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
-import QuestDeleteModal from './QuestDeleteModal';
+import QuestDetailModal from './QuestDetailModal';
 
 const CAT_DOT: Record<string, string> = {
   daily: 'cat-daily', personal: 'cat-personal', strategic: 'cat-strategic',
@@ -43,7 +43,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const [showDeleg, setShowDeleg] = useState(false);
   const [completingQuest, setCompletingQuest] = useState<any>(null);
   const [lastXP, setLastXP] = useState(0);
-  const [deletingQuest, setDeletingQuest] = useState<any>(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   const me = S.me;
   const isDone = quest.done;
@@ -96,6 +96,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 60, transition: { duration: 0.25 } }}
+        onClick={() => !isDone && !menuOpen && setShowDetail(true)}
+        style={{ cursor: isDone ? 'default' : 'pointer' }}
       >
         {isDone && <div className="done-stamp"><Check size={20} strokeWidth={3} /></div>}
 
@@ -170,21 +172,13 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           </div>
         )}
 
-        {!isDone && (!needsAI || verdict?.approved) && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <button className="complete-btn" style={{ flex: 1 }} onClick={handleComplete}>SLUTFÖR</button>
-            <button
-              onClick={e => { e.stopPropagation(); setDeletingQuest(quest); }}
-              style={{
-                background: 'none', border: 'none',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer', padding: 4,
-                touchAction: 'manipulation',
-              }}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
+        {!isDone && needsAI && verdict?.approved && (
+          <button
+            className="complete-btn"
+            onClick={e => { e.stopPropagation(); handleComplete(); }}
+          >
+            SLUTFÖR
+          </button>
         )}
       </motion.div>
 
@@ -201,10 +195,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         />
       )}
 
-      {deletingQuest && (
-        <QuestDeleteModal
-          quest={deletingQuest}
-          onClose={() => setDeletingQuest(null)}
+      {showDetail && !isDone && (
+        <QuestDetailModal
+          quest={quest}
+          onClose={() => setShowDetail(false)}
+          onComplete={() => { setShowDetail(false); handleComplete(); }}
           rerender={rerender}
         />
       )}

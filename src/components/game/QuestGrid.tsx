@@ -60,7 +60,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       const personalActive = quests
         .filter((q: any) => (q.owner === me || q.personal) && !q.done)
         .sort((a: any, b: any) => (b.id || 0) - (a.id || 0))
-        .slice(0, 7);
+        .slice(0, 5); // max 5 aktiva
       const personalDone = quests.filter((q: any) => (q.owner === me || q.personal) && q.done);
       return [...personalActive, ...personalDone];
     }
