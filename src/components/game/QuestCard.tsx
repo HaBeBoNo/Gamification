@@ -28,6 +28,7 @@ const CAT_LABEL: Record<string, string> = {
 };
 
 interface QuestCardProps {
+  key?: React.Key;
   quest: any;
   rerender: () => void;
   showLU?: (level: number) => void;
@@ -60,7 +61,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     showXP?.(xpEarned);
 
-    awardXP(quest, xpEarned, null, rerender,
+    awardXP(quest, xpEarned, null,
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
@@ -74,11 +75,10 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   function handleAIValidate() {
     if (!aiDesc.trim() || !me) return;
     setThinking(true);
-    aiValidate(quest, aiDesc, null, () => {
+    aiValidate(quest, aiDesc, null).then(() => {
       setThinking(false);
       const idx = S.quests.findIndex((q: any) => q.id === quest.id);
       if (idx >= 0) setVerdict(S.quests[idx].aiVerdict);
-      rerender();
     });
   }
 

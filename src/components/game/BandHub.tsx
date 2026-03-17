@@ -5,7 +5,7 @@
  * Fetches live data from Google APIs; falls back to placeholder data on error.
  */
 
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import {
   FolderOpen, Calendar, FileText, Table2, Upload,
@@ -37,13 +37,14 @@ import {
 import GoogleConnectButton from './GoogleConnectButton';
 
 /* ── Error boundary to prevent OAuth errors from crashing parent app ── */
-class BandHubErrorBoundary extends Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: string }
-> {
-  constructor(props: { children: React.ReactNode }) {
+interface ErrorBoundaryProps { children: React.ReactNode }
+interface ErrorBoundaryState { hasError: boolean; error: string }
+
+class BandHubErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  state: ErrorBoundaryState = { hasError: false, error: '' };
+  constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: '' };
   }
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error.message };
@@ -577,7 +578,7 @@ function BandHubInner() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => checkIn(ev.id, ev.summary, forceUpdate)}
+                            onClick={() => checkIn(ev.id, ev.summary)}
                             style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               gap: 6, width: '100%', padding: '8px 0',

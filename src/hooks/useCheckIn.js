@@ -8,9 +8,8 @@ import { awardXP } from './useXP';
  *
  * @param {string} eventId    - Google Calendar event id
  * @param {string} eventTitle - Evenemangets titel
- * @param {Function} [rerender] - Frivillig callback för att tvinga re-render
  */
-export function checkIn(eventId, eventTitle, rerender) {
+export function checkIn(eventId, eventTitle) {
   // Lazy-init: om store.js ännu inte har checkIns-arrayen
   if (!S.checkIns) S.checkIns = [];
 
@@ -48,7 +47,7 @@ export function checkIn(eventId, eventTitle, rerender) {
   S.quests.push(quest);
 
   // Tilldela XP via awardXP — hanterar level-up, streak, stats, feed
-  awardXP(quest, 40, null, rerender);
+  awardXP(quest, 40, null);
 
   save();
 }

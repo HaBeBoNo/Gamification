@@ -22,7 +22,7 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
   });
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
-  const pressTimer = useRef<ReturnType<typeof setTimeout>>();
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const coachName = S.chars[S.me]?.coachName ||
     ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',

@@ -5,6 +5,7 @@ import { GripVertical } from 'lucide-react';
 import QuestCard from './QuestCard';
 
 interface SortableQuestCardProps {
+  key?: React.Key;
   quest: any;
   rerender: () => void;
   showLU: (level: number) => void;

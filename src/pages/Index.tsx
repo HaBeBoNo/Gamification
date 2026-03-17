@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { S } from '@/state/store';
+import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,8 +45,9 @@ const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
 
 export default function Index() {
-  const [tick, setTick] = useState(0);
-  const rerender = () => setTick(t => t + 1);
+  // Zustand-driven reactivity: alla save()/notify() triggar re-render
+  useGameStore(s => s.tick);
+  const rerender = notify;
 
   const [activeTab, setActiveTab] = useState('quests');
   const [mobileTab, setMobileTab] = useState('quests');

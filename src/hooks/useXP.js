@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
 // useXP.js — XP-logik för Sektionen Gamification
-// Mönster: direkt mutation av S + save() + rerender()
-// Exporterar: calcQuestXP, awardXP
+// Mönster: direkt mutation av S + save() → notify() via Zustand
+// Exporterar: calcQuestXP, awardXP, awardMetricPts
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save } from '../state/store';
+import { S, save, notify } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 
 // ── Interna hjälpfunktioner ──────────────────────────────────────
@@ -55,18 +55,17 @@ export function calcQuestXP(memberId, baseXp) {
 }
 
 /**
- * awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop, rollReward)
+ * awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward)
  *
  * q           Quest-objekt (id, xp, cat, recur, region, title)
  * xpEarned    Basalt XP — kan vara reducerat av AI-validering
  * event       MouseEvent för XP-pop-position (kan vara null)
- * rerender    () => void  — anropas efter mutation för att uppdatera UI
  * showLU      (level) => void  — level-up overlay (valfri)
  * showRW      (reward) => void — reward overlay (valfri)
  * showXPPop   (xp, event) => void — floating XP-text (valfri)
  * rollReward  (xp) => reward | null — slumpar belöning (valfri)
  */
-export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop, rollReward) {
+export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward) {
   const c = S.chars[S.me];
   const m = MEMBERS[S.me];
   if (!c || !m) return;
@@ -178,10 +177,9 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
   if (leveled) S.feed.push({ who: S.me, action: `leveled up to Level ${c.level}!`, xp: 0, time: ts });
   if (S.feed.length > 50) S.feed.splice(0, S.feed.length - 50);
 
-  // 10. Commit — skriv tillbaka och spara
+  // 10. Commit — skriv tillbaka och spara (save() triggar notify() → Zustand re-render)
   S.chars[S.me] = c;
   save();
-  rerender?.();
 
   // 11. UI-effekter (efter render)
   showXPPop?.(totalXP, event);
@@ -194,7 +192,7 @@ export function awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop,
 
   // 12. Recurring quest: re-render efter animation
   if (q.recur !== 'none') {
-    setTimeout(() => rerender?.(), 2200);
+    setTimeout(() => notify(), 2200);
   }
 
   return { totalXP, leveled, level: c.level };

@@ -48,12 +48,11 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
 
     showXP?.(xpEarned);
 
-    awardXP(quest, xpEarned, null, rerender,
+    awardXP(quest, xpEarned, null,
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
     save();
-    rerender();
 
     setTimeout(() => onClose(), 600);
   }

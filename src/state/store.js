@@ -1,10 +1,46 @@
+// ═══════════════════════════════════════════════════════════════
+// store.js — Sektionen Gamification · Zustand-backed state
+//
+// Migrationsstrategi:
+//   S är fortfarande det globala mutable state-objektet.
+//   Zustand-storen håller en tick-counter som triggar reaktivitet.
+//   save() persisterar till localStorage OCH notifierar Zustand.
+//   notify() triggar re-render utan att spara (för mellansteg).
+//
+//   Komponenter prenumererar via:
+//     import { useGameStore } from '@/state/store';
+//     useGameStore(s => s.tick);  // re-renderar vid varje save()/notify()
+//
+//   Befintlig kod som muterar S direkt fungerar som förut.
+//   Framtida migration: flytta fält in i Zustand-storen,
+//   lägg till typed selectors, ta bort S.
+// ═══════════════════════════════════════════════════════════════
+
+import { create } from 'zustand';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
 
+// ── Zustand store ────────────────────────────────────────────────
+
+export const useGameStore = create(() => ({ tick: 0 }));
+
+/**
+ * notify() — triggar re-render i alla Zustand-prenumeranter.
+ * Anropas av save() automatiskt, men kan även anropas direkt
+ * för icke-persisterade state-ändringar (t.ex. aiThinking).
+ */
+export function notify() {
+  useGameStore.setState(prev => ({ tick: prev.tick + 1 }));
+}
+
+// ── Supabase sync ────────────────────────────────────────────────
+
 function supabaseSync(memberKey) {
   syncToSupabase(memberKey).catch(() => {});
 }
+
+// ── Hjälpfunktioner ──────────────────────────────────────────────
 
 export const SEASON_START_DATE = new Date('2026-03-01T00:00:00');
 
@@ -15,7 +51,6 @@ export function calcWeekNum() {
   return Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1;
 }
 
-// xpForLevel borttagen härifrån — auktoritativ version finns i useXP.js
 export function rand(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
 export function now() { return new Date().toLocaleTimeString('sv-SE',{hour:'2-digit',minute:'2-digit'}); }
 
@@ -29,6 +64,8 @@ export function defChar(id) {
     pts:{work:0,spotify:0,social:0,bonus:0}, form:[],
   };
 }
+
+// ── State-initiering från localStorage ───────────────────────────
 
 const RAW = (() => { try { return JSON.parse(localStorage.getItem('sek-v6')||'null'); } catch(e) { return null; } })();
 
@@ -49,6 +86,8 @@ export const S = {
   weeklyCheckouts: RAW?.weeklyCheckouts || {},
 };
 
+// ── Persist + notify ─────────────────────────────────────────────
+
 export function save() {
   localStorage.setItem('sek-v6', JSON.stringify({
     me: S.me,
@@ -62,6 +101,9 @@ export function save() {
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
   }));
+
+  // Trigga Zustand-reaktivitet
+  notify();
 
   // Sync till Supabase om inloggad
   if (S.me) {

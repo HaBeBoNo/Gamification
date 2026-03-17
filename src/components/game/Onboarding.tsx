@@ -114,7 +114,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     setError('');
     setGenMsg('Genererar personliga uppdrag...');
     try {
-      await generatePersonalQuests(false, () => {});
+      await generatePersonalQuests(false);
       save();
     } catch {
       setError('Kunde inte generera uppdrag — fortsätter utan AI.');

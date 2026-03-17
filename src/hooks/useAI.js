@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
 // useAI.js — Anthropic API-anrop för Sektionen Gamification
-// Mönster: direkt mutation av S + save() + rerender()
+// Mönster: direkt mutation av S + save() → notify() via Zustand
 // Exporterar: aiValidate, generatePersonalQuests,
 //             showSidequestNudge, refreshCoach, checkGhostQuest
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save } from '../state/store';
+import { S, save, notify } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { awardXP } from './useXP';
 
@@ -324,7 +324,7 @@ Svara EXAKT i JSON:
 // ── Exporterade funktioner ────────────────────────────────────────
 
 /**
- * aiValidate(q, desc, event, rerender, showLU, showRW, showXPPop, rollReward)
+ * aiValidate(q, desc, event, showLU, showRW, showXPPop, rollReward)
  *
  * Validerar ett quest-svar via AI, sätter q.aiVerdict direkt på quest-objektet,
  * och tilldelar XP proportionellt mot AI-score.
@@ -333,13 +333,12 @@ Svara EXAKT i JSON:
  * q           Quest-objekt
  * desc        Användarens text-svar
  * event       MouseEvent (för XP-pop-position, kan vara null)
- * rerender    () => void
  * showLU      (level) => void   — level-up overlay (valfri)
  * showRW      (reward) => void  — reward overlay (valfri)
  * showXPPop   (xp, event) => void (valfri)
  * rollReward  (xp) => reward | null (valfri)
  */
-export async function aiValidate(q, desc, event, rerender, showLU, showRW, showXPPop, rollReward) {
+export async function aiValidate(q, desc, event, showLU, showRW, showXPPop, rollReward) {
   const m = MEMBERS[S.me];
   const c = S.chars[S.me];
   if (!m || !c) return;
@@ -347,7 +346,7 @@ export async function aiValidate(q, desc, event, rerender, showLU, showRW, showX
   // Optimistisk UI: markera som "thinking"
   const questIdx = S.quests.findIndex(sq => sq.id === q.id);
   if (questIdx !== -1) S.quests[questIdx].aiThinking = true;
-  rerender?.();
+  notify();
 
   try {
     const txt      = await callClaude(buildValidatePrompt(m, c, q, desc), 150);
@@ -364,29 +363,29 @@ export async function aiValidate(q, desc, event, rerender, showLU, showRW, showX
       S.quests[questIdx].aiThinking = false;
       S.quests[questIdx].aiVerdict  = { text: `${feedback} — ${score}/100 → ${xpEarned} XP`, cls };
     }
-    rerender?.();
+    notify();
 
     if (verdict !== 'rejected' && xpEarned > 0) {
-      setTimeout(() => awardXP(q, xpEarned, event, rerender, showLU, showRW, showXPPop, rollReward), 1200);
+      setTimeout(() => awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward), 1200);
     }
   } catch {
     if (questIdx !== -1) {
       S.quests[questIdx].aiThinking = false;
       S.quests[questIdx].aiVerdict  = { text: 'AI ej tillgänglig — halvt XP tilldelat', cls: 'v-partial' };
     }
-    rerender?.();
-    setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, rerender, showLU, showRW, showXPPop, rollReward), 800);
+    notify();
+    setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, showLU, showRW, showXPPop, rollReward), 800);
   }
 }
 
 /**
- * generatePersonalQuests(refreshMode, rerender)
+ * generatePersonalQuests(refreshMode)
  *
  * Genererar 4 personliga AI-quests baserade på rollkalibrering.
- * Lägger direkt till i S.quests och anropar rerender.
+ * Lägger direkt till i S.quests och sparar (save() triggar notify()).
  * I refreshMode: tar bort gamla completade personal quests först.
  */
-export async function generatePersonalQuests(refreshMode = false, rerender) {
+export async function generatePersonalQuests(refreshMode = false) {
   const m = MEMBERS[S.me];
   const c = S.chars[S.me];
   if (!m || !c) return;
@@ -447,7 +446,6 @@ export async function generatePersonalQuests(refreshMode = false, rerender) {
   }
 
   save();
-  rerender?.();
 }
 
 /**
@@ -467,11 +465,11 @@ export async function refreshCoach() {
 }
 
 /**
- * checkGhostQuest(rerender)
+ * checkGhostQuest()
  * Kontrollerar om ghost quest ska triggas (7 dagars quest-inaktivitet).
  * Lägger till en ghost quest i S.quests om villkoren är uppfyllda.
  */
-export async function checkGhostQuest(rerender) {
+export async function checkGhostQuest() {
   const c = S.chars[S.me];
   const m = MEMBERS[S.me];
   if (!c || !m) return;
@@ -512,7 +510,6 @@ export async function checkGhostQuest(rerender) {
   });
 
   save();
-  rerender?.();
 }
 
 /**

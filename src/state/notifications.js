@@ -7,7 +7,7 @@ export function getUnreadCount() {
 
 export function subscribeNotifications(fn) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => { listeners.delete(fn); };
 }
 
 export function addNotification(notification) {

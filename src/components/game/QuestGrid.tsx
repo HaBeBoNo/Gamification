@@ -115,10 +115,8 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
   function handleRefreshPersonal() {
     if (!me) return;
     setRefreshing(true);
-    generatePersonalQuests(true, () => {
-      save();
+    generatePersonalQuests(true).then(() => {
       setRefreshing(false);
-      rerender();
     });
   }
 
@@ -149,7 +147,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     if (c?.needsQuestRefill) {
       c.needsQuestRefill = false;
       save();
-      generatePersonalQuests(false, () => { save(); rerender(); });
+      generatePersonalQuests(false);
     }
   }, [activePersonalCount]);
 
