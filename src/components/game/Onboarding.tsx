@@ -3,6 +3,7 @@ import { S, save, defChar } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { generatePersonalQuests, WELCOME_MESSAGES } from '@/hooks/useAI';
 import { buildResponseProfile } from '../../hooks/useResponseProfile';
+import { syncToSupabase, syncFromSupabase } from '@/hooks/useSupabaseSync';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
@@ -124,12 +125,15 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
 
   function triggerWelcome() {
     setShowWelcome(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       S.onboarded = true;
       if (selectedMember && S.chars[selectedMember]) {
         S.chars[selectedMember].onboarded = true;
       }
       save();
+      // Hämta eventuell befintlig data från Supabase, sedan pusha lokal data
+      try { await syncFromSupabase(selectedMember!); } catch {}
+      try { await syncToSupabase(selectedMember!); } catch {}
       rerender();
     }, 2400);
   }

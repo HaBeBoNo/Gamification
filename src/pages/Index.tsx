@@ -5,7 +5,6 @@ import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
-// import AuthScreen from '@/components/game/AuthScreen'; // Auth temporärt inaktiverat
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
 import QuestGrid from '@/components/game/QuestGrid';
@@ -28,8 +27,7 @@ import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
 import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
-// import { useAuth } from '@/hooks/useAuth'; // Auth temporärt inaktiverat — använder localStorage
-// import { syncFromSupabase } from '@/hooks/useSupabaseSync'; // Återaktivera med auth
+import { useSupabaseData } from '@/hooks/useAuth';
 
 import LevelUpOverlay from '@/components/game/overlays/LevelUpOverlay';
 import RewardOverlay from '@/components/game/overlays/RewardOverlay';
@@ -66,8 +64,8 @@ export default function Index() {
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
 
-  // Auth temporärt inaktiverat — använder localStorage
-  // const { user, memberKey, loading: authLoading, createProfile } = useAuth();
+  // Sync från Supabase när S.me är satt (vid varje app-start)
+  useSupabaseData(S.me);
 
   const isAdmin = S.me === 'hannes';
   const isCurl  = S.me === 'carl';

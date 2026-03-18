@@ -30,5 +30,11 @@
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/ping",
+      "schedule": "0 12 * * *"
+    }
+  ]
 }

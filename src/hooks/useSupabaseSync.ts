@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { S } from '@/state/store';
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
-  if (!memberKey) return;
+  if (!supabase || !memberKey) return;
 
   const data = {
     chars: S.chars,
@@ -32,7 +32,7 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
 }
 
 export async function syncFromSupabase(memberKey: string): Promise<void> {
-  if (!memberKey) return;
+  if (!supabase || !memberKey) return;
 
   const { data, error } = await supabase
     .from('member_data')

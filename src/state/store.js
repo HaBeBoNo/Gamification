@@ -84,6 +84,8 @@ export const S = {
   adminMode: false,
   operationName: RAW?.operationName || 'Operation POST II',
   weeklyCheckouts: RAW?.weeklyCheckouts || {},
+  seasonStart: RAW?.seasonStart || '2026-03-18',
+  seasonEnd: RAW?.seasonEnd || '2026-07-31',
 };
 
 // ── Persist + notify ─────────────────────────────────────────────
@@ -100,6 +102,8 @@ export function save() {
     checkIns: S.checkIns,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
+    seasonStart: S.seasonStart,
+    seasonEnd: S.seasonEnd,
   }));
 
   // Trigga Zustand-reaktivitet
