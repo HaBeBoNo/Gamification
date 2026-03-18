@@ -193,7 +193,12 @@ export default function TrophyRoom() {
         </div>
       </div>
 
-      <div className="tr-grid">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 12,
+        padding: '0 16px',
+      }}>
         {BADGES.map((badge, i) => {
           const isUnlocked = badge.check();
           return (

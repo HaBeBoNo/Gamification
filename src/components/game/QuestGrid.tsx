@@ -35,6 +35,7 @@ interface QuestGridProps {
   showSidequestNudge?: (quests: any[]) => void;
   showXP?: (amount: number) => void;
   onQuestTap?: (quest: any) => void;
+  onOpenCoach?: () => void;
 }
 
 function getWeekNumber(): number {
@@ -44,10 +45,11 @@ function getWeekNumber(): number {
   return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 }
 
-export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNudge, showXP }: QuestGridProps) {
+export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNudge, showXP, onOpenCoach }: QuestGridProps) {
   const [tab, setTab] = useState(S.tab || 'personal');
   const [filter, setFilter] = useState('alla');
   const [refreshing, setRefreshing] = useState(false);
+  const [coachMessage, setCoachMessage] = useState('');
 
   const me = S.me;
   const char = me ? S.chars[me] : null;
@@ -151,14 +153,105 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     }
   }, [activePersonalCount]);
 
+  // Coach-meddelande — hämtas en gång per dag, cachas i S.chars
+  useEffect(() => {
+    if (!me) return;
+    const cached = (S.chars[me] as any)?.dailyCoachMessage;
+    const cachedDate = (S.chars[me] as any)?.dailyCoachDate;
+    const today = new Date().toDateString();
+
+    if (cached && cachedDate === today) {
+      setCoachMessage(cached);
+      return;
+    }
+
+    const coachNameStr = (S.chars[me] as any)?.coachName || 'Coach';
+    const charData = S.chars[me] as any;
+    const promptText = [
+      `Du är ${coachNameStr}, personlig AI-coach för ${me} i bandet Sektionen.`,
+      charData?.motivation ? `Motivation: ${charData.motivation}` : '',
+      charData?.roleEnjoy ? `Trivs med: ${charData.roleEnjoy}` : '',
+      `Nivå ${charData?.level || 1}, ${charData?.totalXp || 0} XP totalt.`,
+    ].filter(Boolean).join('\n');
+
+    fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        messages: [{
+          role: 'user',
+          content: `${promptText}\n\nSkriv ett kort proaktivt meddelande (max 2 meningar) till ${me} för idag. Ingen hälsningsfras. Direkt in i sak.`,
+        }],
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const msg = data.content?.[0]?.text?.trim();
+        if (msg && me) {
+          (S.chars[me] as any).dailyCoachMessage = msg;
+          (S.chars[me] as any).dailyCoachDate = today;
+          save();
+          setCoachMessage(msg);
+        }
+      })
+      .catch(() => {});
+  }, [me]);
+
   const UPCOMING_EVENTS = [
     { date: '9 mar', name: 'Rep Lerum' },
     { date: '15 mar', name: 'Styrelsemöte' },
     { date: '22 mar', name: 'Studiosession' },
   ];
 
+  const coachName = (S.chars[me!] as any)?.coachName || 'Coach';
+
   return (
     <div className="quest-center">
+      {/* Coach card */}
+      {me && (
+        <div
+          onClick={() => onOpenCoach?.()}
+          style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-card)',
+            padding: '16px',
+            marginBottom: 16,
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            position: 'relative',
+          }}
+        >
+          <div style={{
+            fontSize: 11,
+            letterSpacing: '0.1em',
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-ui)',
+            marginBottom: 6,
+          }}>
+            {coachName.toUpperCase()}
+          </div>
+          <div style={{
+            fontSize: 14,
+            color: 'var(--color-text)',
+            lineHeight: 1.5,
+          }}>
+            {coachMessage || '...'}
+          </div>
+          <div style={{
+            position: 'absolute',
+            top: 16, right: 16,
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-ui)',
+          }}>
+            ÖPPNA →
+          </div>
+        </div>
+      )}
+
       {/* Calendar strip */}
       {calStripVisible && (
         <div className="cal-strip">

@@ -163,6 +163,7 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
+          onOpenCoach={() => handleTabTap('coach')}
         />
       );
       case 'skilltree': return <Scoreboard />;
@@ -205,6 +206,7 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
+          onOpenCoach={() => handleTabTap('coach')}
         />
       );
     }
@@ -282,6 +284,7 @@ export default function Index() {
                 showXP={showXP}
                 showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
                 onQuestTap={(q: any) => setDetailQuest(q)}
+                onOpenCoach={() => handleTabTap('coach')}
               />
             )}
             {activeTab === 'leaderboard' && <LeaderboardView />}

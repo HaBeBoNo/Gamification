@@ -110,7 +110,12 @@ export default function SkillNodes() {
 
   return (
     <>
-      <div className="sn-grid">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 12,
+        padding: '0 16px',
+      }}>
         {CATEGORIES.map((cat, i) => {
           const count = getCompletedCount(cat.id, me);
           const filled = Math.min(count, TOTAL_NODES);
@@ -123,6 +128,7 @@ export default function SkillNodes() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.2 }}
               whileTap={{ scale: 0.97 }}
+              style={{ maxHeight: 160, overflow: 'hidden' }}
             >
               <div className="sn-panel-header">
                 <span className="sn-cat-dot" style={{ background: cat.color }} />
