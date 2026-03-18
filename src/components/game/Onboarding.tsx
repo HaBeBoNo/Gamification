@@ -7,7 +7,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 8;
 
 const DEFAULT_COACH_NAMES: Record<string, string> = {
   hannes:   'Scout',
@@ -39,7 +39,6 @@ const STEP_META = [
   { label: 'TILLVÄXT',  bg: 'hsla(0, 91%, 71%, 0.08)' },
   { label: 'IDENTITET', bg: 'hsla(258, 90%, 66%, 0.08)' },
   { label: 'COACH',     bg: 'hsla(258, 90%, 66%, 0.08)' },
-  { label: 'GENERERA',  bg: 'hsla(38, 66%, 47%, 0.08)' },
 ];
 
 export default function Onboarding({ rerender }: { rerender: () => void }) {
@@ -106,7 +105,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     const char = S.chars[selectedMember];
     char.coachName = coachName.trim() || defaultCoachName;
     save();
-    next();
+    startGenerate();
   }
 
   async function startGenerate() {
@@ -149,7 +148,6 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       case 5: return answers[3].trim().length > 0;
       case 6: return answers[4].trim().length > 0;
       case 7: return coachName.trim().length > 0;
-      case 8: return true;
       default: return true;
     }
   }
@@ -158,7 +156,6 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
     if (step === 0) return 'Börja →';
     if (step === 1) return `Välj ${member?.name || '—'} →`;
     if (step === 7) return 'Spara namn →';
-    if (step === 8) return 'Kom igång →';
     return 'Fortsätt';
   }
 
@@ -167,8 +164,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       case 0: next(); break;
       case 1: confirmMember(); break;
       case 6: finishQuestions(); break;  // triggers profile build → advances to step 7 (coach)
-      case 7: saveCoachAndNext(); break;  // saves coach name → advances to step 8 (generate)
-      case 8: startGenerate(); break;
+      case 7: saveCoachAndNext(); break;  // saves coach name → auto-triggers generation
       default: next(); break;
     }
   }
@@ -195,6 +191,37 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
             color: 'var(--color-text-muted)',
           }}>
             Förbereder din profil...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Quest-generating interstitial ── */
+  if (generating) {
+    return (
+      <div className="ob-overlay">
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', height: '100%',
+          gap: 'var(--space-lg)',
+        }}>
+          <motion.div
+            style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: 'var(--color-accent)',
+            }}
+            animate={{ opacity: [1, 0.25, 1], scale: [1, 0.75, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <div style={{
+            textAlign: 'center',
+            color: 'var(--color-text-muted)',
+            fontSize: 13,
+            fontFamily: 'var(--font-ui)',
+            letterSpacing: '0.08em',
+          }}>
+            Förbereder dina uppdrag...
           </div>
         </div>
       </div>
@@ -373,43 +400,19 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
               </>
             )}
 
-            {/* ── Step 8: Generate quests ── */}
-            {step === 8 && (
-              <>
-                <div className="ob-question">Generera uppdrag</div>
-                <div className="ob-desc">AI skapar personliga uppdrag baserade på din profil.</div>
-                {generating ? (
-                  <div className="ob-generating">
-                    <div className="refresh-spinner" />
-                    <div className="ob-generating-text">{genMsg}</div>
-                  </div>
-                ) : (
-                  error && <div className="ob-error">{error}</div>
-                )}
-              </>
-            )}
           </div>
 
           {/* Bottom actions */}
-          {!generating && (
-            <div className="ob-bottom-actions">
-              {step === 8 && (
-                <button
-                  className="ob-skip-btn"
-                  onClick={triggerWelcome}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                >Hoppa över</button>
-              )}
-              <button
-                className="ob-primary-btn"
-                disabled={!canProceed()}
-                onClick={handlePrimary}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              >
-                {getButtonLabel()}
-              </button>
-            </div>
-          )}
+          <div className="ob-bottom-actions">
+            <button
+              className="ob-primary-btn"
+              disabled={!canProceed()}
+              onClick={handlePrimary}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
+              {getButtonLabel()}
+            </button>
+          </div>
         </motion.div>
       </AnimatePresence>
     </div>
