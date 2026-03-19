@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { S, save } from '@/state/store';
-import { refreshCoach, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
+import { buildCoachPrompt, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
 import { Send, Bot, MessageCircle } from 'lucide-react';
 
 interface Message {
@@ -16,10 +16,37 @@ function now() {
 export default function CoachChat({ rerender }: { rerender: () => void }) {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>(() => {
-    if (S.coachText) return [{ type: 'ai' as const, text: S.coachText, ts: now() }];
+
+  // Konversationshistorik för API-anrop (role/content-format)
+  const [history, setHistory] = useState<{ role: string; content: string }[]>(() => {
+    // Återställ från coachLog om det finns
+    const log = S.chars[S.me]?.coachLog;
+    if (Array.isArray(log) && log.length > 0) {
+      const restored: { role: string; content: string }[] = [];
+      for (const entry of log.slice(-10)) {
+        if (entry.user) restored.push({ role: 'user', content: entry.user });
+        if (entry.coach) restored.push({ role: 'assistant', content: entry.coach });
+      }
+      return restored;
+    }
     return [];
   });
+
+  // Visuella meddelanden (type/text/ts-format för rendering)
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const log = S.chars[S.me]?.coachLog;
+    if (Array.isArray(log) && log.length > 0) {
+      const restored: Message[] = [];
+      for (const entry of log.slice(-10)) {
+        const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) : '';
+        if (entry.user) restored.push({ type: 'user', text: entry.user, ts });
+        if (entry.coach) restored.push({ type: 'ai', text: entry.coach, ts });
+      }
+      return restored;
+    }
+    return [];
+  });
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -54,15 +81,59 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
 
   async function handleSend() {
     if (!input.trim() || loading) return;
-    const txt = input.trim();
+
+    const userMessage = input.trim();
     setInput('');
-    setMessages(p => [...p, { type: 'user', text: txt, ts: now() }]);
+
+    // Lägg till användarens meddelande visuellt
+    setMessages(p => [...p, { type: 'user', text: userMessage, ts: now() }]);
+
+    // Bygg API-historik med användarens nya meddelande
+    const newHistory = [...history, { role: 'user', content: userMessage }];
+    setHistory(newHistory);
     setLoading(true);
-    const text = await refreshCoach();
-    S.coachText = text;
-    setLoading(false);
-    setMessages(p => [...p, { type: 'ai', text, ts: now() }]);
-    rerender();
+
+    try {
+      const systemPrompt = buildCoachPrompt(S.me);
+
+      const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          system: systemPrompt,
+          messages: newHistory,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`API ${response.status}`);
+
+      const data = await response.json();
+      const reply = data.content?.[0]?.text?.trim() || 'Något gick fel. Försök igen.';
+
+      // Lägg till coach-svaret i historiken
+      setHistory(prev => [...prev, { role: 'assistant', content: reply }]);
+      setMessages(p => [...p, { type: 'ai', text: reply, ts: now() }]);
+
+      // Spara i coachLog för persistens
+      if (!S.chars[S.me].coachLog) S.chars[S.me].coachLog = [];
+      S.chars[S.me].coachLog.push({
+        user: userMessage,
+        coach: reply,
+        ts: Date.now(),
+      });
+      // Behåll max 20 log-entries
+      if (S.chars[S.me].coachLog.length > 20) {
+        S.chars[S.me].coachLog = S.chars[S.me].coachLog.slice(-20);
+      }
+      save();
+    } catch {
+      setHistory(prev => [...prev, { role: 'assistant', content: 'Kunde inte nå coachen just nu.' }]);
+      setMessages(p => [...p, { type: 'ai', text: 'Kunde inte nå coachen just nu.', ts: now() }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function onKey(e: React.KeyboardEvent) {

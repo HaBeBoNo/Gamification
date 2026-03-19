@@ -176,7 +176,7 @@ Svara EXAKT i JSON (inget annat):
 [{"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":50,"type":"standard|strategic|hidden"},{"title":"...","desc":"...","cat":"...","xp":100,"type":"strategic"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"standard"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"hidden"}]`;
 }
 
-function buildCoachPrompt(memberKey) {
+export function buildCoachPrompt(memberKey) {
   const c = S.chars[memberKey] || {};
   const coachName = c.coachName || DEFAULT_COACH_NAMES[memberKey] || 'Coach';
 

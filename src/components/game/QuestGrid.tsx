@@ -6,7 +6,7 @@ import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
 import { showSidequestNudge, generatePersonalQuests } from '@/hooks/useAI';
-import { Compass, RefreshCw, Zap, CheckCircle, X } from 'lucide-react';
+import { Compass, RefreshCw, Zap, CheckCircle } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -137,8 +137,6 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
   };
 
-  const [calStripVisible, setCalStripVisible] = useState(true);
-
   // Auto-generera när aktiva quests sjunker under 3
   const activePersonalCount = (S.quests || []).filter(
     (q: any) => q.owner === me && !q.done
@@ -199,12 +197,6 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       .catch(() => {});
   }, [me]);
 
-  const UPCOMING_EVENTS = [
-    { date: '9 mar', name: 'Rep Lerum' },
-    { date: '15 mar', name: 'Styrelsemöte' },
-    { date: '22 mar', name: 'Studiosession' },
-  ];
-
   const coachName = (S.chars[me!] as any)?.coachName || 'Coach';
 
   return (
@@ -252,16 +244,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         </div>
       )}
 
-      {/* Calendar strip */}
-      {calStripVisible && (
-        <div className="cal-strip">
-          {UPCOMING_EVENTS.map((ev, i) => (
-            <span key={i} className="cal-strip-pill">{ev.date} · {ev.name}</span>
-          ))}
-          <button className="cal-strip-link">Kalender →</button>
-          <button className="cal-strip-close" onClick={() => setCalStripVisible(false)}><X size={12} /></button>
-        </div>
-      )}
+      {/* Calendar strip — dold tills Google Calendar är aktiverat */}
 
       {/* Minimal header */}
       <div className="qv-header">
