@@ -30,6 +30,7 @@ export const MEMBERS = {
     color: 'rgba(200,100,50,0.15)',
     xpColor: '#e07840',
     roleType: 'amplifier',
+    email: 'hannes.norrby@gmail.com',
     // Varumärkesidentitet, digital närvaro, strategisk planering.
     // Bandets meta-konto, content, biografi, tidsplaner.
     // Lyricist. Arbetar 21–01 när familjen sover.
@@ -43,6 +44,7 @@ export const MEMBERS = {
     color: 'rgba(64,192,80,0.12)',
     xpColor: '#40c060',
     roleType: 'builder',
+    email: 'ludde_dencker@gmail.com',
     // Övergripande ledning, projektledning, strategi.
     // Bollplank, enabler, maskot — poäng för delaktighet i processer.
     // Startade merch-konceptet av ren vilja.
@@ -57,6 +59,7 @@ export const MEMBERS = {
     color: 'rgba(64,128,224,0.12)',
     xpColor: '#4090e0',
     roleType: 'enabler',
+    email: 'mschulzprivate@gmail.com',
     // Övergripande kvalitetsansvar. Koordinerar EP-inspelningar.
     // Inspelningstekniker, producent, saxofonist, senior adviser.
     // Tysk. Disciplinerad och rak. Levererar vid tydlig scope + deadline.
@@ -71,6 +74,7 @@ export const MEMBERS = {
     color: 'rgba(160,80,224,0.12)',
     xpColor: '#a050e0',
     roleType: 'amplifier',
+    email: 'nilsmedskils@gmail.com',
     // Mediekontakter, spellistor, press-pitch, community.
     // Japan X-konto som verktyg under Outreach.
     // Musiker: stämsång och bas.
@@ -84,6 +88,7 @@ export const MEMBERS = {
     color: 'rgba(224,80,64,0.12)',
     xpColor: '#e06050',
     roleType: 'builder',
+    email: 'simonfalk90@gmail.com',
     // Bokning, förhandling, externa samarbeten, sponsorer.
     // Mål: minst 5 spelningar 2026.
     // Relationsbyggande — nya kontakter ger XP även utan direkt effekt.
@@ -97,6 +102,7 @@ export const MEMBERS = {
     color: 'rgba(64,160,224,0.12)',
     xpColor: '#40a0e0',
     roleType: 'enabler',
+    email: 'johanneslincke@gmail.com',
     // Merch-drift, webshop, emblem-kollektion, vinyl, platsansvar.
     // Tar över merch-driften från Ludvig som startade konceptet.
     // Mål: webshop med vinyl, tändare, kläder och emblem-kollektion.
@@ -110,6 +116,7 @@ export const MEMBERS = {
     color: 'rgba(200,160,64,0.12)',
     xpColor: '#c8a040',
     roleType: 'builder',
+    email: 'callegh9351@gmail.com',
     // Söker kulturbidrag för att involvera externa kreatörer.
     // Bild, rörlig bild, dylik produktion — kreativ investering.
     // Mål: bli skicklig på att ansöka. Iteration är metoden.
@@ -124,6 +131,7 @@ export const MEMBERS = {
     color: 'rgba(64,192,128,0.12)',
     xpColor: '#40c080',
     roleType: 'enabler',
+    email: 'niklas.arkhede@gmail.com',
     // Replokal, studio, gemensam utrustning, inköp, reparationer.
     // Specialist med ADHD. Finansiellt trygg.
     // Levererar vid kristallklar spec och avgränsad scope.
