@@ -1,185 +1,79 @@
-/**
- * googleDrive.ts
- * Google Drive REST API helpers (v3).
- * All calls use the access token from googleAuth.ts.
- */
+import { supabase } from './supabase';
 
-import { getAuthHeader } from './googleAuth';
+const FOLDER_ID = '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
 
-const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
-
-export interface DriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  size?: string;
-  modifiedTime?: string;
-  webViewLink?: string;
-  iconLink?: string;
-  parents?: string[];
+async function getAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.provider_token || null;
 }
 
-export interface DriveFolder {
-  id: string;
-  name: string;
-  mimeType: 'application/vnd.google-apps.folder';
-}
-
-/**
- * List files in a folder (or root if folderId is omitted).
- * Returns files sorted by modifiedTime descending.
- */
-export async function listFiles(folderId?: string): Promise<DriveFile[]> {
-  const query = folderId
-    ? `'${folderId}' in parents and trashed = false`
-    : `'root' in parents and trashed = false`;
+export async function getDriveFiles(folderId = FOLDER_ID) {
+  const token = await getAccessToken();
+  if (!token) return [];
 
   const params = new URLSearchParams({
-    q: query,
-    fields: 'files(id,name,mimeType,size,modifiedTime,webViewLink,iconLink,parents)',
+    q: `'${folderId}' in parents and trashed = false`,
     orderBy: 'modifiedTime desc',
-    pageSize: '50',
+    pageSize: '20',
+    fields: 'files(id,name,mimeType,modifiedTime,webViewLink,iconLink,size)',
   });
 
-  const res = await fetch(`${DRIVE_API}/files?${params}`, {
-    headers: { Authorization: getAuthHeader() },
-  });
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
 
-  if (!res.ok) throw new Error(`Drive listFiles failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) return [];
   const data = await res.json();
-  return data.files ?? [];
+  return data.files || [];
 }
 
-/**
- * Upload a file to Drive.
- * Uses multipart upload for files with metadata.
- */
-export async function uploadFile(
-  file: File,
-  folderId?: string
-): Promise<DriveFile> {
-  const metadata: Record<string, unknown> = { name: file.name };
-  if (folderId) metadata.parents = [folderId];
+export async function getRecentFiles() {
+  return getDriveFiles(FOLDER_ID);
+}
+
+export async function uploadFile(file: File) {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Inte inloggad');
+
+  const metadata = {
+    name: file.name,
+    parents: [FOLDER_ID],
+  };
 
   const form = new FormData();
-  form.append(
-    'metadata',
-    new Blob([JSON.stringify(metadata)], { type: 'application/json' })
-  );
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', file);
 
   const res = await fetch(
-    `${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink`,
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
     {
       method: 'POST',
-      headers: { Authorization: getAuthHeader() },
+      headers: { Authorization: `Bearer ${token}` },
       body: form,
     }
   );
 
-  if (!res.ok) throw new Error(`Drive uploadFile failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error('Uppladdning misslyckades');
   return res.json();
 }
 
-/**
- * Get the shareable web link for a file.
- * Sets permission to 'anyone with the link can view' first.
- */
-export async function getFileUrl(fileId: string): Promise<string> {
-  // Ensure anyone with link can view
-  await fetch(`${DRIVE_API}/files/${fileId}/permissions`, {
-    method: 'POST',
-    headers: {
-      Authorization: getAuthHeader(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-  });
-
-  const params = new URLSearchParams({ fields: 'webViewLink' });
-  const res = await fetch(`${DRIVE_API}/files/${fileId}?${params}`, {
-    headers: { Authorization: getAuthHeader() },
-  });
-
-  if (!res.ok) throw new Error(`Drive getFileUrl failed: ${res.status}`);
-  const data = await res.json();
-  return data.webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`;
+export function getMimeTypeLabel(mimeType: string): string {
+  if (mimeType.includes('folder')) return 'Mapp';
+  if (mimeType.includes('document')) return 'Dokument';
+  if (mimeType.includes('spreadsheet')) return 'Kalkylark';
+  if (mimeType.includes('presentation')) return 'Presentation';
+  if (mimeType.includes('audio')) return 'Ljud';
+  if (mimeType.includes('video')) return 'Video';
+  if (mimeType.includes('image')) return 'Bild';
+  if (mimeType.includes('pdf')) return 'PDF';
+  return 'Fil';
 }
 
-/**
- * Create a new folder in Drive.
- * Optionally nest inside a parent folder.
- */
-export async function createFolder(
-  name: string,
-  parentFolderId?: string
-): Promise<DriveFolder> {
-  const metadata: Record<string, unknown> = {
-    name,
-    mimeType: 'application/vnd.google-apps.folder',
-  };
-  if (parentFolderId) metadata.parents = [parentFolderId];
-
-  const res = await fetch(`${DRIVE_API}/files?fields=id,name,mimeType`, {
-    method: 'POST',
-    headers: {
-      Authorization: getAuthHeader(),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(metadata),
+export function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('sv-SE', {
+    day: 'numeric', month: 'short', year: 'numeric'
   });
-
-  if (!res.ok) throw new Error(`Drive createFolder failed: ${res.status}`);
-  return res.json();
-}
-
-/**
- * Search for a folder by name.
- * Returns the first match or null.
- */
-export async function findFolder(name: string): Promise<DriveFolder | null> {
-  const params = new URLSearchParams({
-    q: `name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-    fields: 'files(id,name,mimeType)',
-    pageSize: '1',
-  });
-
-  const res = await fetch(`${DRIVE_API}/files?${params}`, {
-    headers: { Authorization: getAuthHeader() },
-  });
-
-  if (!res.ok) throw new Error(`Drive findFolder failed: ${res.status}`);
-  const data = await res.json();
-  return data.files?.[0] ?? null;
-}
-
-/** Format file size from bytes to human-readable string */
-export function formatFileSize(bytes?: string): string {
-  if (!bytes) return '—';
-  const n = parseInt(bytes, 10);
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/** Format a Drive modifiedTime ISO string to a Swedish relative label */
-export function formatDriveDate(iso?: string): string {
-  if (!iso) return '—';
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Idag';
-  if (diffDays === 1) return 'Igår';
-  if (diffDays < 7) return `${diffDays} dagar sedan`;
-  return date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
-}
-
-/** Map a Drive MIME type to a display category */
-export function mimeToCategory(mimeType: string): string {
-  if (mimeType.includes('audio')) return 'Music';
-  if (mimeType.includes('image')) return 'Image';
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'Table';
-  return 'FileText';
 }
