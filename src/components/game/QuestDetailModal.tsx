@@ -1,8 +1,10 @@
 import { X, Zap, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import QuestDeleteModal from './QuestDeleteModal';
-import { S } from '@/state/store';
+import { S, save } from '@/state/store';
+import { MEMBERS } from '@/data/members';
 import { calcCollaborativeBonus } from '@/hooks/useXP';
+import { addNotifToAll } from '@/state/notifications';
 
 const CAT_COLORS: Record<string, string> = {
   social:   '#7c6af7',
@@ -29,6 +31,7 @@ interface Props {
 
 export default function QuestDetailModal({ quest, onClose, onComplete, rerender }: Props) {
   const [showDelete, setShowDelete] = useState(false);
+  const [statusUpdate, setStatusUpdate] = useState('');
 
   if (showDelete) {
     return (
@@ -62,7 +65,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
         maxWidth: '480px',
         position: 'relative',
       }}>
-        {/* Stäng */}
+        {/* Stang */}
         <button
           onClick={onClose}
           style={{
@@ -89,7 +92,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
           padding: '4px 10px',
           borderRadius: 'var(--radius-pill)',
           background: (CAT_COLORS[quest.cat] || '#7c6af7') + '20',
-          border: `1px solid ${CAT_COLORS[quest.cat] || '#7c6af7'}40`,
+          border: '1px solid ' + (CAT_COLORS[quest.cat] || '#7c6af7') + '40',
         }}>
           <div style={{
             width: 6, height: 6, borderRadius: '50%',
@@ -121,7 +124,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
           {quest.desc}
         </div>
 
-        {/* Kollaborativt — ägarinfo */}
+        {/* Kollaborativt — agarinfo */}
         {quest.collaborative && quest.owner === S.me && (
           <div style={{
             background: 'var(--color-primary)10',
@@ -133,9 +136,9 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
             color: 'var(--color-text-muted)',
             lineHeight: 1.6,
           }}>
-            Du äger detta uppdrag. När du slutför det räknas det som klart för alla 
+            Du ager detta uppdrag. Nar du slutfor det raknas det som klart for alla
             {quest.participants?.length > 0
-              ? ` — ${quest.participants.join(', ')} och dig`
+              ? ' — ' + quest.participants.join(', ') + ' och dig'
               : ' som anslutit sig'
             }.
             {quest.participants?.length > 0 && (
@@ -145,9 +148,66 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
                 color: 'var(--color-primary)',
                 fontWeight: 600,
               }}>
-                +{Math.round((calcCollaborativeBonus(quest.participants.length + 1) - 1) * 100)}% bonus-XP för alla
+                +{Math.round((calcCollaborativeBonus(quest.participants.length + 1) - 1) * 100)}% bonus-XP for alla
               </span>
             )}
+          </div>
+        )}
+
+        {/* Statusuppdatering — endast for agaren av kollaborativt quest */}
+        {quest.collaborative && quest.owner === S.me && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{
+              fontSize: 11, letterSpacing: '0.08em',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-ui)', marginBottom: 6,
+            }}>
+              SKICKA STATUSUPPDATERING
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                value={statusUpdate}
+                onChange={e => setStatusUpdate(e.target.value)}
+                placeholder="Vad har hant sedan sist?"
+                style={{
+                  flex: 1,
+                  background: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8, color: 'var(--color-text)',
+                  padding: '10px 12px', fontSize: 13,
+                  fontFamily: 'var(--font-body)',
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (!statusUpdate.trim()) return;
+                  const ownerName = (MEMBERS as any)[S.me]?.name || S.me;
+                  addNotifToAll({
+                    id: Date.now() + Math.random(),
+                    type: 'quest_update',
+                    title: 'Uppdatering: "' + quest.title + '"',
+                    body: ownerName + ': ' + statusUpdate.trim(),
+                    memberKey: S.me,
+                    ts: Date.now(),
+                    read: false,
+                  });
+                  save();
+                  setStatusUpdate('');
+                }}
+                style={{
+                  background: 'var(--color-primary)',
+                  color: '#fff', border: 'none',
+                  borderRadius: 8, padding: '10px 16px',
+                  fontSize: 13, cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  touchAction: 'manipulation',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                SKICKA
+              </button>
+            </div>
           </div>
         )}
 
@@ -197,7 +257,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
               touchAction: 'manipulation',
             }}
           >
-            SLUTFÖR UPPDRAG
+            SLUTFOR UPPDRAG
           </button>
 
           <button
