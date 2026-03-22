@@ -18,11 +18,19 @@ export function useAuth() {
       return;
     }
 
-    // Hantera OAuth-callback från URL-hash
+    // Hantera OAuth-callback från URL-hash (Chrome/implicit) eller query-params (Safari/PKCE)
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const accessToken = hashParams.get('access_token');
     if (accessToken) {
       // Rensa hash från URL utan reload
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    // Safari/PKCE skickar code + code_verifier som query-params — rensa dem efter att
+    // Supabase har hanterat dem så att de inte triggar om vid reload
+    const searchParams = new URLSearchParams(window.location.search);
+    const oauthCode = searchParams.get('code');
+    if (oauthCode) {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
