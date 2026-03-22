@@ -1,23 +1,60 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
+import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
 
-// ── useAuth: listens to Supabase auth state, syncs member data, returns { user, memberKey, loading } ──
+// ── useAuth: listens to Supabase auth state, syncs member data, returns { user, memberKey, loading, synced } ──
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [memberKey, setMemberKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [synced, setSynced] = useState(false);
 
-  async function handleUser(supabaseUser: any) {
-    setUser(supabaseUser);
-
-    if (!supabaseUser) {
-      setMemberKey(null);
+  useEffect(() => {
+    if (!supabase) {
       setLoading(false);
+      setSynced(true);
       return;
     }
+
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setSynced(true);
+    }, 8000);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleUser(session.user, timeout);
+      } else {
+        clearTimeout(timeout);
+        setLoading(false);
+        setSynced(true);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await handleUser(session.user, timeout);
+        } else {
+          clearTimeout(timeout);
+          setUser(null);
+          setMemberKey(null);
+          setLoading(false);
+          setSynced(true);
+        }
+      }
+    );
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function handleUser(supabaseUser: any, timeout?: ReturnType<typeof setTimeout>) {
+    setUser(supabaseUser);
 
     const email = supabaseUser.email?.toLowerCase();
     const match = Object.entries(MEMBERS).find(
@@ -29,52 +66,20 @@ export function useAuth() {
       setMemberKey(key);
       S.me = key;
 
-      // Vänta på Supabase-sync innan vi fortsätter
+      // Vänta på full sync innan vi sätter synced=true
       await syncFromSupabase(key).catch(() => {});
-
-      // Säkerställ att S.me är satt efter sync
       S.me = key;
       save();
     } else {
       setMemberKey(null);
     }
 
+    if (timeout) clearTimeout(timeout);
     setLoading(false);
+    setSynced(true);
   }
 
-  useEffect(() => {
-    if (!supabase) {
-      // Supabase not configured — skip auth gate, treat as not logged in
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
-    // Get current session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        handleUser(session.user);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    // Subscribe to auth state changes (login / logout / token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        handleUser(session.user);
-      } else {
-        setUser(null);
-        setMemberKey(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return { user, memberKey, loading };
+  return { user, memberKey, loading, synced };
 }
 
 // ── useSupabaseData: syncs game data from Supabase after member is selected ──
