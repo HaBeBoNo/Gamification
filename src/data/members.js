@@ -39,6 +39,7 @@ export const MEMBERS = {
   ludvig: {
     name: 'Ludvig',
     role: 'Ordförande',
+    email: 'luddeslinser@gmail.com',
     emoji: '👑',
     color: 'rgba(64,192,80,0.12)',
     xpColor: '#40c060',
