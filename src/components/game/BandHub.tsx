@@ -2,8 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, ExternalLink, Folder, FileText, Music, Video, Image, File, RefreshCw } from 'lucide-react';
 import { getDriveFiles, uploadFile, getMimeTypeLabel, formatDate } from '@/lib/googleDrive';
 import { S } from '@/state/store';
+import CalendarView from './CalendarView';
 
 const PINNED_IDS_KEY = 'sektionen_pinned_files';
+
+const TABS = [
+  { id: 'drive', label: 'DRIVE' },
+  { id: 'kalender', label: 'KALENDER' },
+];
 
 function getMimeIcon(mimeType: string) {
   if (mimeType.includes('folder')) return <Folder size={16} />;
@@ -15,8 +21,9 @@ function getMimeIcon(mimeType: string) {
 }
 
 export default function BandHub() {
+  const [activeTab, setActiveTab] = useState('drive');
   const [files, setFiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState('');
@@ -29,8 +36,8 @@ export default function BandHub() {
   const isAdmin = S.me === 'hannes';
 
   useEffect(() => {
-    loadFiles();
-  }, []);
+    if (activeTab === 'drive') loadFiles();
+  }, [activeTab]);
 
   async function loadFiles() {
     setLoading(true);
@@ -73,143 +80,180 @@ export default function BandHub() {
   const pinnedFiles = files.filter(f => pinnedIds.includes(f.id));
   const recentFiles = files.filter(f => !pinnedIds.includes(f.id));
 
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 48, color: 'var(--color-text-muted)', fontSize: 13,
-        fontFamily: 'var(--font-ui)',
-      }}>
-        Hämtar filer...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 16 }}>
-          {error}
-        </div>
-        <button
-          onClick={loadFiles}
-          style={{
-            background: 'var(--color-primary)', color: '#fff',
-            border: 'none', borderRadius: '999px',
-            padding: '10px 20px', fontSize: 13,
-            fontFamily: 'var(--font-ui)', cursor: 'pointer',
-          }}
-        >
-          Försök igen
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: '0 16px 100px' }}>
-
-      {/* Header */}
+    <div>
+      {/* Tab bar */}
       <div style={{
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '16px 0',
+        display: 'flex', gap: 0,
+        borderBottom: '1px solid var(--color-border)',
+        padding: '0 16px',
       }}>
-        <div style={{
-          fontSize: 11, letterSpacing: '0.1em',
-          color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
-        }}>
-          SEKTIONEN DRIVE
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        {TABS.map(tab => (
           <button
-            onClick={loadFiles}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             style={{
               background: 'none', border: 'none',
-              color: 'var(--color-text-muted)', cursor: 'pointer',
-              padding: 4, touchAction: 'manipulation',
+              borderBottom: activeTab === tab.id
+                ? '2px solid var(--color-primary)'
+                : '2px solid transparent',
+              color: activeTab === tab.id
+                ? 'var(--color-primary)'
+                : 'var(--color-text-muted)',
+              fontSize: 11, letterSpacing: '0.1em',
+              fontFamily: 'var(--font-ui)',
+              padding: '12px 16px',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              marginBottom: -1,
             }}
           >
-            <RefreshCw size={16} />
+            {tab.label}
           </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'var(--color-primary)', color: '#fff',
-              border: 'none', borderRadius: '999px',
-              padding: '8px 14px', fontSize: 12,
-              fontFamily: 'var(--font-ui)', cursor: 'pointer',
-              touchAction: 'manipulation', opacity: uploading ? 0.7 : 1,
-            }}
-          >
-            <Upload size={14} />
-            {uploading ? 'Laddar upp...' : 'Ladda upp'}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            style={{ display: 'none' }}
-            onChange={handleUpload}
-          />
-        </div>
-      </div>
-
-      {uploadSuccess && (
-        <div style={{
-          background: 'var(--color-accent)20',
-          border: '1px solid var(--color-accent)40',
-          borderRadius: 8, padding: '10px 14px',
-          fontSize: 13, color: 'var(--color-accent)',
-          marginBottom: 16,
-        }}>
-          ✓ {uploadSuccess}
-        </div>
-      )}
-
-      {/* Fästa filer */}
-      {pinnedFiles.length > 0 && (
-        <>
-          <div style={{
-            fontSize: 11, letterSpacing: '0.1em',
-            color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
-            marginBottom: 8,
-          }}>
-            FÄSTA
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            {pinnedFiles.map(file => (
-              <React.Fragment key={file.id}> 
-                <FileRow file={file} pinned={true} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
-              </React.Fragment>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Senaste filer */}
-      <div style={{
-        fontSize: 11, letterSpacing: '0.1em',
-        color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
-        marginBottom: 8,
-      }}>
-        SENASTE
-      </div>
-      <div>
-        {recentFiles.length === 0 && (
-          <div style={{
-            color: 'var(--color-text-muted)', fontSize: 13,
-            textAlign: 'center', padding: 32,
-          }}>
-            Inga filer hittades i Sektionen-mappen.
-          </div>
-        )}
-        {recentFiles.map(file => (
-          <React.Fragment key={file.id}>
-            <FileRow file={file} pinned={false} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
-          </React.Fragment>
         ))}
       </div>
+
+      {activeTab === 'kalender' && <CalendarView />}
+
+      {activeTab === 'drive' && (
+        <div style={{ padding: '0 16px 100px' }}>
+
+          {/* Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: '16px 0',
+          }}>
+            <div style={{
+              fontSize: 11, letterSpacing: '0.1em',
+              color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
+            }}>
+              SEKTIONEN DRIVE
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={loadFiles}
+                style={{
+                  background: 'none', border: 'none',
+                  color: 'var(--color-text-muted)', cursor: 'pointer',
+                  padding: 4, touchAction: 'manipulation',
+                }}
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'var(--color-primary)', color: '#fff',
+                  border: 'none', borderRadius: '999px',
+                  padding: '8px 14px', fontSize: 12,
+                  fontFamily: 'var(--font-ui)', cursor: 'pointer',
+                  touchAction: 'manipulation', opacity: uploading ? 0.7 : 1,
+                }}
+              >
+                <Upload size={14} />
+                {uploading ? 'Laddar upp...' : 'Ladda upp'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                style={{ display: 'none' }}
+                onChange={handleUpload}
+              />
+            </div>
+          </div>
+
+          {uploadSuccess && (
+            <div style={{
+              background: 'var(--color-accent)20',
+              border: '1px solid var(--color-accent)40',
+              borderRadius: 8, padding: '10px 14px',
+              fontSize: 13, color: 'var(--color-accent)',
+              marginBottom: 16,
+            }}>
+              ✓ {uploadSuccess}
+            </div>
+          )}
+
+          {loading && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 48, color: 'var(--color-text-muted)', fontSize: 13,
+              fontFamily: 'var(--font-ui)',
+            }}>
+              Hämtar filer...
+            </div>
+          )}
+
+          {error && !loading && (
+            <div style={{ padding: 24, textAlign: 'center' }}>
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 16 }}>
+                {error}
+              </div>
+              <button
+                onClick={loadFiles}
+                style={{
+                  background: 'var(--color-primary)', color: '#fff',
+                  border: 'none', borderRadius: '999px',
+                  padding: '10px 20px', fontSize: 13,
+                  fontFamily: 'var(--font-ui)', cursor: 'pointer',
+                }}
+              >
+                Försök igen
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && (
+            <>
+              {/* Fästa filer */}
+              {pinnedFiles.length > 0 && (
+                <>
+                  <div style={{
+                    fontSize: 11, letterSpacing: '0.1em',
+                    color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
+                    marginBottom: 8,
+                  }}>
+                    FÄSTA
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    {pinnedFiles.map(file => (
+                      <React.Fragment key={file.id}>
+                        <FileRow file={file} pinned={true} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Senaste filer */}
+              <div style={{
+                fontSize: 11, letterSpacing: '0.1em',
+                color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
+                marginBottom: 8,
+              }}>
+                SENASTE
+              </div>
+              <div>
+                {recentFiles.length === 0 && (
+                  <div style={{
+                    color: 'var(--color-text-muted)', fontSize: 13,
+                    textAlign: 'center', padding: 32,
+                  }}>
+                    Inga filer hittades i Sektionen-mappen.
+                  </div>
+                )}
+                {recentFiles.map(file => (
+                  <React.Fragment key={file.id}>
+                    <FileRow file={file} pinned={false} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
+                  </React.Fragment>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -267,8 +311,7 @@ function FileRow({ file, pinned, isAdmin, onTogglePin }: {
             color: 'var(--color-text-muted)',
             display: 'flex', alignItems: 'center',
             padding: 4,
-          }}
-        >
+          }}>
           <ExternalLink size={14} />
         </a>
       </div>
