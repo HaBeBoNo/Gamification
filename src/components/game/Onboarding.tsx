@@ -7,6 +7,7 @@ import { syncToSupabase, syncFromSupabase } from '@/hooks/useSupabaseSync';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
+import { createFirstLoginNotif, addNotifToAll } from '@/state/notifications';
 
 const TOTAL_STEPS = 8;
 
@@ -131,6 +132,12 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
         S.chars[selectedMember].onboarded = true;
       }
       save();
+      // Skicka first-login notifikation till alla
+      if (selectedMember) {
+        const memberName = (MEMBERS as any)[selectedMember]?.name || selectedMember;
+        const notif = createFirstLoginNotif(selectedMember, memberName);
+        addNotifToAll(notif);
+      }
       // Hämta eventuell befintlig data från Supabase, sedan pusha lokal data
       try { await syncFromSupabase(selectedMember!); } catch {}
       try { await syncToSupabase(selectedMember!); } catch {}
@@ -284,141 +291,110 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   return (
     <div className="ob-overlay">
       {/* Progress line */}
-      <div className="ob-progress-track">
-        <motion.div
-          className="ob-progress-fill"
-          animate={{ width: progressPct + '%' }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        />
+      <div className="ob-progress-bar">
+        <div className="ob-progress-fill" style={{ width: `${progressPct}%` }} />
       </div>
 
-      {/* Back button */}
-      {step > 1 && !generating && (
-        <button
-          className="ob-back"
-          onClick={back}
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-        >
-          <ArrowLeft size={20} />
-        </button>
+      {/* Step label */}
+      {STEP_META[step]?.label && (
+        <div className="ob-step-label">{STEP_META[step].label}</div>
       )}
 
-      {/* Step content */}
       <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={step}
-          className="ob-step-container"
+          className="ob-step"
           custom={direction}
           variants={slideVariants}
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ duration: 0.25, ease: 'easeOut' }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          style={{ background: stepBg }}
         >
-          {/* Abstract background shape */}
-          <div
-            className="ob-abstract-bg"
-            style={{ background: `radial-gradient(ellipse at 50% 30%, ${stepBg} 0%, transparent 70%)` }}
-          />
+          {/* ── Step 0: Welcome ── */}
+          {step === 0 && (
+            <div className="ob-step-inner">
+              <div className="ob-title">Välkommen till<br />Headquarters</div>
+              <div className="ob-body">
+                Det här är din personliga spelmiljö för Sektionen.<br />
+                Vi börjar med att lära känna dig lite bättre.
+              </div>
+            </div>
+          )}
 
-          <div className="ob-step-content">
-            {STEP_META[step]?.label && (
-              <div className="ob-step-label">{STEP_META[step].label}</div>
-            )}
+          {/* ── Step 1: Choose member ── */}
+          {step === 1 && (
+            <div className="ob-step-inner">
+              <div className="ob-title">Vem är du?</div>
+              <div className="ob-member-grid">
+                {Object.entries(MEMBERS).map(([key, m]: [string, any]) => (
+                  <button
+                    key={key}
+                    className={`ob-member-btn${selectedMember === key ? ' selected' : ''}`}
+                    onClick={() => setSelectedMember(key)}
+                  >
+                    <MemberIcon id={key} size={40} color={m.xpColor} />
+                    <span>{m.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-            {/* ── Step 0: Welcome ── */}
-            {step === 0 && (
-              <>
-                <div className="ob-question">SEKTIONEN<br />HEADQUARTERS</div>
-                <div className="ob-desc">
-                  Välkommen till bandets gamification-system. Slutför uppdrag, samla XP och nå nya nivåer tillsammans.
-                </div>
-              </>
-            )}
+          {/* ── Steps 2–6: Questions ── */}
+          {step >= 2 && step <= 6 && (
+            <div className="ob-step-inner">
+              <div className="ob-question">{ONBOARDING_QUESTIONS[step - 2]}</div>
+              <textarea
+                className="ob-textarea"
+                value={answers[step - 2]}
+                onChange={e => setAnswer(step - 2, e.target.value)}
+                placeholder="Skriv här..."
+                rows={5}
+                autoFocus
+              />
+            </div>
+          )}
 
-            {/* ── Step 1: Member selection ── */}
-            {step === 1 && (
-              <>
-                <div className="ob-question">Vem är du i bandet?</div>
-                <div className="member-grid ob-member-grid">
-                  {Object.entries(MEMBERS).map(([id, m]) => (
-                    <div
-                      key={id}
-                      className={`member-tile ${selectedMember === id ? 'selected' : ''}`}
-                      onClick={() => setSelectedMember(id)}
-                    >
-                      <div className="member-tile-emoji"><MemberIcon id={id} size={28} /></div>
-                      <div className="member-tile-name">{(m as any).name}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {selectedMember && (
-                  <div style={{
-                    marginTop: 20,
-                    fontSize: 13,
-                    color: 'var(--color-text-muted)',
-                    textAlign: 'center',
-                    fontFamily: 'var(--font-ui)',
-                    letterSpacing: '0.05em',
-                    lineHeight: 1.6,
-                  }}>
-                    {(WELCOME_MESSAGES as Record<string, string>)[selectedMember]}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* ── Steps 2–6: Five questions ── */}
-            {step >= 2 && step <= 6 && (
-              <>
-                <div className="ob-question">{ONBOARDING_QUESTIONS[step - 2]}</div>
-                <textarea
-                  key={step}
-                  className="ob-textarea"
-                  placeholder="Skriv fritt..."
-                  value={answers[step - 2]}
-                  onChange={e => setAnswer(step - 2, e.target.value)}
-                  autoFocus
-                  rows={4}
-                />
-              </>
-            )}
-
-            {/* ── Step 7: Coach name ── */}
-            {step === 7 && (
-              <>
-                <div className="ob-question">Vad heter din coach?</div>
-                <div className="ob-desc">
-                  Du kan alltid byta namn senare.
-                </div>
-                <input
-                  type="text"
-                  className="ob-textarea"
-                  style={{ minHeight: 'unset', height: 48 }}
-                  placeholder={defaultCoachName}
-                  value={coachName}
-                  onChange={e => setCoachName(e.target.value)}
-                  autoFocus
-                />
-              </>
-            )}
-
-          </div>
-
-          {/* Bottom actions */}
-          <div className="ob-bottom-actions">
-            <button
-              className="ob-primary-btn"
-              disabled={!canProceed()}
-              onClick={handlePrimary}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >
-              {getButtonLabel()}
-            </button>
-          </div>
+          {/* ── Step 7: Coach name ── */}
+          {step === 7 && (
+            <div className="ob-step-inner">
+              <div className="ob-title">Din coach</div>
+              <div className="ob-body">
+                Vad ska din personliga coach heta?
+              </div>
+              <input
+                className="ob-input"
+                value={coachName}
+                onChange={e => setCoachName(e.target.value)}
+                placeholder={defaultCoachName}
+                autoFocus
+              />
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Navigation */}
+      <div className="ob-nav">
+        {step > 1 && (
+          <button className="ob-back-btn" onClick={back}>
+            <ArrowLeft size={16} />
+          </button>
+        )}
+        <button
+          className="ob-primary-btn"
+          onClick={handlePrimary}
+          disabled={!canProceed()}
+        >
+          {getButtonLabel()}
+        </button>
+      </div>
+
+      {error && (
+        <div className="ob-error">{error}</div>
+      )}
     </div>
   );
 }
