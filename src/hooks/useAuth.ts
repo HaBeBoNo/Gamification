@@ -67,7 +67,8 @@ export function useAuth() {
       S.me = key;
 
       // Vänta på full sync innan vi sätter synced=true
-      await syncFromSupabase(key).catch(() => {});
+      await syncFromSupabase(key).catch((e) => console.error('sync error:', e));
+      console.log('After sync — S.onboarded:', S.onboarded, 'S.me:', S.me);
       S.me = key;
       save();
     } else {
