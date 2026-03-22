@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { S } from '@/state/store';
+import { S, notify } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { Trophy, Flame, Zap, Check } from 'lucide-react';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -68,18 +68,52 @@ export default function LeaderboardView() {
   const [, forceUpdate] = useState(0);
   const rerender = () => forceUpdate(n => n + 1);
 
-  // Realtime — uppdatera leaderboard när annan member sparar sin data
+  // Realtime — hämta alla members vid mount + lyssna på live-ändringar
   useEffect(() => {
+    if (!supabase) return;
+
+    // Hämta alla members data vid mount
+    async function fetchAllMembers() {
+      const { data } = await supabase
+        .from('member_data')
+        .select('member_key, data');
+
+      if (data) {
+        data.forEach(row => {
+          if (row.member_key !== S.me && row.data?.chars?.[row.member_key]) {
+            S.chars[row.member_key] = {
+              ...S.chars[row.member_key],
+              ...row.data.chars[row.member_key],
+            };
+          }
+        });
+      }
+    }
+
+    fetchAllMembers();
+
+    // Lyssna på realtidsändringar
     const channel = supabase
-      .channel('member_data_changes')
+      .channel('leaderboard_realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'member_data' },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'member_data',
+        },
         (payload) => {
-          const remote = (payload.new as any);
-          if (remote?.data?.chars && remote?.member_key !== S.me) {
-            Object.assign(S.chars, remote.data.chars);
-            rerender();
+          const remote = payload.new as any;
+          if (remote?.member_key && remote.member_key !== S.me) {
+            const remoteChars = remote.data?.chars;
+            if (remoteChars?.[remote.member_key]) {
+              S.chars[remote.member_key] = {
+                ...S.chars[remote.member_key],
+                ...remoteChars[remote.member_key],
+              };
+              // Trigga re-render
+              notify();
+            }
           }
         }
       )
@@ -192,7 +226,7 @@ export default function LeaderboardView() {
                         />
                       ))}
                     </div>
-                    <div className={`lbv-streak-cell streak-tier-${row.streak >= 14 ? 'max' : row.streak >= 7 ? 'high' : row.streak >= 3 ? 'mid' : row.streak > 0 ? 'low' : 'zero'}`}>
+                    <div className={`lbv-streak-cell streak-tier-${row.streak >= 14 ? 'max' : row.streak >= 7 ? 'high' : row.streak >= 3 ? 'mid' : row.streak > 0 ? 'low' : 'zero'}`}> 
                       <Flame size={16} />
                       <span className="lt-streak-val">{row.streak}</span>
                     </div>
@@ -213,7 +247,7 @@ export default function LeaderboardView() {
                       <div className="lt-expanded-inner">
                         <div className="lt-expanded-extra-stats">
                           <span className="lt-expanded-label">Denna vecka:</span>
-                          <span className={`lt-week-val ${row.weekCount >= 3 ? 'hot' : row.weekCount >= 1 ? 'warm' : ''}`}>
+                          <span className={`lt-week-val ${row.weekCount >= 3 ? 'hot' : row.weekCount >= 1 ? 'warm' : ''}`}> 
                             {row.weekCount} uppdrag
                           </span>
                           <span className="lt-expanded-label" style={{ marginLeft: 'var(--space-lg)' }}>Synergi:</span>
