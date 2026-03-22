@@ -5,6 +5,7 @@ import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
+import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
 import QuestGrid from '@/components/game/QuestGrid';
@@ -28,6 +29,7 @@ import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
 import { useSupabaseData } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 import LevelUpOverlay from '@/components/game/overlays/LevelUpOverlay';
 import RewardOverlay from '@/components/game/overlays/RewardOverlay';
@@ -39,7 +41,7 @@ import XPOverlay from '@/components/game/overlays/XPOverlay';
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
 
-const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
+const viewTransition = { duration: 0.2, ease: 'easeOut' as const }; 
 const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
 
 export default function Index() {
@@ -63,6 +65,9 @@ export default function Index() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
+
+  // Google OAuth auth gate
+  const { user, loading: authLoading } = useAuth();
 
   // Sync från Supabase när S.me är satt (vid varje app-start)
   useSupabaseData(S.me);
@@ -128,6 +133,20 @@ export default function Index() {
       node.removeEventListener('touchcancel', cancel);
     };
   }, [isAdmin]);
+
+  // Show auth screen while loading or when not logged in
+  if (authLoading) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', background: 'var(--color-bg)',
+      }} />
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   const shouldOnboard = !S.me || !S.onboarded;
   if (shouldOnboard) {
@@ -286,7 +305,7 @@ export default function Index() {
                 onQuestTap={(q: any) => setDetailQuest(q)}
                 onOpenCoach={() => handleTabTap('coach')}
               />
-            )}
+            )} 
             {activeTab === 'leaderboard' && <LeaderboardView />}
             {activeTab === 'skilltree' && <Scoreboard />}
           </div>
