@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings } from 'lucide-react';
+import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -30,6 +30,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
 import { useSupabaseData } from '@/hooks/useAuth';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 import LevelUpOverlay from '@/components/game/overlays/LevelUpOverlay';
 import RewardOverlay from '@/components/game/overlays/RewardOverlay';
@@ -153,8 +154,14 @@ export default function Index() {
     return <Onboarding rerender={rerender} />;
   }
 
-  function handleOverflowSelect(id: string) {
+  async function handleOverflowSelect(id: string) {
     setShowMore(false);
+    if (id === 'logout') {
+      if (supabase) await supabase.auth.signOut();
+      localStorage.clear();
+      window.location.reload();
+      return;
+    }
     if (id === 'admin') {
       setShowAdmin(true);
       return;
@@ -244,6 +251,7 @@ export default function Index() {
     { id: 'profile',  icon: User,          label: 'Profil',     subtitle: 'Inställningar och din data' },
     ...(isCurl  ? [{ id: 'ideas', icon: Lightbulb, label: 'Idéer',  subtitle: 'Lösa tankar' }] : []),
     ...(isAdmin ? [{ id: 'admin', icon: Settings,  label: 'Admin',  subtitle: 'Systemkontroller' }] : []),
+    { id: 'logout', icon: LogOut, label: 'Logga ut', subtitle: 'Avsluta session' },
   ];
 
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
@@ -376,7 +384,7 @@ export default function Index() {
                 const Icon = item.icon;
                 return (
                   <React.Fragment key={item.id}>
-                    {i > 0 && <div className="overflow-sep" />}
+                    {i > 0 && <div className="overflow-sep" />} 
                     <button className="overflow-row" onClick={() => handleOverflowSelect(item.id)}>
                       <Icon
                         size={20}
@@ -417,7 +425,7 @@ export default function Index() {
           rerender={rerender}
         />
       )}
-      {refreshMsg && <RefreshOverlay message={refreshMsg} />}
+      {refreshMsg && <RefreshOverlay message={refreshMsg} />} 
       {sidequestNudge && (
         <SidequestNudge
           quests={sidequestNudge}
