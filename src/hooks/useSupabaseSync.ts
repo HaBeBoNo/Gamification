@@ -14,6 +14,9 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     onboarded: S.onboarded,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
+    notifications: S.notifications,
+    seasonStart: S.seasonStart,
+    seasonEnd: S.seasonEnd,
   };
 
   const { error } = await supabase
@@ -42,20 +45,23 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
 
   if (error || !data?.data) return;
 
-  // Mergea in i S
+  // Sätt kritiska fält explicit
   const remote = data.data as any;
+  S.me = memberKey;
+  if (remote.onboarded) S.onboarded = remote.onboarded;
   if (remote.chars) Object.assign(S.chars, remote.chars);
-  if (remote.quests) S.quests = remote.quests;
-  if (remote.feed) S.feed = remote.feed;
+  if (remote.quests?.length) S.quests = remote.quests;
+  if (remote.feed?.length) S.feed = remote.feed;
+  if (remote.operationName) S.operationName = remote.operationName;
+  if (remote.weeklyCheckouts) S.weeklyCheckouts = remote.weeklyCheckouts;
   if (remote.metrics) S.metrics = remote.metrics;
   if (remote.prev) S.prev = remote.prev;
   if (remote.checkIns) S.checkIns = remote.checkIns;
-  if (remote.onboarded) S.onboarded = remote.onboarded;
-  if (remote.operationName) S.operationName = remote.operationName;
-  if (remote.weeklyCheckouts) S.weeklyCheckouts = remote.weeklyCheckouts;
-  S.me = memberKey;
+  if (remote.notifications) S.notifications = remote.notifications;
+  if (remote.seasonStart) S.seasonStart = remote.seasonStart;
+  if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;
 
-  // Spara lokalt för offline-support
+  // Spara till localStorage
   localStorage.setItem('sek-v6', JSON.stringify({
     me: S.me,
     onboarded: S.onboarded,
@@ -67,5 +73,8 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
     checkIns: S.checkIns,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
+    notifications: S.notifications,
+    seasonStart: S.seasonStart,
+    seasonEnd: S.seasonEnd,
   }));
 }
