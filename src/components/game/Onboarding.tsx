@@ -127,6 +127,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   function triggerWelcome() {
     setShowWelcome(true);
     setTimeout(async () => {
+      // Sätt onboarded-flaggor INNAN sync, så att de inte skrivs över
       S.onboarded = true;
       if (selectedMember && S.chars[selectedMember]) {
         S.chars[selectedMember].onboarded = true;
@@ -138,8 +139,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
         const notif = createFirstLoginNotif(selectedMember, memberName);
         addNotifToAll(notif);
       }
-      // Hämta eventuell befintlig data från Supabase, sedan pusha lokal data
-      try { await syncFromSupabase(selectedMember!); } catch {}
+      // Synka till Supabase direkt
       try { await syncToSupabase(selectedMember!); } catch {}
       rerender();
     }, 2400);
