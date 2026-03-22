@@ -48,7 +48,7 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   // Sätt kritiska fält explicit
   const remote = data.data as any;
   S.me = memberKey;
-  if (remote.onboarded) S.onboarded = remote.onboarded;
+  if (remote.onboarded !== undefined) S.onboarded = remote.onboarded;
   if (remote.chars) Object.assign(S.chars, remote.chars);
   if (remote.quests?.length) S.quests = remote.quests;
   if (remote.feed?.length) S.feed = remote.feed;
@@ -61,7 +61,7 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   if (remote.seasonStart) S.seasonStart = remote.seasonStart;
   if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;
 
-  // Spara till localStorage
+  // Spara till localStorage omedelbart
   localStorage.setItem('sek-v6', JSON.stringify({
     me: S.me,
     onboarded: S.onboarded,
