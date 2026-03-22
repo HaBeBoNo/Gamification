@@ -6,6 +6,7 @@
 
 import { S, save, notify } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
+import { createLevelUpNotif, addNotifToAll } from '../state/notifications';
 
 // ── Interna hjälpfunktioner ──────────────────────────────────────
 
@@ -130,6 +131,12 @@ export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollRewar
       c.stats[k] = Math.min(100, (c.stats[k] || 0) + 1);
     });
     leveled = true;
+  }
+
+  if (leveled) {
+    const memberName = MEMBERS[S.me]?.name || S.me;
+    const notif = createLevelUpNotif(S.me, memberName, c.level);
+    addNotifToAll(notif);
   }
 
   // 5. Karaktärs-stats utifrån quest-kategori
