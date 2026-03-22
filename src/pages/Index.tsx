@@ -67,8 +67,8 @@ export default function Index() {
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
 
-  // Google OAuth auth gate
-  const { user, loading: authLoading } = useAuth();
+  // Google OAuth auth gate — wait for both auth and Supabase sync to complete
+  const { user, memberKey, loading: authLoading, synced } = useAuth();
 
   // Sync från Supabase när S.me är satt (vid varje app-start)
   useSupabaseData(S.me);
@@ -135,13 +135,17 @@ export default function Index() {
     };
   }, [isAdmin]);
 
-  // Show auth screen while loading or when not logged in
-  if (authLoading) {
+  // Show loading screen while auth is in progress OR Supabase sync hasn't completed yet
+  if (authLoading || !synced) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         minHeight: '100dvh', background: 'var(--color-bg)',
-      }} />
+        color: 'var(--color-text-muted)', fontSize: 13,
+        fontFamily: 'var(--font-ui)', letterSpacing: '0.08em',
+      }}>
+        ...
+      </div>
     );
   }
 
@@ -320,7 +324,7 @@ export default function Index() {
 
           <div
             className="mobile-content"
-            style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}
+            style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom)))" }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
