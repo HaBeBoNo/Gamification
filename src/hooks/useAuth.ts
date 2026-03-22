@@ -68,7 +68,7 @@ export function useAuth() {
       S.me = key;
 
       await syncFromSupabase(key).catch((e) => console.error('sync error:', e));
-      
+
       console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
       S.me = key;
       save();
@@ -83,4 +83,20 @@ export function useAuth() {
   }
 
   return { user, memberKey, loading, synced };
+}
+
+export function useSupabaseData(memberKey: string | null) {
+  const [synced, setSynced] = useState(false);
+
+  useEffect(() => {
+    if (!memberKey) return;
+
+    syncFromSupabase(memberKey).then(() => {
+      setSynced(true);
+    }).catch(() => {
+      setSynced(true);
+    });
+  }, [memberKey]);
+
+  return { synced };
 }
