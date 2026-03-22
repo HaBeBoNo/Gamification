@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { getRoleHidden } from '@/data/quests';
-import { awardXP, calcQuestXP } from '@/hooks/useXP';
+import { awardXP, calcQuestXP, completeCollaborativeQuest } from '@/hooks/useXP';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -49,6 +49,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const me = S.me;
   const isDone = quest.done;
   const needsAI = quest.aiRequired;
+  const isParticipant = quest.participants?.includes(S.me) || false;
 
   function handleComplete() {
     if (isDone || !me) return;
@@ -65,6 +66,12 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
+
+    // Om kollaborativt quest: ge XP till alla participants
+    if (quest.collaborative) {
+      completeCollaborativeQuest(quest, rerender);
+    }
+
     save();
 
     // Öppna utvärderingsmodal istället för direkt rerender
@@ -80,6 +87,25 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       const idx = S.quests.findIndex((q: any) => q.id === quest.id);
       if (idx >= 0) setVerdict(S.quests[idx].aiVerdict);
     });
+  }
+
+  function handleJoin(quest: any) {
+    if (!quest.participants) quest.participants = [];
+    if (quest.participants.includes(S.me)) return;
+
+    quest.participants.push(S.me);
+
+    S.feed.unshift({
+      who: S.me,
+      action: `anslöt sig till "${quest.title}" 🤝`,
+      xp: 0,
+      time: new Date().toLocaleTimeString('sv-SE', {
+        hour: '2-digit', minute: '2-digit'
+      }),
+    });
+
+    save();
+    rerender?.();
   }
 
   const badgeClass = CAT_BADGE[quest.cat] || 'badge-daily';
@@ -142,6 +168,71 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           )}
           <span className="quest-xp"><Zap size={12} style={{ display: 'inline', verticalAlign: '-1px' }} /> {quest.xp} XP</span>
         </div>
+
+        {/* Kollaborativt badge */}
+        {quest.collaborative && (
+          <span style={{
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            background: 'var(--color-primary)20',
+            color: 'var(--color-primary)',
+            border: '1px solid var(--color-primary)40',
+            borderRadius: '999px',
+            padding: '2px 8px',
+            fontFamily: 'var(--font-ui)',
+          }}>
+            KOLLABORATIVT
+          </span>
+        )}
+
+        {/* Anslut-knapp för icke-ägare */}
+        {quest.collaborative && quest.owner !== S.me && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleJoin(quest); }}
+            style={{
+              background: isParticipant
+                ? 'var(--color-accent)20'
+                : 'var(--color-primary)',
+              color: isParticipant ? 'var(--color-accent)' : '#fff',
+              border: 'none',
+              borderRadius: '999px',
+              padding: '6px 14px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              cursor: isParticipant ? 'default' : 'pointer',
+              touchAction: 'manipulation',
+            }}
+          >
+            {isParticipant ? '✓ Ansluten' : 'Anslut'}
+          </button>
+        )}
+
+        {/* Participants-avatarer */}
+        {quest.collaborative && quest.participants?.length > 0 && (
+          <div style={{
+            display: 'flex', gap: 4, marginTop: 8,
+            alignItems: 'center',
+          }}>
+            <span style={{
+              fontSize: 11, color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-ui)',
+            }}>
+              {quest.participants.length + 1} members
+            </span>
+            {quest.participants.map((p: string) => (
+              <span key={p} style={{
+                fontSize: 11,
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '999px',
+                padding: '2px 8px',
+                color: 'var(--color-text-muted)',
+              }}>
+                {p}
+              </span>
+            ))}
+          </div>
+        )}
 
         {needsAI && !isDone && (
           <div className="quest-ai-area">
