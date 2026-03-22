@@ -16,6 +16,10 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   badge_unlocked: Award,
   goal_milestone: Target,
   quest_completed: CheckCircle,
+  level_up: Zap,
+  high_five: Award,
+  collaborative_complete: CheckCircle,
+  quest_complete: CheckCircle,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -26,6 +30,10 @@ const TYPE_COLORS: Record<string, string> = {
   badge_unlocked: 'var(--color-purple)',
   goal_milestone: 'var(--color-accent)',
   quest_completed: 'var(--color-green)',
+  level_up: 'var(--color-accent)',
+  high_five: 'var(--color-green)',
+  collaborative_complete: 'var(--color-green)',
+  quest_complete: 'var(--color-green)',
 };
 
 function getNotificationText(n: Notification): { title: string; subtitle: string } {
@@ -46,8 +54,16 @@ function getNotificationText(n: Notification): { title: string; subtitle: string
       return { title: `Bandet passerade ${p.milestoneName || ''}!`, subtitle: '' };
     case 'quest_completed':
       return { title: `${memberName} klarade ${p.questTitle || ''}`, subtitle: '' };
+    case 'level_up':
+      return { title: n.title || 'Level up!', subtitle: n.body || '' };
+    case 'high_five':
+      return { title: n.title || 'High five!', subtitle: n.body || '' };
+    case 'collaborative_complete':
+      return { title: n.title || 'Kollaborativt uppdrag klart', subtitle: n.body || '' };
+    case 'quest_complete':
+      return { title: n.title || 'Uppdrag slutfört', subtitle: n.body || '' };
     default:
-      return { title: 'Notifikation', subtitle: '' };
+      return { title: n.title || 'Notifikation', subtitle: n.body || '' };
   }
 }
 
@@ -73,6 +89,12 @@ export default function NotificationPanel({ open, onClose }: Props) {
   useEffect(() => {
     return subscribeNotifications(() => setNotifications([...getNotifications()]));
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      markAllRead();
+    }
+  }, [open]);
 
   return (
     <AnimatePresence>

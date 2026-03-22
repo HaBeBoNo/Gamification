@@ -40,12 +40,52 @@ export const notificationTypes = {
   QUEST_COMPLETED:      'quest_completed',
 };
 
+export const NOTIF_TYPES = {
+  LEVEL_UP:               'level_up',
+  HIGH_FIVE:              'high_five',
+  COLLABORATIVE_COMPLETE: 'collaborative_complete',
+  QUEST_COMPLETE:         'quest_complete',
+};
+
+export function createLevelUpNotif(memberKey, memberName, newLevel) {
+  return {
+    id: Date.now() + Math.random(),
+    type: NOTIF_TYPES.LEVEL_UP,
+    title: `${memberName} nådde nivå ${newLevel}! ⚡`,
+    body: `Grattis ${memberName} — fortsätt så!`,
+    memberKey,
+    ts: Date.now(),
+    read: false,
+  };
+}
+
+export function createHighFiveNotif(fromKey, fromName, toKey, toName) {
+  return {
+    id: Date.now() + Math.random(),
+    type: NOTIF_TYPES.HIGH_FIVE,
+    title: `${fromName} gav ${toName} en high-five 🙌`,
+    body: '',
+    memberKey: toKey,
+    ts: Date.now(),
+    read: false,
+  };
+}
+
+export function addNotifToAll(notif) {
+  notifications = [notif, ...notifications];
+  if (notifications.length > 50) notifications = notifications.slice(0, 50);
+  listeners.forEach(fn => fn(notifications));
+}
+
 /**
  * @typedef {{
  *   id: number,
  *   type: string,
  *   ts: number,
  *   read: boolean,
+ *   title?: string,
+ *   body?: string,
+ *   memberKey?: string,
  *   payload?: Record<string, any>
  * }} Notification
  */
