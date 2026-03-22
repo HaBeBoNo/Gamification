@@ -77,7 +77,7 @@ export function calcCollaborativeBonus(participantCount) {
  * showXPPop   (xp, event) => void — floating XP-text (valfri)
  * rollReward  (xp) => reward | null — slumpar belöning (valfri)
  */
-export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward) {
+export async function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward) {
   const c = S.chars[S.me];
   const m = MEMBERS[S.me];
   if (!c || !m) return;
@@ -113,6 +113,18 @@ export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollRewar
   else if (dayGap === 0) c.streak = c.streak || 1;
   else                   c.streak = 1;
 
+  // Streak milestone notifikationer
+  const streakMilestones = [5, 10, 14, 30];
+  if (streakMilestones.includes(c.streak)) {
+    try {
+      const { createStreakNotif, addNotifToAll } = await import('../state/notifications.js');
+      const { MEMBERS } = await import('../data/members.js');
+      const memberName = MEMBERS[S.me]?.name || S.me;
+      const notif = createStreakNotif(S.me, memberName, c.streak);
+      addNotifToAll(notif);
+    } catch {}
+  }
+
   c.lastQuestDate = Date.now();
   c.lastSeen      = Date.now();
 
@@ -140,10 +152,10 @@ export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollRewar
   }
 
   // 5. Karaktärs-stats utifrån quest-kategori
-  c.stats         = c.stats         || { vit: 10, wis: 10, for: 10, cha: 10 };
+  c.stats         = c.stats         || { vit: 10, wis: 10, for: 10, cha: 10 }; 
   c.categoryCount = c.categoryCount || {};
   c.categoryCount[q.cat] = (c.categoryCount[q.cat] || 0) + 1;
-
+  
   const stat = catToStat(q.cat);
   if (stat) {
     const inc     = q.cat === 'tech' ? 2 : 1;
@@ -193,81 +205,4 @@ export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollRewar
   // 9. Activity feed
   const ts = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   const feedAction = milestone > 0
-    ? `completed "${q.title}" — milestone bonus +${milestone} XP`
-    : `completed "${q.title}"`;
-
-  S.feed.push({ who: S.me, action: feedAction, xp: totalXP, time: ts });
-  if (leveled) S.feed.push({ who: S.me, action: `leveled up to Level ${c.level}!`, xp: 0, time: ts });
-  if (S.feed.length > 50) S.feed.splice(0, S.feed.length - 50);
-
-  // 10. Commit — skriv tillbaka och spara (save() triggar notify() → Zustand re-render)
-  S.chars[S.me] = c;
-  save();
-
-  // 11. UI-effekter (efter render)
-  showXPPop?.(totalXP, event);
-
-  if (leveled) {
-    setTimeout(() => showLU?.(c.level), 700);
-  } else {
-    setTimeout(() => showRW?.(rollReward?.(q.xp) ?? null), 550);
-  }
-
-  // 12. Recurring quest: re-render efter animation
-  if (q.recur !== 'none') {
-    setTimeout(() => notify(), 2200);
-  }
-
-  return { totalXP, leveled, level: c.level };
-}
-
-/**
- * awardMetricPts(memberId, deltas)
- * Awards scoreboard pts based on metric changes (called from MetricsModal).
- * deltas: { spf, str, ig, x, tix } — positive = increase
- */
-export function awardMetricPts(memberId, deltas) {
-  const c = S.chars[memberId];
-  if (!c) return;
-  c.pts = c.pts || { work: 0, spotify: 0, social: 0, bonus: 0 };
-  if (deltas.spf > 0) c.pts.spotify += Math.round(deltas.spf * 0.1);
-  if (deltas.str > 0) c.pts.spotify += Math.round(deltas.str * 0.001);
-  if (deltas.ig  > 0) c.pts.social  += Math.round(deltas.ig  * 0.1);
-  if (deltas.x   > 0) c.pts.social  += Math.round(deltas.x   * 0.2);
-  if (deltas.tix > 0) c.pts.bonus   += Math.round(deltas.tix * 1.0);
-  S.chars[memberId] = c;
-  save();
-}
-
-/**
- * completeCollaborativeQuest(quest, rerender)
- * Triggas av ägaren vid completion — ger XP till alla participants.
- */
-export function completeCollaborativeQuest(quest, rerender) {
-  if (!quest.collaborative || !quest.participants?.length) return;
-
-  const bonus = calcCollaborativeBonus(quest.participants.length + 1);
-
-  // Ge XP till alla participants
-  quest.participants.forEach(memberKey => {
-    const char = S.chars[memberKey];
-    if (!char) return;
-
-    const xp = Math.round(quest.xp * bonus);
-    char.xp = (char.xp || 0) + xp;
-    char.totalXp = (char.totalXp || 0) + xp;
-    char.questsDone = (char.questsDone || 0) + 1;
-
-    S.feed.unshift({
-      who: memberKey,
-      action: `slutförde kollaborativt uppdrag "${quest.title}" 🤝`,
-      xp,
-      time: new Date().toLocaleTimeString('sv-SE', {
-        hour: '2-digit', minute: '2-digit'
-      }),
-    });
-  });
-
-  save();
-  rerender?.();
-}
+    ? `completed \
