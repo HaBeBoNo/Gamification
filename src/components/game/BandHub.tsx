@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, ExternalLink, Folder, FileText, Music, Video, Image, File, RefreshCw } from 'lucide-react';
 import { getDriveFiles, uploadFile, getMimeTypeLabel, formatDate } from '@/lib/googleDrive';
 import { S } from '@/state/store';
