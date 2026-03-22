@@ -67,6 +67,7 @@ export default function LeaderboardView() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
   const rerender = () => forceUpdate(n => n + 1);
+  const [loadingData, setLoadingData] = useState(true);
 
   // Realtime — hämta alla members vid mount + lyssna på live-ändringar
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function LeaderboardView() {
 
     // Hämta alla members data vid mount
     async function fetchAllMembers() {
+      setLoadingData(true);
       const { data } = await supabase
         .from('member_data')
         .select('member_key, data');
@@ -88,6 +90,7 @@ export default function LeaderboardView() {
           }
         });
       }
+      setLoadingData(false);
     }
 
     fetchAllMembers();
@@ -155,6 +158,19 @@ export default function LeaderboardView() {
     };
     return [...rows].sort(compare).map((r, i) => ({ ...r, rank: i + 1 }));
   }, [rows, sortKey]);
+
+  if (loadingData) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: 48,
+        color: 'var(--color-text-muted)',
+        fontSize: 13, fontFamily: 'var(--font-ui)',
+      }}>
+        Hämtar leaderboard...
+      </div>
+    );
+  }
 
   return (
     <div className="lbv">
