@@ -9,6 +9,7 @@ import { showSidequestNudge, generatePersonalQuests } from '@/hooks/useAI';
 import { Compass, RefreshCw, Zap, CheckCircle } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
+import CreateQuestModal from './CreateQuestModal';
 
 const TABS = [
   { id: 'personal', label: 'MINA' },
@@ -50,6 +51,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
   const [filter, setFilter] = useState('alla');
   const [refreshing, setRefreshing] = useState(false);
   const [coachMessage, setCoachMessage] = useState('');
+  const [showCreateQuest, setShowCreateQuest] = useState(false);
 
   const me = S.me;
   const char = me ? S.chars[me] : null;
@@ -59,12 +61,10 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     const quests = S.quests || [];
     if (tab === 'all') return quests;
     if (tab === 'personal') {
-      // Hämta kollaborativa quests synliga för alla members
       const collaborativeQuests = quests.filter(
         (q: any) => q.collaborative && !q.done
       );
 
-      // Bygg quest-listan: slot 1-2 personliga, slot 3 kollaborativt, slot 4-5 personliga
       const allPersonalActive = quests
         .filter((q: any) => (q.owner === me || q.personal) && !q.done && !q.collaborative)
         .sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
@@ -118,7 +118,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       const roleQuests = active.filter((q: any) => memberIds.includes(q.owner) && !q.personal);
       if (roleQuests.length > 0) {
         const label = ROLE_TYPE_LABEL[rt]?.label || rt;
-        groups.push({ key: rt, label: `${label} QUESTS`, quests: roleQuests });
+        groups.push({ key: rt, label: label + ' QUESTS', quests: roleQuests });
       }
     });
     const personalQuests = active.filter((q: any) => q.personal || q.owner === me);
@@ -151,7 +151,6 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
   };
 
-  // Auto-generera när aktiva quests sjunker under 3
   const activePersonalCount = (S.quests || []).filter(
     (q: any) => q.owner === me && !q.done
   ).length;
@@ -165,7 +164,6 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     }
   }, [activePersonalCount]);
 
-  // Coach-meddelande — hämtas en gång per dag, cachas i S.chars
   useEffect(() => {
     if (!me) return;
     const cached = (S.chars[me] as any)?.dailyCoachMessage;
@@ -180,10 +178,10 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     const coachNameStr = (S.chars[me] as any)?.coachName || 'Coach';
     const charData = S.chars[me] as any;
     const promptText = [
-      `Du är ${coachNameStr}, personlig AI-coach för ${me} i bandet Sektionen.`,
-      charData?.motivation ? `Motivation: ${charData.motivation}` : '',
-      charData?.roleEnjoy ? `Trivs med: ${charData.roleEnjoy}` : '',
-      `Nivå ${charData?.level || 1}, ${charData?.totalXp || 0} XP totalt.`,
+      'Du ar ' + coachNameStr + ', personlig AI-coach for ' + me + ' i bandet Sektionen.',
+      charData?.motivation ? 'Motivation: ' + charData.motivation : '',
+      charData?.roleEnjoy ? 'Trivs med: ' + charData.roleEnjoy : '',
+      'Niva ' + (charData?.level || 1) + ', ' + (charData?.totalXp || 0) + ' XP totalt.',
     ].filter(Boolean).join('\n');
 
     fetch('/api/claude', {
@@ -194,7 +192,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         max_tokens: 150,
         messages: [{
           role: 'user',
-          content: `${promptText}\n\nSkriv ett kort proaktivt meddelande (max 2 meningar) till ${me} för idag. Ingen hälsningsfras. Direkt in i sak.`,
+          content: promptText + '\n\nSkriv ett kort proaktivt meddelande (max 2 meningar) till ' + me + ' for idag. Ingen halsningsfras. Direkt in i sak.',
         }],
       }),
     })
@@ -253,12 +251,10 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
             color: 'var(--color-text-muted)',
             fontFamily: 'var(--font-ui)',
           }}>
-            ÖPPNA →
+            OPPNA →
           </div>
         </div>
       )}
-
-      {/* Calendar strip — dold tills Google Calendar är aktiverat */}
 
       {/* Minimal header */}
       <div className="qv-header">
@@ -271,7 +267,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         {FILTERS.map(f => (
           <button
             key={f.id}
-            className={`qf-pill ${filter === f.id ? 'active' : ''}`}
+            className={'qf-pill ' + (filter === f.id ? 'active' : '')}
             onClick={() => setFilter(f.id)}
           >{f.label}</button>
         ))}
@@ -283,7 +279,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         {TABS.map(t => (
           <button
             key={t.id}
-            className={`tab-btn ${tab === t.id ? 'active' : ''}`}
+            className={'tab-btn ' + (tab === t.id ? 'active' : '')}
             onClick={() => { setTab(t.id); S.tab = t.id; }}
           >{t.label}</button>
         ))}
@@ -296,13 +292,13 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         {tab === 'sidequest' && (
           <button className="tab-btn" onClick={handleSidequestNudgeClick}>
             <Zap size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-            FÖRSLAG
+            FORSLAG
           </button>
         )}
       </div>
 
       {allDone && (
-        <div className="all-done-nudge stagger-3">✅ Alla synliga uppdrag slutförda! Bra jobbat.</div>
+        <div className="all-done-nudge stagger-3">Alla synliga uppdrag slutforda! Bra jobbat.</div>
       )}
 
       {refreshing ? (
@@ -351,11 +347,40 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
           showXP={showXP}
         />
       )}
+
       {completed.length === 0 && active.length > 0 && (
         <div className="empty-state stagger-4" style={{ padding: 'var(--space-xl)' }}>
           <CheckCircle size={48} strokeWidth={1} />
-          <div className="empty-text">Inga avklarade uppdrag än. Det ändras snart.</div>
+          <div className="empty-text">Inga avklarade uppdrag an. Det andras snart.</div>
         </div>
+      )}
+
+      {/* Skapa uppdrag-knapp */}
+      <button
+        onClick={() => setShowCreateQuest(true)}
+        style={{
+          width: '100%',
+          background: 'transparent',
+          border: '1px dashed var(--color-border)',
+          borderRadius: 'var(--radius-card)',
+          padding: '14px',
+          fontSize: 13,
+          color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-ui)',
+          letterSpacing: '0.08em',
+          cursor: 'pointer',
+          touchAction: 'manipulation',
+          marginTop: 8,
+        }}
+      >
+        + SKAPA UPPDRAG
+      </button>
+
+      {showCreateQuest && (
+        <CreateQuestModal
+          onClose={() => setShowCreateQuest(false)}
+          rerender={rerender}
+        />
       )}
     </div>
   );
