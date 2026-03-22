@@ -18,6 +18,14 @@ export function useAuth() {
       return;
     }
 
+    // Hantera OAuth-callback från URL-hash
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = hashParams.get('access_token');
+    if (accessToken) {
+      // Rensa hash från URL utan reload
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     const timeout = setTimeout(() => {
       setLoading(false);
       setSynced(true);
@@ -35,6 +43,7 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth event:', event, 'user:', session?.user?.email);
         if (session?.user) {
           await handleUser(session.user, timeout);
         } else {
