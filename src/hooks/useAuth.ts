@@ -86,6 +86,13 @@ export function useAuth() {
       // Vänta på full sync innan vi sätter synced=true
       await syncFromSupabase(key).catch((e) => console.error('sync error:', e));
       console.log('After sync — S.onboarded:', S.onboarded, 'S.me:', S.me);
+      console.log('=== AUTH DEBUG ===');
+      console.log('memberKey:', key);
+      console.log('S.me:', S.me);
+      console.log('S.onboarded:', S.onboarded);
+      console.log('S.chars[key]?.onboarded:', S.chars[key]?.onboarded);
+      console.log('localStorage sek-v6:', localStorage.getItem('sek-v6')?.substring(0, 200));
+      console.log('==================');
       S.me = key;
       save();
     } else {
