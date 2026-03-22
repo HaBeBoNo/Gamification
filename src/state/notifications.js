@@ -45,6 +45,8 @@ export const NOTIF_TYPES = {
   HIGH_FIVE:              'high_five',
   COLLABORATIVE_COMPLETE: 'collaborative_complete',
   QUEST_COMPLETE:         'quest_complete',
+  FIRST_LOGIN:            'first_login',
+  STREAK:                 'streak',
 };
 
 export function createLevelUpNotif(memberKey, memberName, newLevel) {
@@ -66,6 +68,30 @@ export function createHighFiveNotif(fromKey, fromName, toKey, toName) {
     title: `${fromName} gav ${toName} en high-five 🙌`,
     body: '',
     memberKey: toKey,
+    ts: Date.now(),
+    read: false,
+  };
+}
+
+export function createFirstLoginNotif(memberKey, memberName) {
+  return {
+    id: Date.now() + Math.random(),
+    type: NOTIF_TYPES.FIRST_LOGIN,
+    title: `${memberName} har anslutit sig till Headquarters! 🎉`,
+    body: 'Välkommen till bandet.',
+    memberKey,
+    ts: Date.now(),
+    read: false,
+  };
+}
+
+export function createStreakNotif(memberKey, memberName, streakDays) {
+  return {
+    id: Date.now() + Math.random(),
+    type: NOTIF_TYPES.STREAK,
+    title: `${memberName} har ${streakDays} dagars streak! 🔥`,
+    body: `${streakDays} dagar i rad — håll i det.`,
+    memberKey,
     ts: Date.now(),
     read: false,
   };
