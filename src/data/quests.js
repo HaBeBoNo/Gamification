@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // quests.js — Sektionen Gamification
 // Operation POST II · Reviderad mars 2026
-// 107 quests fördelade på 8 members.
+// 108 quests fördelade på 8 members.
 // Separata projekt: BASE_QUESTS, HIDDEN_BANK
 // ═══════════════════════════════════════════════════════════════
 
@@ -625,6 +625,23 @@ export const BASE_QUESTS = [
     id: 936, owner: 'carl', title: 'Identifiera en organisation, stiftelse eller fond som skulle kunna stödja Sektionen.',
     desc: 'Det kan vara kommunalt, regionalt, nationellt eller privat. Ett namn, ett syfte, en möjlig koppling till Sektionen.',
     cat: 'wisdom', xp: 40, recur: 'none', type: 'standard', region: '🇸🇪 Sverige', done: false, personal: false,
+  },
+
+  // ── Säsong 1 — Kollaborativt quest ────────────────────────────
+  {
+    id: 950,
+    owner: 'hannes',
+    title: 'Första gemensamma uppdraget',
+    desc: 'Sektionen samlas och genomför något tillsammans. Vad det är bestämmer ni.',
+    cat: 'social',
+    xp: 100,
+    recur: 'none',
+    type: 'collaborative',
+    collaborative: true,
+    participants: [],
+    region: '🇸🇪 Sverige',
+    done: false,
+    personal: false,
   },
 
 ];

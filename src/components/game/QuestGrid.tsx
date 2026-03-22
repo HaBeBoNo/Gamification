@@ -59,12 +59,26 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     const quests = S.quests || [];
     if (tab === 'all') return quests;
     if (tab === 'personal') {
-      const personalActive = quests
-        .filter((q: any) => (q.owner === me || q.personal) && !q.done)
-        .sort((a: any, b: any) => (b.id || 0) - (a.id || 0))
-        .slice(0, 5); // max 5 aktiva
+      // Hämta kollaborativa quests synliga för alla members
+      const collaborativeQuests = quests.filter(
+        (q: any) => q.collaborative && !q.done
+      );
+
+      // Bygg quest-listan: slot 1-2 personliga, slot 3 kollaborativt, slot 4-5 personliga
+      const allPersonalActive = quests
+        .filter((q: any) => (q.owner === me || q.personal) && !q.done && !q.collaborative)
+        .sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
+
+      const slot3 = collaborativeQuests[0] || null;
+
+      const displayQuests = [
+        ...allPersonalActive.slice(0, 2),
+        ...(slot3 ? [slot3] : []),
+        ...allPersonalActive.slice(2, 4),
+      ].slice(0, 5);
+
       const personalDone = quests.filter((q: any) => (q.owner === me || q.personal) && q.done);
-      return [...personalActive, ...personalDone];
+      return [...displayQuests, ...personalDone];
     }
     if (tab === 'daily') return quests.filter((q: any) => q.recur === 'daily');
     if (tab === 'strategic') return quests.filter((q: any) => q.type === 'strategic');

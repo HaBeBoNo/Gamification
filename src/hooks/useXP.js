@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // useXP.js — XP-logik för Sektionen Gamification
 // Mönster: direkt mutation av S + save() → notify() via Zustand
-// Exporterar: calcQuestXP, awardXP, awardMetricPts
+// Exporterar: calcQuestXP, calcCollaborativeBonus, awardXP, awardMetricPts, completeCollaborativeQuest
 // ═══════════════════════════════════════════════════════════════
 
 import { S, save, notify } from '../state/store';
@@ -55,6 +55,17 @@ export function calcQuestXP(memberId, baseXp) {
 }
 
 /**
+ * calcCollaborativeBonus(participantCount)
+ * Returnerar XP-multiplikator baserat på antal deltagare (inkl. ägaren).
+ */
+export function calcCollaborativeBonus(participantCount) {
+  if (participantCount >= 8) return 2.0;   // Hela bandet — dubbelt XP
+  if (participantCount >= 3) return 1.5;   // 3+ members — +50%
+  if (participantCount >= 2) return 1.25;  // 2 members — +25%
+  return 1.0;
+}
+
+/**
  * awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward)
  *
  * q           Quest-objekt (id, xp, cat, recur, region, title)
@@ -84,7 +95,12 @@ export function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollRewar
 
   const boosted   = Math.round(roleScaledXP * (1 + streakBonus));
   const milestone = calcMilestoneBonus(S.me, q.xp);
-  const totalXP   = boosted + milestone;
+
+  const collaborativeMultiplier = q.collaborative
+    ? calcCollaborativeBonus((q.participants?.length || 0) + 1)
+    : 1.0;
+
+  const totalXP = Math.round((boosted + milestone) * collaborativeMultiplier);
 
   // 3. Streak-logik: konsekutiva dagar med minst en quest-completion
   const prevQuestDate = c.lastQuestDate || 0;
@@ -214,4 +230,37 @@ export function awardMetricPts(memberId, deltas) {
   if (deltas.tix > 0) c.pts.bonus   += Math.round(deltas.tix * 1.0);
   S.chars[memberId] = c;
   save();
+}
+
+/**
+ * completeCollaborativeQuest(quest, rerender)
+ * Triggas av ägaren vid completion — ger XP till alla participants.
+ */
+export function completeCollaborativeQuest(quest, rerender) {
+  if (!quest.collaborative || !quest.participants?.length) return;
+
+  const bonus = calcCollaborativeBonus(quest.participants.length + 1);
+
+  // Ge XP till alla participants
+  quest.participants.forEach(memberKey => {
+    const char = S.chars[memberKey];
+    if (!char) return;
+
+    const xp = Math.round(quest.xp * bonus);
+    char.xp = (char.xp || 0) + xp;
+    char.totalXp = (char.totalXp || 0) + xp;
+    char.questsDone = (char.questsDone || 0) + 1;
+
+    S.feed.unshift({
+      who: memberKey,
+      action: `slutförde kollaborativt uppdrag "${quest.title}" 🤝`,
+      xp,
+      time: new Date().toLocaleTimeString('sv-SE', {
+        hour: '2-digit', minute: '2-digit'
+      }),
+    });
+  });
+
+  save();
+  rerender?.();
 }

@@ -1,6 +1,8 @@
 import { X, Zap, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import QuestDeleteModal from './QuestDeleteModal';
+import { S } from '@/state/store';
+import { calcCollaborativeBonus } from '@/hooks/useXP';
 
 const CAT_COLORS: Record<string, string> = {
   social:   '#7c6af7',
@@ -118,6 +120,36 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
         }}>
           {quest.desc}
         </div>
+
+        {/* Kollaborativt — ägarinfo */}
+        {quest.collaborative && quest.owner === S.me && (
+          <div style={{
+            background: 'var(--color-primary)10',
+            border: '1px solid var(--color-primary)30',
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 16,
+            fontSize: 13,
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.6,
+          }}>
+            Du äger detta uppdrag. När du slutför det räknas det som klart för alla 
+            {quest.participants?.length > 0
+              ? ` — ${quest.participants.join(', ')} och dig`
+              : ' som anslutit sig'
+            }.
+            {quest.participants?.length > 0 && (
+              <span style={{
+                display: 'block',
+                marginTop: 6,
+                color: 'var(--color-primary)',
+                fontWeight: 600,
+              }}>
+                +{Math.round((calcCollaborativeBonus(quest.participants.length + 1) - 1) * 100)}% bonus-XP för alla
+              </span>
+            )}
+          </div>
+        )}
 
         {/* XP */}
         <div style={{
