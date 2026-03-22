@@ -82,7 +82,6 @@ export default function BandHub() {
 
   return (
     <div>
-      {/* Tab bar */}
       <div style={{
         display: 'flex', gap: 0,
         borderBottom: '1px solid var(--color-border)',
@@ -117,8 +116,6 @@ export default function BandHub() {
 
       {activeTab === 'drive' && (
         <div style={{ padding: '0 16px 100px' }}>
-
-          {/* Header */}
           <div style={{
             display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', padding: '16px 0',
@@ -130,14 +127,11 @@ export default function BandHub() {
               SEKTIONEN DRIVE
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={loadFiles}
-                style={{
-                  background: 'none', border: 'none',
-                  color: 'var(--color-text-muted)', cursor: 'pointer',
-                  padding: 4, touchAction: 'manipulation',
-                }}
-              >
+              <button onClick={loadFiles} style={{
+                background: 'none', border: 'none',
+                color: 'var(--color-text-muted)', cursor: 'pointer',
+                padding: 4, touchAction: 'manipulation',
+              }}>
                 <RefreshCw size={16} />
               </button>
               <button
@@ -155,12 +149,7 @@ export default function BandHub() {
                 <Upload size={14} />
                 {uploading ? 'Laddar upp...' : 'Ladda upp'}
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                style={{ display: 'none' }}
-                onChange={handleUpload}
-              />
+              <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUpload} />
             </div>
           </div>
 
@@ -188,18 +177,13 @@ export default function BandHub() {
 
           {error && !loading && (
             <div style={{ padding: 24, textAlign: 'center' }}>
-              <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 16 }}>
-                {error}
-              </div>
-              <button
-                onClick={loadFiles}
-                style={{
-                  background: 'var(--color-primary)', color: '#fff',
-                  border: 'none', borderRadius: '999px',
-                  padding: '10px 20px', fontSize: 13,
-                  fontFamily: 'var(--font-ui)', cursor: 'pointer',
-                }}
-              >
+              <div style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 16 }}>{error}</div>
+              <button onClick={loadFiles} style={{
+                background: 'var(--color-primary)', color: '#fff',
+                border: 'none', borderRadius: '999px',
+                padding: '10px 20px', fontSize: 13,
+                fontFamily: 'var(--font-ui)', cursor: 'pointer',
+              }}>
                 Försök igen
               </button>
             </div>
@@ -207,16 +191,13 @@ export default function BandHub() {
 
           {!loading && !error && (
             <>
-              {/* Fästa filer */}
               {pinnedFiles.length > 0 && (
                 <>
                   <div style={{
                     fontSize: 11, letterSpacing: '0.1em',
                     color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
                     marginBottom: 8,
-                  }}>
-                    FÄSTA
-                  </div>
+                  }}>FÄSTA</div>
                   <div style={{ marginBottom: 20 }}>
                     {pinnedFiles.map(file => (
                       <React.Fragment key={file.id}>
@@ -226,15 +207,11 @@ export default function BandHub() {
                   </div>
                 </>
               )}
-
-              {/* Senaste filer */}
               <div style={{
                 fontSize: 11, letterSpacing: '0.1em',
                 color: 'var(--color-text-muted)', fontFamily: 'var(--font-ui)',
                 marginBottom: 8,
-              }}>
-                SENASTE
-              </div>
+              }}>SENASTE</div>
               <div>
                 {recentFiles.length === 0 && (
                   <div style={{
@@ -281,10 +258,7 @@ function FileRow({ file, pinned, isAdmin, onTogglePin }: {
         }}>
           {file.name}
         </div>
-        <div style={{
-          fontSize: 11, color: 'var(--color-text-muted)',
-          marginTop: 2,
-        }}>
+        <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
           {getMimeTypeLabel(file.mimeType)} · {formatDate(file.modifiedTime)}
         </div>
       </div>
@@ -303,15 +277,8 @@ function FileRow({ file, pinned, isAdmin, onTogglePin }: {
             {pinned ? '★' : '☆'}
           </button>
         )}
-        <a
-          href={file.webViewLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: 'var(--color-text-muted)',
-            display: 'flex', alignItems: 'center',
-            padding: 4,
-          }}>
+        <a href={file.webViewLink} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', padding: 4 }}>
           <ExternalLink size={14} />
         </a>
       </div>
