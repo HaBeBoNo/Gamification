@@ -66,8 +66,8 @@ export default function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
-  const rerender = () => forceUpdate(n => n + 1);
   const [loadingData, setLoadingData] = useState(true);
+  const rerender = () => forceUpdate(n => n + 1);
 
   // Realtime — hämta alla members vid mount + lyssna på live-ändringar
   useEffect(() => {
