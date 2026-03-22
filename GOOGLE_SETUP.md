@@ -1,6 +1,6 @@
 # Google Workspace Integration — Setup-guide
 
-Denna guide förklarar hur du skapar ett Google Cloud-projekt, aktiverar nödvändiga APIs och hämtar ett Client ID för att aktivera Google-integrationen i Sektionen War Room.
+Denna guide förklarar hur du skapar ett Google Cloud-projekt, aktiverar nödvändiga APIs och hämtar ett Client ID för att aktivera Google-integrationen i Sektionen Headquarters.
 
 ---
 
@@ -8,7 +8,7 @@ Denna guide förklarar hur du skapar ett Google Cloud-projekt, aktiverar nödvä
 
 1. Gå till [Google Cloud Console](https://console.cloud.google.com/)
 2. Klicka på projektväljaren uppe till vänster → **New Project**
-3. Namnge projektet, t.ex. `sektionen-war-room`
+3. Namnge projektet, t.ex. `sektionen-headquarters`
 4. Klicka **Create**
 
 ---
@@ -34,7 +34,7 @@ Sök på respektive namn i Library och klicka **Enable**.
 1. Gå till **APIs & Services → OAuth consent screen**
 2. Välj **External** (för testning) eller **Internal** (om ni kör Google Workspace för bandet)
 3. Fyll i:
-   - **App name:** Sektionen War Room
+   - **App name:** Sektionen Headquarters
    - **User support email:** din e-post
    - **Developer contact information:** din e-post
 4. Under **Scopes**, lägg till:
@@ -54,7 +54,7 @@ Sök på respektive namn i Library och klicka **Enable**.
 2. Klicka **+ Create Credentials → OAuth client ID**
 3. Välj **Web application**
 4. Fyll i:
-   - **Name:** Sektionen War Room (Web)
+   - **Name:** Sektionen Headquarters (Web)
    - **Authorized JavaScript origins:**
      - `http://localhost:5173` (lokal dev)
      - `http://localhost:8080` (alternativ port)
