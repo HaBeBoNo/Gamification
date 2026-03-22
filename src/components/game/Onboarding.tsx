@@ -183,10 +183,17 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   /* ── Profile-building interstitial ── */
   if (buildingProfile) {
     return (
-      <div className="ob-overlay">
+      <div className="ob-overlay" style={{
+        minHeight: '100dvh',
+        padding: 'env(safe-area-inset-top) 24px env(safe-area-inset-bottom)',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-bg)',
+        overflowY: 'auto',
+      }}>
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', height: '100%',
+          justifyContent: 'center', flex: 1,
           gap: 'var(--space-lg)',
         }}>
           <motion.div
@@ -211,10 +218,17 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   /* ── Quest-generating interstitial ── */
   if (generating) {
     return (
-      <div className="ob-overlay">
+      <div className="ob-overlay" style={{
+        minHeight: '100dvh',
+        padding: 'env(safe-area-inset-top) 24px env(safe-area-inset-bottom)',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-bg)',
+        overflowY: 'auto',
+      }}>
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', height: '100%',
+          justifyContent: 'center', flex: 1,
           gap: 'var(--space-lg)',
         }}>
           <motion.div
@@ -242,7 +256,14 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   /* ── Welcome interstitial ── */
   if (showWelcome) {
     return (
-      <div className="ob-overlay">
+      <div className="ob-overlay" style={{
+        minHeight: '100dvh',
+        padding: 'env(safe-area-inset-top) 24px env(safe-area-inset-bottom)',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--color-bg)',
+        overflowY: 'auto',
+      }}>
         <motion.div
           className="ob-welcome"
           initial={{ opacity: 0 }}
@@ -289,15 +310,36 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
   };
 
   return (
-    <div className="ob-overlay">
+    <div className="ob-overlay" style={{
+      minHeight: '100dvh',
+      padding: 'env(safe-area-inset-top) 24px env(safe-area-inset-bottom)',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--color-bg)',
+      overflowY: 'auto',
+    }}>
       {/* Progress line */}
-      <div className="ob-progress-bar">
+      <div className="ob-progress-bar" style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0,
+        height: 3,
+        background: 'var(--color-border)',
+        zIndex: 10,
+      }}>
         <div className="ob-progress-fill" style={{ width: `${progressPct}%` }} />
       </div>
 
       {/* Step label */}
       {STEP_META[step]?.label && (
-        <div className="ob-step-label">{STEP_META[step].label}</div>
+        <div className="ob-step-label" style={{
+          fontSize: 10,
+          letterSpacing: '0.15em',
+          color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-ui)',
+          textAlign: 'center',
+          marginTop: 16,
+          marginBottom: 32,
+        }}>{STEP_META[step].label}</div>
       )}
 
       <AnimatePresence mode="wait" custom={direction}>
@@ -327,12 +369,34 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           {step === 1 && (
             <div className="ob-step-inner">
               <div className="ob-title">Vem är du?</div>
-              <div className="ob-member-grid">
+              <div className="ob-member-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+                width: '100%',
+                marginBottom: 100,
+              }}>
                 {Object.entries(MEMBERS).map(([key, m]: [string, any]) => (
                   <button
                     key={key}
                     className={`ob-member-btn${selectedMember === key ? ' selected' : ''}`}
                     onClick={() => setSelectedMember(key)}
+                    style={{
+                      padding: '16px 12px',
+                      borderRadius: 12,
+                      border: '2px solid',
+                      borderColor: selectedMember === key ? 'var(--color-primary)' : 'var(--color-border)',
+                      background: selectedMember === key ? 'var(--color-primary)10' : 'var(--color-surface)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                      textAlign: 'center',
+                      minHeight: 80,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
                   >
                     <MemberIcon id={key} size={40} color={m.xpColor} />
                     <span>{m.name}</span>
@@ -345,7 +409,14 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           {/* ── Steps 2–6: Questions ── */}
           {step >= 2 && step <= 6 && (
             <div className="ob-step-inner">
-              <div className="ob-question">{ONBOARDING_QUESTIONS[step - 2]}</div>
+              <div className="ob-question" style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: 'var(--color-text)',
+                lineHeight: 1.3,
+                marginBottom: 16,
+                fontFamily: 'var(--font-display)',
+              }}>{ONBOARDING_QUESTIONS[step - 2]}</div>
               <textarea
                 className="ob-textarea"
                 value={answers[step - 2]}
@@ -353,6 +424,21 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
                 placeholder="Skriv här..."
                 rows={5}
                 autoFocus
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  minHeight: 120,
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 12,
+                  color: 'var(--color-text)',
+                  padding: '14px',
+                  fontSize: 16,
+                  fontFamily: 'var(--font-body)',
+                  resize: 'none',
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
               />
             </div>
           )}
@@ -387,6 +473,22 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           className="ob-primary-btn"
           onClick={handlePrimary}
           disabled={!canProceed()}
+          style={{
+            position: 'fixed',
+            bottom: 'calc(24px + env(safe-area-inset-bottom))',
+            left: 24, right: 24,
+            background: 'var(--color-primary)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '999px',
+            padding: '16px',
+            fontSize: 15,
+            fontFamily: 'var(--font-ui)',
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            zIndex: 10,
+          }}
         >
           {getButtonLabel()}
         </button>
