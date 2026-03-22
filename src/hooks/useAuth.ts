@@ -29,8 +29,11 @@ export function useAuth() {
       setMemberKey(key);
       S.me = key;
 
-      // Vänta på Supabase-sync innan loading sätts till false
+      // Vänta på Supabase-sync innan vi fortsätter
       await syncFromSupabase(key).catch(() => {});
+
+      // Säkerställ att S.me är satt efter sync
+      S.me = key;
       save();
     } else {
       setMemberKey(null);
