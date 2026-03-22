@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { S } from '@/state/store';
+import { S, save } from '@/state/store';
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -61,20 +61,6 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   if (remote.seasonStart) S.seasonStart = remote.seasonStart;
   if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;
 
-  // Spara till localStorage omedelbart
-  localStorage.setItem('sek-v6', JSON.stringify({
-    me: S.me,
-    onboarded: S.onboarded,
-    chars: S.chars,
-    quests: S.quests,
-    feed: S.feed,
-    metrics: S.metrics,
-    prev: S.prev,
-    checkIns: S.checkIns,
-    operationName: S.operationName,
-    weeklyCheckouts: S.weeklyCheckouts,
-    notifications: S.notifications,
-    seasonStart: S.seasonStart,
-    seasonEnd: S.seasonEnd,
-  }));
+  // Spara explicit till localStorage via save()
+  save();
 }
