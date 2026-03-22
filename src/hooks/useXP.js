@@ -199,10 +199,68 @@ export async function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rol
     tb.anomaly    = Math.abs(urgency - avg) > 0.4;
     tb.lastUpdated = Date.now();
     }
-    }
+  }
   // Recurring quests: QuestCard ansvarar för att återaktivera kortet via setTimeout
 
   // 9. Activity feed
   const ts = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
   const feedAction = milestone > 0
-    ? `completed \
+    ? `completed "${q.title}" (+${totalXP} XP, +${milestone} milestone bonus)`
+    : `completed "${q.title}" (+${totalXP} XP)`;
+  S.feed = S.feed || [];
+  S.feed.unshift({ who: S.me, action: feedAction, ts });
+  if (S.feed.length > 50) S.feed.length = 50;
+
+  // 10. Belöning (valfri)
+  if (rollReward) {
+    const reward = rollReward(totalXP);
+    if (reward && showRW) showRW(reward);
+  }
+
+  // 11. Level-up overlay
+  if (leveled && showLU) showLU(c.level);
+
+  // 12. Floating XP-text
+  if (showXPPop) showXPPop(totalXP, event);
+
+  save();
+  notify();
+}
+
+/**
+ * awardMetricPts(memberId, pts, type)
+ * Ger poäng direkt till ett specifikt poängfält (spotify, social, bonus).
+ */
+export function awardMetricPts(memberId, pts, type = 'bonus') {
+  const c = S.chars[memberId];
+  if (!c) return;
+  c.pts = c.pts || { work: 0, spotify: 0, social: 0, bonus: 0 };
+  c.pts[type] = (c.pts[type] || 0) + pts;
+  save();
+  notify();
+}
+
+/**
+ * completeCollaborativeQuest(q, participants, xpEarned)
+ * Delar ut XP till alla deltagare med kollaborativ multiplikator.
+ */
+export async function completeCollaborativeQuest(q, participants, xpEarned) {
+  const multiplier = calcCollaborativeBonus(participants.length);
+  const boostedXP  = Math.round(xpEarned * multiplier);
+  for (const memberId of participants) {
+    const c = S.chars[memberId];
+    if (!c) continue;
+    const roleScaled = calcQuestXP(memberId, boostedXP);
+    c.xp      = (c.xp      || 0) + roleScaled;
+    c.totalXp = (c.totalXp || 0) + roleScaled;
+    c.questsDone = (c.questsDone || 0) + 1;
+    c.xpToNext = c.xpToNext || xpForLevel(c.level || 1);
+    while (c.xp >= c.xpToNext) {
+      c.xp      -= c.xpToNext;
+      c.level    = (c.level || 1) + 1;
+      c.xpToNext = xpForLevel(c.level);
+    }
+  }
+  save();
+  notify();
+}
