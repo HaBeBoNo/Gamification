@@ -179,13 +179,9 @@ export default function BandHub() {
           </div>
           <div style={{ marginBottom: 20 }}>
             {pinnedFiles.map(file => (
-              <FileRow
-                key={file.id}
-                file={file}
-                pinned={true}
-                isAdmin={isAdmin}
-                onTogglePin={() => togglePin(file.id)}
-              />
+              <React.Fragment key={file.id}> 
+                <FileRow file={file} pinned={true} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
+              </React.Fragment>
             ))}
           </div>
         </>
@@ -209,13 +205,9 @@ export default function BandHub() {
           </div>
         )}
         {recentFiles.map(file => (
-          <FileRow
-            key={file.id}
-            file={file}
-            pinned={false}
-            isAdmin={isAdmin}
-            onTogglePin={() => togglePin(file.id)}
-          />
+          <React.Fragment key={file.id}>
+            <FileRow file={file} pinned={false} isAdmin={isAdmin} onTogglePin={() => togglePin(file.id)} />
+          </React.Fragment>
         ))}
       </div>
     </div>
