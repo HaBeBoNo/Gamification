@@ -153,6 +153,15 @@ export default function Index() {
     return <AuthScreen />;
   }
 
+  console.log('=== INDEX DEBUG ===');
+  console.log('authLoading:', authLoading);
+  console.log('synced:', synced);
+  console.log('user:', user?.email);
+  console.log('S.me:', S.me);
+  console.log('S.onboarded:', S.onboarded);
+  console.log('shouldOnboard:', !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded));
+  console.log('===================');
+
   const shouldOnboard = !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded);
   if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
