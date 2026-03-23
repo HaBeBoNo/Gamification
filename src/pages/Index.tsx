@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
-import { S, notify, useGameStore } from '@/state/store';
+import { S, notify, useGameStore, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -94,6 +94,13 @@ export default function Index() {
   function showLU(level: number) { setLevelUp(level); }
   function showRW(rw: any, tier?: string) { setReward({ reward: rw, tier }); }
   function showXP(amount: number) { setXpAmount(amount); }
+
+  function openNotifications() {
+    setShowNotifications(true);
+    (S.notifications || []).forEach((n: any) => n.read = true);
+    save();
+    notify();
+  }
 
   const closeAll = useCallback(() => {
     setShowCmd(false);
@@ -343,7 +350,7 @@ export default function Index() {
         setActiveTab={setActiveTab}
         onAdmin={() => setShowAdmin(true)}
         logoRef={logoLongPressRef}
-        onNotifications={() => setShowNotifications(true)}
+        onNotifications={openNotifications}
       />
 
       {refreshing && (
@@ -521,10 +528,30 @@ export default function Index() {
         />
       )}
 
-      <NotificationPanel
-        open={showNotifications}
-        onClose={() => setShowNotifications(false)}
-      />
+      {showNotifications && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 300,
+        }}
+          onClick={() => setShowNotifications(false)}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0, right: 0,
+              width: '100%',
+              maxWidth: 400,
+              height: '100%',
+              background: 'var(--color-surface)',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <NotificationPanel onClose={() => setShowNotifications(false)} />
+          </div>
+        </div>
+      )}
 
       {detailQuest && !detailQuest.__season && (
         <QuestDetail
