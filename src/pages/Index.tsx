@@ -29,6 +29,7 @@ import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
 import { useSupabaseData } from '@/hooks/useAuth';
+import { syncFromSupabase } from '@/hooks/useSupabaseSync';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
@@ -66,6 +67,11 @@ export default function Index() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const pullStartY = useRef(0);
+  const pullCurrentY = useRef(0);
+  const isPulling = useRef(false);
 
   // Google OAuth auth gate — wait for both auth and Supabase sync to complete
   const { user, memberKey, loading: authLoading, synced } = useAuth();
@@ -269,6 +275,37 @@ export default function Index() {
 
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
+  // ── Pull-to-refresh ───────────────────────────────────────────────
+  function handlePullStart(e: React.TouchEvent) {
+    const scrollEl = e.currentTarget;
+    if (scrollEl.scrollTop === 0) {
+      pullStartY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  }
+
+  function handlePullMove(e: React.TouchEvent) {
+    if (!isPulling.current) return;
+    pullCurrentY.current = e.touches[0].clientY;
+  }
+
+  async function handlePullEnd() {
+    if (!isPulling.current) return;
+    isPulling.current = false;
+    const pullDistance = pullCurrentY.current - pullStartY.current;
+
+    if (pullDistance > 80 && S.me) {
+      setRefreshing(true);
+      try {
+        await syncFromSupabase(S.me);
+        notify();
+      } catch {}
+      setRefreshing(false);
+    }
+    pullStartY.current = 0;
+    pullCurrentY.current = 0;
+  }
+
   // ── Swipe between main tabs ──────────────────────────────────────
   const SWIPE_TAB_IDS = ['quests', 'skilltree', 'leaderboard', 'bandhub'];
 
@@ -309,6 +346,17 @@ export default function Index() {
         onNotifications={() => setShowNotifications(true)}
       />
 
+      {refreshing && (
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: '8px',
+          fontSize: 12, color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-ui)', letterSpacing: '0.08em',
+        }}>
+          Uppdaterar...
+        </div>
+      )}
+
       <div className="body-grid body-grid-no-sidebar">
         <div className="sidebar-l">
           <div className="stagger-1"><AICoach rerender={rerender} /></div>
@@ -334,8 +382,15 @@ export default function Index() {
           <div
             className="mobile-content"
             style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom)))" }}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
+            onTouchStart={(e) => {
+              handlePullStart(e);
+              handleTouchStart(e);
+            }}
+            onTouchMove={handlePullMove}
+            onTouchEnd={(e) => {
+              handlePullEnd();
+              handleTouchEnd(e);
+            }}
           >
             <AnimatePresence mode="wait">
               <motion.div
