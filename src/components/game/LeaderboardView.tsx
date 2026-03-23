@@ -82,7 +82,7 @@ export default function LeaderboardView() {
 
       if (data) {
         data.forEach(row => {
-          if (row.member_key !== S.me && row.data?.chars?.[row.member_key]) {
+          if (row.data?.chars?.[row.member_key]) {
             S.chars[row.member_key] = {
               ...S.chars[row.member_key],
               ...row.data.chars[row.member_key],
@@ -202,17 +202,24 @@ export default function LeaderboardView() {
             const isExpanded = expandedId === row.id;
             const recentQuests = getRecentCompletions(row.id);
             const roleInfo = ROLE_TYPE_LABEL[row.roleType];
+            const char = S.chars[row.id];
+            const questsDone = char?.questsDone || 0;
+            const streak = char?.streak || 0;
+            const longestStreak = char?.longestStreak || streak;
+            const weeklyQuests = (S.quests || []).filter(
+              (q: any) => q.owner === row.id && q.done &&
+              q.completedAt && Date.now() - q.completedAt < 7 * 24 * 60 * 60 * 1000
+            ).length;
 
             return (
               <motion.div
                 key={row.id}
                 layout
                 transition={cardSpring}
-                className={`lbv-row ${isMe ? 'lbv-row-me' : ''} ${i % 2 === 0 ? 'lbv-row-even' : 'lbv-row-odd'} ${isExpanded ? 'lbv-row-expanded' : ''}`}
+                className={`lbv-row ${isMe ? 'lbv-row-me' : ''} ${i % 2 === 0 ? 'lbv-row-even' : 'lbv-row-odd'} ${isExpanded ? 'lbv-row-expanded' : ''}`} 
                 style={isMe ? { '--lbv-me-color': row.xpColor } as React.CSSProperties : undefined}
-                onClick={() => setExpandedId(isExpanded ? null : row.id)}
               >
-                <div className="lbv-row-main">
+                <div className="lbv-row-main" onClick={() => setExpandedId(isExpanded ? null : row.id)}>
                   {/* Left cluster */}
                   <div className="lbv-left">
                     <span className="lbv-rank">{row.rank}</span>
@@ -242,9 +249,9 @@ export default function LeaderboardView() {
                         />
                       ))}
                     </div>
-                    <div className={`lbv-streak-cell streak-tier-${row.streak >= 14 ? 'max' : row.streak >= 7 ? 'high' : row.streak >= 3 ? 'mid' : row.streak > 0 ? 'low' : 'zero'}`}> 
+                    <div className={`lbv-streak-cell streak-tier-${streak >= 14 ? 'max' : streak >= 7 ? 'high' : streak >= 3 ? 'mid' : streak > 0 ? 'low' : 'zero'}`}> 
                       <Flame size={16} />
-                      <span className="lt-streak-val">{row.streak}</span>
+                      <span className="lt-streak-val">{streak}</span>
                     </div>
                     <span className="lt-xp-val">{row.totalXp}</span>
                   </div>
@@ -263,9 +270,15 @@ export default function LeaderboardView() {
                       <div className="lt-expanded-inner">
                         <div className="lt-expanded-extra-stats">
                           <span className="lt-expanded-label">Denna vecka:</span>
-                          <span className={`lt-week-val ${row.weekCount >= 3 ? 'hot' : row.weekCount >= 1 ? 'warm' : ''}`}> 
-                            {row.weekCount} uppdrag
+                          <span className={`lt-week-val ${weeklyQuests >= 3 ? 'hot' : weeklyQuests >= 1 ? 'warm' : ''}`}> 
+                            {weeklyQuests} uppdrag
                           </span>
+                          <span className="lt-expanded-label" style={{ marginLeft: 'var(--space-lg)' }}>Streak:</span>
+                          <span className="lt-streak-val">{streak}</span>
+                          <span className="lt-expanded-label" style={{ marginLeft: 'var(--space-lg)' }}>Längsta:</span>
+                          <span className="lt-streak-val">{longestStreak}</span>
+                          <span className="lt-expanded-label" style={{ marginLeft: 'var(--space-lg)' }}>Klara uppdrag:</span>
+                          <span className="lt-streak-val">{questsDone}</span>
                           <span className="lt-expanded-label" style={{ marginLeft: 'var(--space-lg)' }}>Synergi:</span>
                           <span className="lt-synergy-val">
                             {row.synergyCount > 0 && <Zap size={10} className="lt-synergy-icon" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />}
