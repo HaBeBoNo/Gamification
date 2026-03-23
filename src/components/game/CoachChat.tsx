@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { S, save } from '@/state/store';
 import { buildCoachPrompt, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
+import { maybeRecalibrateCoach } from '@/hooks/useCoachCalibration';
 import { Send, Bot, MessageCircle } from 'lucide-react';
 
 interface Message {
@@ -128,6 +129,9 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
         S.chars[S.me].coachLog = S.chars[S.me].coachLog.slice(-20);
       }
       save();
+
+      // Trigga re-kalibrering i bakgrunden efter att coach-svaret sparats
+      maybeRecalibrateCoach(S.me).catch(() => {});
     } catch {
       setHistory(prev => [...prev, { role: 'assistant', content: 'Kunde inte nå coachen just nu.' }]);
       setMessages(p => [...p, { type: 'ai', text: 'Kunde inte nå coachen just nu.', ts: now() }]);
@@ -166,7 +170,7 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`cc-msg ${m.type === 'ai' ? 'cc-ai' : 'cc-user'}`}>
+          <div key={i} className={`cc-msg ${m.type === 'ai' ? 'cc-ai' : 'cc-user'}`}>  
             {m.type === 'ai' && (
               <div className="cc-avatar">
                 <Bot size={20} />
