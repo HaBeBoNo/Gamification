@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  getNotifications, getUnreadCount, markAllRead, markRead,
-  subscribeNotifications, notificationTypes,
+  getNotifications, markAllRead, markRead,
+  subscribeNotifications,
   type Notification,
 } from '@/state/notifications';
 import { MEMBERS } from '@/data/members';
-import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell } from 'lucide-react';
+import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X } from 'lucide-react';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -78,90 +78,89 @@ function timeAgo(ts: number): string {
   return `${days}d`;
 }
 
-interface Props {
-  open: boolean;
+interface NotificationPanelProps {
   onClose: () => void;
 }
 
-export default function NotificationPanel({ open, onClose }: Props) {
+export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState(getNotifications());
 
   useEffect(() => {
     return subscribeNotifications(() => setNotifications([...getNotifications()]));
   }, []);
 
-  useEffect(() => {
-    if (open) {
-      markAllRead();
-    }
-  }, [open]);
-
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            className="notif-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.div
-            className="notif-panel"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', stiffness: 350, damping: 40 }}
-          >
-            <div className="notif-header">
-              <span className="notif-title">Notifikationer</span>
-              {notifications.some(n => !n.read) && (
-                <button className="notif-mark-all" onClick={markAllRead}>
-                  Markera alla som lästa
-                </button>
-              )}
-            </div>
+    <div className="notif-panel">
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 16px 8px',
+        borderBottom: '1px solid var(--color-border)',
+      }}>
+        <div style={{
+          fontSize: 11, letterSpacing: '0.1em',
+          color: 'var(--color-text-muted)',
+          fontFamily: 'var(--font-ui)',
+        }}>
+          NOTIFIKATIONER
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'none', border: 'none',
+            color: 'var(--color-text-muted)',
+            cursor: 'pointer', padding: 4,
+            touchAction: 'manipulation',
+          }}
+        >
+          <X size={18} />
+        </button>
+      </div>
 
-            <div className="notif-list">
-              <AnimatePresence initial={false}>
-                {notifications.length === 0 ? (
-                  <div className="notif-empty">
-                    <Bell size={48} strokeWidth={1} />
-                    <span>Inga notifikationer ännu.</span>
-                  </div>
-                ) : (
-                  notifications.map(n => {
-                    const Icon = TYPE_ICONS[n.type] || Bell;
-                    const color = TYPE_COLORS[n.type] || 'var(--color-text-muted)';
-                    const { title, subtitle } = getNotificationText(n);
-                    return (
-                      <motion.div
-                        key={n.id}
-                        className={`notif-row ${n.read ? '' : 'unread'}`}
-                        initial={{ opacity: 0, y: -12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        onClick={() => markRead(n.id)}
-                      >
-                        <div className="notif-row-icon" style={{ color }}>
-                          <Icon size={20} strokeWidth={2} />
-                        </div>
-                        <div className="notif-row-content">
-                          <span className="notif-row-title">{title}</span>
-                          {subtitle && <span className="notif-row-subtitle">{subtitle}</span>}
-                        </div>
-                        <span className="notif-row-ts">{timeAgo(n.ts)}</span>
-                      </motion.div>
-                    );
-                  })
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </>
+      {notifications.some(n => !n.read) && (
+        <div className="notif-header">
+          <button className="notif-mark-all" onClick={markAllRead}>
+            Markera alla som lästa
+          </button>
+        </div>
       )}
-    </AnimatePresence>
+
+      <div className="notif-list">
+        <AnimatePresence initial={false}>
+          {notifications.length === 0 ? (
+            <div className="notif-empty">
+              <Bell size={48} strokeWidth={1} />
+              <span>Inga notifikationer ännu.</span>
+            </div>
+          ) : (
+            notifications.map(n => {
+              const Icon = TYPE_ICONS[n.type] || Bell;
+              const color = TYPE_COLORS[n.type] || 'var(--color-text-muted)';
+              const { title, subtitle } = getNotificationText(n);
+              return (
+                <motion.div
+                  key={n.id}
+                  className={`notif-row ${n.read ? '' : 'unread'}`}
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => markRead(n.id)}
+                >
+                  <div className="notif-row-icon" style={{ color }}>
+                    <Icon size={20} strokeWidth={2} />
+                  </div>
+                  <div className="notif-row-content">
+                    <span className="notif-row-title">{title}</span>
+                    {subtitle && <span className="notif-row-subtitle">{subtitle}</span>}
+                  </div>
+                  <span className="notif-row-ts">{timeAgo(n.ts)}</span>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }
