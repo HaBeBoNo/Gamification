@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { S } from '@/state/store';
 
 interface ActivityHeatmapProps {
@@ -57,8 +57,7 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'S
 const DAY_LABELS = ['M', '', 'O', '', 'F', '', ''];
 
 export default function ActivityHeatmap({ memberId, xpColor, compact }: ActivityHeatmapProps) {
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; count: number } | null>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const weeks = compact ? 26 : 52;
@@ -115,18 +114,6 @@ export default function ActivityHeatmap({ memberId, xpColor, compact }: Activity
     return xpColor + (alpha < 1 ? Math.round(alpha * 255).toString(16).padStart(2, '0') : '');
   }
 
-  function handleCellHover(e: React.MouseEvent, cell: typeof grid[0][0]) {
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const parentRect = ref.current?.getBoundingClientRect();
-    if (!parentRect) return;
-    setTooltip({
-      x: rect.left - parentRect.left + cellSize / 2,
-      y: rect.top - parentRect.top - 4,
-      date: cell.date.toLocaleDateString('sv-SE'),
-      count: cell.count,
-    });
-  }
-
   const gridWidth = weeks * (cellSize + gap) - gap;
   const labelWidth = compact ? 0 : 20;
 
@@ -175,35 +162,11 @@ export default function ActivityHeatmap({ memberId, xpColor, compact }: Activity
                   opacity: visible ? 1 : 0,
                   transition: `opacity 200ms ease-out ${wi * 15}ms`,
                 }}
-                onMouseEnter={e => handleCellHover(e, cell)}
-                onMouseLeave={() => setTooltip(null)}
-                onTouchStart={e => {
-                  const touch = e.touches[0];
-                  const rect = (e.target as HTMLElement).getBoundingClientRect();
-                  const parentRect = ref.current?.getBoundingClientRect();
-                  if (parentRect) {
-                    setTooltip({
-                      x: rect.left - parentRect.left + cellSize / 2,
-                      y: rect.top - parentRect.top - 4,
-                      date: cell.date.toLocaleDateString('sv-SE'),
-                      count: cell.count,
-                    });
-                  }
-                }}
-                onTouchEnd={() => setTooltip(null)}
               />
             ))
           )}
         </div>
       </div>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div className="heatmap-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
-          <span>{tooltip.date}</span>
-          <span>{tooltip.count > 0 ? `${tooltip.count} uppdrag` : 'Ingen aktivitet'}</span>
-        </div>
-      )}
 
       {/* Stat pills */}
       <div className="heatmap-stats">
