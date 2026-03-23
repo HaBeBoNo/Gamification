@@ -69,11 +69,9 @@ export default function LeaderboardView() {
   const [loadingData, setLoadingData] = useState(true);
   const rerender = () => forceUpdate(n => n + 1);
 
-  // Realtime — hämta alla members vid mount + lyssna på live-ändringar
   useEffect(() => {
     if (!supabase) return;
 
-    // Hämta alla members data vid mount
     async function fetchAllMembers() {
       setLoadingData(true);
       const { data } = await supabase
@@ -95,7 +93,6 @@ export default function LeaderboardView() {
 
     fetchAllMembers();
 
-    // Lyssna på realtidsändringar
     const channel = supabase
       .channel('leaderboard_realtime')
       .on(
@@ -114,7 +111,6 @@ export default function LeaderboardView() {
                 ...S.chars[remote.member_key],
                 ...remoteChars[remote.member_key],
               };
-              // Trigga re-render
               notify();
             }
           }
@@ -174,7 +170,6 @@ export default function LeaderboardView() {
 
   return (
     <div className="lbv">
-      {/* Header with sort pills right-aligned */}
       <div className="lbv-header">
         <h1 className="lbv-title">Leaderboard</h1>
         <div className="lbv-pills">
@@ -204,12 +199,15 @@ export default function LeaderboardView() {
             const roleInfo = ROLE_TYPE_LABEL[row.roleType];
             const char = S.chars[row.id];
             const questsDone = char?.questsDone || 0;
-            const streak = char?.streak || 0;
+            const streak = S.chars[row.id]?.streak || 0;
             const longestStreak = char?.longestStreak || streak;
             const weeklyQuests = (S.quests || []).filter(
               (q: any) => q.owner === row.id && q.done &&
               q.completedAt && Date.now() - q.completedAt < 7 * 24 * 60 * 60 * 1000
             ).length;
+            const hasActivity = (S.quests || []).some(
+              (q: any) => q.done && (q.owner === row.id || q.completedBy === row.id)
+            );
 
             return (
               <motion.div
@@ -220,7 +218,6 @@ export default function LeaderboardView() {
                 style={isMe ? { '--lbv-me-color': row.xpColor } as React.CSSProperties : undefined}
               >
                 <div className="lbv-row-main" onClick={() => setExpandedId(isExpanded ? null : row.id)}>
-                  {/* Left cluster */}
                   <div className="lbv-left">
                     <span className="lbv-rank">{row.rank}</span>
                     <div className="lbv-avatar" style={{ position: 'relative' }}>
@@ -238,7 +235,6 @@ export default function LeaderboardView() {
                     </div>
                   </div>
 
-                  {/* Right cluster */}
                   <div className="lbv-right">
                     <div className="lbv-form-dots">
                       {row.formDots.map((filled, di) => (
@@ -257,7 +253,6 @@ export default function LeaderboardView() {
                   </div>
                 </div>
 
-                {/* Expanded section */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -286,13 +281,15 @@ export default function LeaderboardView() {
                           </span>
                         </div>
 
-                        <div className="lt-expanded-heatmap">
-                          <ActivityHeatmap
-                            memberId={row.id}
-                            xpColor={row.xpColor}
-                            compact={true}
-                          />
-                        </div>
+                        {hasActivity && (
+                          <div className="lt-expanded-heatmap">
+                            <ActivityHeatmap
+                              memberId={row.id}
+                              xpColor={row.xpColor}
+                              compact={true}
+                            />
+                          </div>
+                        )}
 
                         {recentQuests.length > 0 && (
                           <div className="lt-expanded-quests">
