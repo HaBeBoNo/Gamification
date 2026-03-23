@@ -116,14 +116,14 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
     <>
       <motion.div
         className={`quest-card ${isDone ? 'done' : ''}`}
-        whileTap={isDone ? undefined : { scale: 0.97 }}
+        whileTap={{ scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         layout
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 60, transition: { duration: 0.25 } }}
-        onClick={() => !isDone && !menuOpen && setShowDetail(true)}
-        style={{ cursor: isDone ? 'default' : 'pointer' }}
+        onClick={() => !menuOpen && setShowDetail(true)}
+        style={{ cursor: 'pointer' }}
       >
         {isDone && <div className="done-stamp"><Check size={20} strokeWidth={3} /></div>}
 
@@ -286,7 +286,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         />
       )}
 
-      {showDetail && !isDone && (
+      {showDetail && (
         <QuestDetailModal
           quest={quest}
           onClose={() => setShowDetail(false)}
