@@ -1,12 +1,10 @@
-import { supabase } from './supabase';
+import { getGoogleAccessToken } from './googleAuth';
 
 const CALENDAR_ID = import.meta.env.VITE_GOOGLE_CALENDAR_ID ||
   '7b6c8d54ffb5de2adaf59ee68feceb14266a70dac26279e78d037549182dc452@group.calendar.google.com';
 
 async function getAccessToken(): Promise<string | null> {
-  if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.provider_token || null;
+  return getGoogleAccessToken();
 }
 
 export interface CalendarEvent {

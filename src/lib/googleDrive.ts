@@ -1,11 +1,9 @@
-import { supabase } from './supabase';
+import { getGoogleAccessToken } from './googleAuth';
 
 const FOLDER_ID = '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
 
 async function getAccessToken(): Promise<string | null> {
-  if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.provider_token || null;
+  return getGoogleAccessToken();
 }
 
 export async function getDriveFiles(folderId = FOLDER_ID) {
