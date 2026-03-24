@@ -36,7 +36,7 @@ interface QuestGridProps {
   showSidequestNudge?: (quests: any[]) => void;
   showXP?: (amount: number) => void;
   onQuestTap?: (quest: any) => void;
-  onOpenCoach?: () => void;
+  onOpenCoach?: (initialMessage?: string) => void;
 }
 
 function getWeekNumber(): number {
@@ -216,7 +216,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
       {/* Coach card */}
       {me && (
         <div
-          onClick={() => onOpenCoach?.()}
+          onClick={() => onOpenCoach?.(coachMessage)}
           style={{
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
