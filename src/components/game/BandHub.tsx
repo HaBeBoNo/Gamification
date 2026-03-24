@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, ExternalLink, Folder, FileText, Music, Video, Image, File, RefreshCw } from 'lucide-react';
 import { getDriveFiles, uploadFile, getMimeTypeLabel, formatDate } from '@/lib/googleDrive';
+import { supabase } from '@/lib/supabase';
 import { S } from '@/state/store';
 import CalendarView from './CalendarView';
 
@@ -213,7 +214,32 @@ export default function BandHub() {
                 marginBottom: 8,
               }}>SENASTE</div>
               <div>
-                {recentFiles.length === 0 && (
+                {recentFiles.length === 0 && files.length === 0 && (
+                  <div style={{ padding: 24, textAlign: 'center' }}>
+                    <div style={{
+                      color: 'var(--color-text-muted)',
+                      fontSize: 13, marginBottom: 16,
+                    }}>
+                      Inga filer hittades. Google-anslutningen kan ha gått ut.
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (supabase) await supabase.auth.signOut();
+                        localStorage.removeItem('sektionen_google_token');
+                        window.location.reload();
+                      }}
+                      style={{
+                        background: 'var(--color-primary)', color: '#fff',
+                        border: 'none', borderRadius: '999px',
+                        padding: '10px 20px', fontSize: 13,
+                        fontFamily: 'var(--font-ui)', cursor: 'pointer',
+                      }}
+                    >
+                      Logga in igen
+                    </button>
+                  </div>
+                )}
+                {recentFiles.length === 0 && files.length > 0 && (
                   <div style={{
                     color: 'var(--color-text-muted)', fontSize: 13,
                     textAlign: 'center', padding: 32,

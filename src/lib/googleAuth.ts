@@ -7,6 +7,33 @@
  * The `googleapis` Node.js package is NOT used — we use direct REST calls instead.
  */
 
+import { supabase } from './supabase';
+
+/**
+ * Returns a valid Google provider_token from the current Supabase session,
+ * automatically refreshing the session if the token is about to expire (within 5 minutes).
+ */
+export async function getGoogleAccessToken(): Promise<string | null> {
+  if (!supabase) return null;
+
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session) return null;
+
+  // Check if token is about to expire (within 5 minutes)
+  const expiresAt = session.expires_at || 0;
+  const now = Math.floor(Date.now() / 1000);
+  const fiveMinutes = 5 * 60;
+
+  if (expiresAt - now < fiveMinutes) {
+    // Refresh session
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !refreshed.session) return null;
+    return refreshed.session.provider_token || null;
+  }
+
+  return session.provider_token || null;
+}
+
 export const GOOGLE_TOKEN_KEY = 'sektionen_google_token';
 
 export interface GoogleTokenData {
