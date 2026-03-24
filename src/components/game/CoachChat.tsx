@@ -14,12 +14,20 @@ function now() {
   return new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function CoachChat({ rerender }: { rerender: () => void }) {
+interface CoachChatProps {
+  rerender: () => void;
+  initialMessage?: string;
+}
+
+export default function CoachChat({ rerender, initialMessage }: CoachChatProps) {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
 
   // Konversationshistorik för API-anrop (role/content-format)
   const [history, setHistory] = useState<{ role: string; content: string }[]>(() => {
+    if (initialMessage) {
+      return [{ role: 'assistant', content: initialMessage }];
+    }
     // Återställ från coachLog om det finns
     const log = S.chars[S.me]?.coachLog;
     if (Array.isArray(log) && log.length > 0) {
@@ -35,6 +43,9 @@ export default function CoachChat({ rerender }: { rerender: () => void }) {
 
   // Visuella meddelanden (type/text/ts-format för rendering)
   const [messages, setMessages] = useState<Message[]>(() => {
+    if (initialMessage) {
+      return [{ type: 'ai', text: initialMessage, ts: now() }];
+    }
     const log = S.chars[S.me]?.coachLog;
     if (Array.isArray(log) && log.length > 0) {
       const restored: Message[] = [];
