@@ -599,14 +599,15 @@ export default function Index() {
           position: 'fixed', inset: 0,
           background: 'var(--color-bg)',
           zIndex: 300,
-          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
+          {/* Header */}
           <div style={{
             display: 'flex', alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px',
             borderBottom: '1px solid var(--color-border)',
-            position: 'sticky', top: 0,
             background: 'var(--color-bg)',
           }}>
             <div style={{
@@ -622,12 +623,17 @@ export default function Index() {
                 background: 'none', border: 'none',
                 color: 'var(--color-text-muted)',
                 cursor: 'pointer', padding: 4,
+                touchAction: 'manipulation',
               }}
             >
               <X size={18} />
             </button>
           </div>
-          <QuestHistory />
+
+          {/* Innehåll */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <QuestHistory />
+          </div>
         </div>
       )}
     </div>
