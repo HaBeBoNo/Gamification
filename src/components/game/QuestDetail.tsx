@@ -52,9 +52,27 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
+
+    // Spara i historik
+    if (!S.chars[me!].completedQuests) S.chars[me!].completedQuests = [];
+    S.chars[me!].completedQuests.push({
+      id: quest.id,
+      title: quest.title,
+      xp: xpEarned,
+      cat: quest.cat,
+      reflection: reflection || '',
+      completedAt: Date.now(),
+    });
+
     save();
 
-    setTimeout(() => onClose(), 600);
+    // Auto-ta bort quest från S.quests efter 1.5 sekunder
+    setTimeout(() => {
+      S.quests = S.quests.filter((q: any) => q.id !== quest.id);
+      save();
+      rerender?.();
+      onClose();
+    }, 1500);
   }
 
   const recurLabel = quest.recur === 'weekly' ? 'Varje vecka' : quest.recur === 'monthly' ? 'Varje månad' : null;

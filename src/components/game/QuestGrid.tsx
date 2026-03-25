@@ -6,7 +6,7 @@ import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
 import { showSidequestNudge, generatePersonalQuests } from '@/hooks/useAI';
-import { Compass, RefreshCw, Zap, CheckCircle } from 'lucide-react';
+import { Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateQuestModal from './CreateQuestModal';
@@ -23,7 +23,6 @@ const TABS = [
 const FILTERS = [
   { id: 'alla', label: 'Alla' },
   { id: 'aktiva', label: 'Aktiva' },
-  { id: 'avklarade', label: 'Avklarade' },
   { id: 'veckovisa', label: 'Veckovisa' },
   { id: 'strategiska', label: 'Strategiska' },
   { id: 'kreativa', label: 'Kreativa' },
@@ -77,8 +76,7 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         ...allPersonalActive.slice(2, 4),
       ].slice(0, 5);
 
-      const personalDone = quests.filter((q: any) => (q.owner === me || q.personal) && q.done);
-      return [...displayQuests, ...personalDone];
+      return displayQuests;
     }
     if (tab === 'daily') return quests.filter((q: any) => q.recur === 'daily');
     if (tab === 'strategic') return quests.filter((q: any) => q.type === 'strategic');
@@ -333,14 +331,11 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
                 ))}
               </React.Fragment>
             ))}
-            {completed.map((q: any) => (
-              <QuestCard key={q.id} quest={q} rerender={rerender} showLU={showLU} showRW={showRW} showXP={showXP} />
-            ))}
           </AnimatePresence>
         </div>
       ) : (
         <SortableQuestList
-          quests={[...active, ...completed]}
+          quests={active}
           rerender={rerender}
           showLU={showLU}
           showRW={showRW}
@@ -348,12 +343,6 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
         />
       )}
 
-      {completed.length === 0 && active.length > 0 && (
-        <div className="empty-state stagger-4" style={{ padding: 'var(--space-xl)' }}>
-          <CheckCircle size={48} strokeWidth={1} />
-          <div className="empty-text">Inga avklarade uppdrag an. Det andras snart.</div>
-        </div>
-      )}
 
       {/* Skapa uppdrag-knapp */}
       <button

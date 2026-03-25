@@ -72,7 +72,25 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       completeCollaborativeQuest(quest, rerender);
     }
 
+    // Spara i historik
+    if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
+    S.chars[me].completedQuests.push({
+      id: quest.id,
+      title: quest.title,
+      xp: xpEarned,
+      cat: quest.cat,
+      reflection: '',
+      completedAt: Date.now(),
+    });
+
     save();
+
+    // Auto-ta bort quest efter 1.5 sekunder
+    setTimeout(() => {
+      S.quests = S.quests.filter((q: any) => q.id !== quest.id);
+      save();
+      rerender?.();
+    }, 1500);
 
     // Öppna utvärderingsmodal istället för direkt rerender
     setLastXP(xpEarned);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { S, notify, useGameStore, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut } from 'lucide-react';
+import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -25,6 +25,7 @@ import CommandPalette from '@/components/game/CommandPalette';
 import NotificationPanel from '@/components/game/NotificationPanel';
 import QuestDetail from '@/components/game/QuestDetail';
 import SeasonView from '@/components/game/SeasonView';
+import QuestHistory from '@/components/game/QuestHistory';
 import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
 import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
@@ -70,6 +71,7 @@ export default function Index() {
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
   const [refreshing, setRefreshing] = useState(false);
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
+  const [showHistory, setShowHistory] = useState(false);
 
   const pullStartY = useRef(0);
   const pullCurrentY = useRef(0);
@@ -194,6 +196,10 @@ export default function Index() {
       setShowAdmin(true);
       return;
     }
+    if (id === 'history') {
+      setShowHistory(true);
+      return;
+    }
     setMobileTab(id);
     setActiveTab(id);
   }
@@ -277,6 +283,7 @@ export default function Index() {
     { id: 'activity', icon: Activity,      label: 'Aktivitet',  subtitle: 'Senaste händelser' },
     { id: 'season',   icon: BarChart2,     label: 'Säsong',     subtitle: 'Säsongsöversikt och XP-kurva' },
     { id: 'profile',  icon: User,          label: 'Profil',     subtitle: 'Inställningar och din data' },
+    { id: 'history', icon: Clock, label: 'Uppdragshistorik', subtitle: 'Avklarade uppdrag' },
     ...(isCurl  ? [{ id: 'ideas', icon: Lightbulb, label: 'Idéer',  subtitle: 'Lösa tankar' }] : []),
     ...(isAdmin ? [{ id: 'admin', icon: Settings,  label: 'Admin',  subtitle: 'Systemkontroller' }] : []),
     { id: 'logout', icon: LogOut, label: 'Logga ut', subtitle: 'Avsluta session' },
@@ -585,6 +592,43 @@ export default function Index() {
           insight={coachInsight}
           onClose={() => setCoachInsight(undefined)}
         />
+      )}
+
+      {showHistory && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'var(--color-bg)',
+          zIndex: 300,
+          overflowY: 'auto',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px',
+            borderBottom: '1px solid var(--color-border)',
+            position: 'sticky', top: 0,
+            background: 'var(--color-bg)',
+          }}>
+            <div style={{
+              fontSize: 11, letterSpacing: '0.1em',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-ui)',
+            }}>
+              UPPDRAGSHISTORIK
+            </div>
+            <button
+              onClick={() => setShowHistory(false)}
+              style={{
+                background: 'none', border: 'none',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer', padding: 4,
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <QuestHistory />
+        </div>
       )}
     </div>
   );
