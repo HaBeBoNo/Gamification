@@ -68,6 +68,7 @@ export default function Index() {
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
   const [refreshing, setRefreshing] = useState(false);
+  const [coachInitialMessage, setCoachInitialMessage] = useState<string | undefined>();
 
   const pullStartY = useRef(0);
   const pullCurrentY = useRef(0);
@@ -215,12 +216,16 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={() => handleTabTap('coach')}
+          onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
         />
       );
       case 'skilltree': return <Scoreboard />;
       case 'leaderboard': return <LeaderboardView />;
-      case 'coach': return <CoachChat rerender={rerender} />;
+      case 'coach': return React.createElement(CoachChat, {
+        rerender,
+        initialMessage: coachInitialMessage,
+        key: coachInitialMessage || 'default',
+      });
       case 'activity': return <ActivityFeed />;
       case 'ideas': return <IdeasView />;
       case 'bandhub': return (
@@ -258,7 +263,7 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={() => handleTabTap('coach')}
+          onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
         />
       );
     }
@@ -379,7 +384,7 @@ export default function Index() {
                 showXP={showXP}
                 showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
                 onQuestTap={(q: any) => setDetailQuest(q)}
-                onOpenCoach={() => handleTabTap('coach')}
+                onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
               />
             )} 
             {activeTab === 'leaderboard' && <LeaderboardView />}
