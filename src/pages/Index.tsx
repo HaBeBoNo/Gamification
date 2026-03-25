@@ -14,6 +14,7 @@ import LeaderboardView from '@/components/game/LeaderboardView';
 import ActivityFeed from '@/components/game/ActivityFeed';
 import AICoach from '@/components/game/AICoach';
 import CoachChat from '@/components/game/CoachChat';
+import CoachInsightModal from '@/components/game/CoachInsightModal';
 import IdeasView from '@/components/game/IdeasView';
 import AdminPanel from '@/components/game/AdminPanel';
 import AdminCenter from '@/components/game/AdminCenter';
@@ -68,7 +69,7 @@ export default function Index() {
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const [unreadCount, setUnreadCount] = useState(getUnreadCount());
   const [refreshing, setRefreshing] = useState(false);
-  const [coachInitialMessage, setCoachInitialMessage] = useState<string | undefined>();
+  const [coachInsight, setCoachInsight] = useState<string | undefined>();
 
   const pullStartY = useRef(0);
   const pullCurrentY = useRef(0);
@@ -216,16 +217,12 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
+          onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
         />
       );
       case 'skilltree': return <Scoreboard />;
       case 'leaderboard': return <LeaderboardView />;
-      case 'coach': return React.createElement(CoachChat, {
-        rerender,
-        initialMessage: coachInitialMessage,
-        key: coachInitialMessage || 'default',
-      });
+      case 'coach': return <CoachChat rerender={rerender} />;
       case 'activity': return <ActivityFeed />;
       case 'ideas': return <IdeasView />;
       case 'bandhub': return (
@@ -263,7 +260,7 @@ export default function Index() {
           showXP={showXP}
           showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
           onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
+          onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
         />
       );
     }
@@ -384,7 +381,7 @@ export default function Index() {
                 showXP={showXP}
                 showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
                 onQuestTap={(q: any) => setDetailQuest(q)}
-                onOpenCoach={(msg?: string) => { setCoachInitialMessage(msg); handleTabTap('coach'); }}
+                onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
               />
             )} 
             {activeTab === 'leaderboard' && <LeaderboardView />}
@@ -582,6 +579,13 @@ export default function Index() {
         open={showShortcutsOverlay}
         onClose={() => setShowShortcutsOverlay(false)}
       />
+
+      {coachInsight && (
+        <CoachInsightModal
+          insight={coachInsight}
+          onClose={() => setCoachInsight(undefined)}
+        />
+      )}
     </div>
   );
 }
