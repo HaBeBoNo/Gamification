@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
 import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
+import { registerPush } from '@/lib/webPush';
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
@@ -72,6 +73,9 @@ export function useAuth() {
       console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
       S.me = key;
       save();
+
+      // Register for push notifications (non-blocking)
+      registerPush(key).catch(console.error);
     } else {
       console.log('No member match for email:', email);
       setMemberKey(null);
