@@ -1,101 +1,95 @@
 import React from 'react';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import {
-  ScrollText, Activity, CheckCircle, TrendingUp, Zap,
-  ArrowRightLeft, Check, Award, Lightbulb, Sparkles
-} from 'lucide-react';
+import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-function getInitials(name: string) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+// ── Helpers ───────────────────────────────────────────────────────
+
+// ts kan vara en formaterad sträng ("14:32") eller ett numeriskt timestamp
+function timeAgo(ts: number | string): string {
+  if (typeof ts === 'string') return ts;
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m sedan`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h sedan`;
+  return `${Math.floor(hrs / 24)}d sedan`;
 }
 
+// ── EVENT_MAP: händelsetyp → ikon + label ─────────────────────────
+const EVENT_MAP: Record<string, { icon: string; label: string }> = {
+  quest_completed:  { icon: '✅', label: 'slutförde' },
+  quest_created:    { icon: '➕', label: 'skapade uppdraget' },
+  check_in:         { icon: '📅', label: 'checkade in' },
+  level_up:         { icon: '⬆️', label: 'gick upp till' },
+  streak_milestone: { icon: '🔥', label: 'nådde streak' },
+};
+
+// Detektera ikon från entry.type, entry.category eller action-text som fallback
+function getEventIcon(entry: any): string {
+  const fromType = EVENT_MAP[entry.type] ?? EVENT_MAP[entry.category];
+  if (fromType) return fromType.icon;
+  const a = (entry.action || '').toLowerCase();
+  if (a.includes('completed') || a.includes('slutförde')) return '✅';
+  if (a.includes('checkade in'))                          return '📅';
+  if (a.includes('nivå') || a.includes('level'))         return '⬆️';
+  if (a.includes('high-five'))                            return '🙌';
+  if (a.includes('anslöt'))                               return '🤝';
+  if (a.includes('reflekterade'))                         return '💡';
+  if (a.includes('streak'))                               return '🔥';
+  return '⚡';
+}
+
+// Extrahera XP ur action-text, t.ex. "(+150 XP)"
+function extractXPFromText(text: string): number | null {
+  const match = text.match(/\(\+(\d+)\s*XP/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+// ── Framer Motion ─────────────────────────────────────────────────
 const itemVariants = {
-  hidden: { opacity: 0, x: -16 },
+  hidden:  { opacity: 0, x: -16 },
   visible: { opacity: 1, x: 0 },
 };
 
-const synergyTransition = { type: 'spring' as const, stiffness: 200, damping: 25 };
-const regularTransition = { type: 'spring' as const, stiffness: 300, damping: 30 };
-
-type FeedItemType = 'quest_complete' | 'level_up' | 'synergy' | 'delegation_sent' | 'delegation_accepted' | 'badge' | 'idea' | 'retroactive';
-
-function detectType(item: any): FeedItemType {
-  const t = (item.text || '').toLowerCase();
-  if (item.synergy || t.includes('[synk]')) return 'synergy';
-  if (t.includes('nivå') || t.includes('level')) return 'level_up';
-  if (t.includes('delegera') && t.includes('acceptera')) return 'delegation_accepted';
-  if (t.includes('delegera') || t.includes('skickade')) return 'delegation_sent';
-  if (t.includes('märke') || t.includes('badge')) return 'badge';
-  if (t.includes('idé') || t.includes('idea')) return 'idea';
-  if (t.includes('retroaktiv')) return 'retroactive';
-  return 'quest_complete';
-}
-
-const ICON_MAP: Record<FeedItemType, React.ElementType> = {
-  quest_complete: CheckCircle,
-  level_up: TrendingUp,
-  synergy: Zap,
-  delegation_sent: ArrowRightLeft,
-  delegation_accepted: Check,
-  badge: Award,
-  idea: Lightbulb,
-  retroactive: Sparkles,
-};
-
-const ICON_CLASS_MAP: Record<FeedItemType, string> = {
-  quest_complete: 'feed-icon-accent',
-  level_up: 'feed-icon-accent',
-  synergy: 'feed-icon-accent',
-  delegation_sent: 'feed-icon-secondary',
-  delegation_accepted: 'feed-icon-accent',
-  badge: 'feed-icon-accent',
-  idea: 'feed-icon-accent',
-  retroactive: 'feed-icon-accent',
-};
-
-function extractXP(text: string): string | null {
-  const match = text.match(/(\d+)\s*XP/i);
-  return match ? match[1] : null;
-}
-
-function highlightMemberName(text: string): React.ReactNode {
-  const memberNames = Object.values(MEMBERS).map(m => m.name);
-  let result = text;
-  // We'll do simple bold wrapping via spans
-  const parts: React.ReactNode[] = [];
-  let remaining = text;
-  let key = 0;
-
-  for (const name of memberNames) {
-    const idx = remaining.indexOf(name);
-    if (idx !== -1) {
-      if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
-      parts.push(<span key={key++} className="feed-member-name">{name}</span>);
-      remaining = remaining.slice(idx + name.length);
-    }
-  }
-  if (parts.length === 0) return text;
-  if (remaining) parts.push(<span key={key++}>{remaining}</span>);
-  return <>{parts}</>;
-}
-
+// ── Komponent ─────────────────────────────────────────────────────
 export default function ActivityFeed() {
+  useGameStore((s: any) => s.tick); // prenumerera på store-uppdateringar
   const feed = S.feed || [];
 
+  // console.log('feed item:', feed[0]); // STEG 1 diagnostik
+
+  // ── Bandstatus ─────────────────────────────────────────────────
+  // Obs: feed-objekten saknar numeriskt timestamp — vi räknar alla i feeden
+  const activeMemberKeys = [...new Set(
+    feed
+      .map((e: any) => e.who || e.memberKey || e.member_key)
+      .filter(Boolean)
+  )];
+  const weeklyXP = feed.reduce((sum: number, e: any) => {
+    const explicit = e.xp || 0;
+    // useXP.js bäddar in XP i action-texten istället för ett separat fält
+    const fromText = explicit === 0 ? (extractXPFromText(e.action || '') ?? 0) : 0;
+    return sum + explicit + fromText;
+  }, 0);
+
+  // ── Synergy-hjälpare ───────────────────────────────────────────
   function isSynergy(item: any) {
-    return item.synergy || (item.text && item.text.includes('[synk]'));
+    return item.synergy || (item.action && item.action.includes('[synk]'));
   }
 
   function parseSynergyMembers(item: any): [string, string] | null {
     if (item.memberA && item.memberB) return [item.memberA, item.memberB];
     const ids = Object.keys(MEMBERS);
-    const found = ids.filter(id => item.text?.toLowerCase().includes(MEMBERS[id].name.toLowerCase()));
+    const found = ids.filter(id =>
+      item.action?.toLowerCase().includes((MEMBERS as any)[id].name.toLowerCase())
+    );
     if (found.length >= 2) return [found[0], found[1]];
     return null;
   }
 
+  // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="panel">
       <div className="panel-header">
@@ -104,6 +98,21 @@ export default function ActivityFeed() {
           AKTIVITET
         </div>
       </div>
+
+      {/* ── Bandstatus-rad ─────────────────────────────────────── */}
+      {feed.length > 0 && (
+        <div className="feed-band-status">
+          <span>⚡ {activeMemberKeys.length} members aktiva denna vecka</span>
+          {weeklyXP > 0 && (
+            <>
+              <span className="feed-band-sep"> · </span>
+              <span className="feed-band-xp">{weeklyXP} XP totalt</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Tom state ──────────────────────────────────────────── */}
       {feed.length === 0 ? (
         <div className="empty-state" style={{ padding: 'var(--space-xl) var(--space-lg)' }}>
           <Activity size={48} strokeWidth={1} />
@@ -112,10 +121,13 @@ export default function ActivityFeed() {
       ) : (
         <div className="feed-list feed-list-flat">
           {feed.map((item: any, i: number) => {
+
+            // ── Synergy-kort ──────────────────────────────────────
             if (isSynergy(item)) {
               const members = parseSynergyMembers(item);
-              const mA = members ? MEMBERS[members[0]] : null;
-              const mB = members ? MEMBERS[members[1]] : null;
+              const mA = members ? (MEMBERS as any)[members[0]] : null;
+              const mB = members ? (MEMBERS as any)[members[1]] : null;
+              const ts = item.ts || item.time || item.t || '';
               return (
                 <motion.div
                   key={i}
@@ -127,33 +139,51 @@ export default function ActivityFeed() {
                   variants={itemVariants}
                   initial="hidden"
                   animate="visible"
-                  transition={synergyTransition}
+                  transition={{ type: 'spring', stiffness: 200, damping: 25 }}
                 >
                   <div className="feed-synergy-avatars">
                     {mA && (
                       <div className="feed-synergy-avatar" style={{ background: mA.xpColor }}>
-                        {getInitials(mA.name)}
+                        {mA.emoji}
                       </div>
                     )}
                     <div className="feed-synergy-line" />
                     {mB && (
                       <div className="feed-synergy-avatar" style={{ background: mB.xpColor }}>
-                        {getInitials(mB.name)}
+                        {mB.emoji}
                       </div>
                     )}
                   </div>
                   <div className="feed-synergy-text">
-                    {item.text?.replace('[synk]', '').trim() || item.text}
+                    {item.action?.replace('[synk]', '').trim()}
                   </div>
-                  <div className="feed-synergy-ts">{item.t}</div>
+                  <div className="feed-synergy-ts">{timeAgo(ts as any)}</div>
                 </motion.div>
               );
             }
 
-            const type = detectType(item);
-            const Icon = ICON_MAP[type];
-            const iconClass = ICON_CLASS_MAP[type];
-            const xpVal = extractXP(item.text || '');
+            // ── Standard feed-rad ─────────────────────────────────
+            const member   = (MEMBERS as any)[item.who] || null;
+            const icon     = getEventIcon(item);
+            // BUG-FIX: texten ligger i item.action, INTE item.text
+            const actionText = item.action || '';
+            // XP: explicit fält eller extraherat ur action-text
+            const xp         = item.xp || extractXPFromText(actionText) || 0;
+            // Timestamp: item.ts (useXP.js) eller item.time (övriga)
+            const ts         = item.ts || item.time || item.t || '';
+
+            // Extrahera citerad quest-titel: "Titel"
+            const questMatch = actionText.match(/[""]([^""]+)[""]/);
+            const questTitle = questMatch ? questMatch[1] : null;
+
+            // Rensa action-texten från citerad titel och XP-notering
+            let displayAction = actionText
+              .replace(/[""][^""]+[""]/, '')
+              .replace(/\(\+\d+\s*XP[^)]*\)/gi, '')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+            // Ta bort avslutande komma om det uppstår
+            if (displayAction.endsWith(',')) displayAction = displayAction.slice(0, -1).trim();
 
             return (
               <motion.div
@@ -162,16 +192,30 @@ export default function ActivityFeed() {
                 variants={itemVariants}
                 initial="hidden"
                 animate="visible"
-                transition={regularTransition}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               >
-                <span className={`feed-row-icon ${iconClass}`}>
-                  <Icon size={16} strokeWidth={2} />
-                </span>
-                <span className="feed-row-text">
-                  {highlightMemberName(item.text || '')}
-                </span>
-                {xpVal && <span className="feed-row-xp">{xpVal} XP</span>}
-                <span className="feed-row-ts">{item.t}</span>
+                {/* Vänster: avatar */}
+                <div
+                  className="feed-avatar"
+                  style={{ background: member?.xpColor || 'var(--color-surface-elevated)' }}
+                >
+                  {member?.emoji || icon}
+                </div>
+
+                {/* Mitten: text */}
+                <div className="feed-content">
+                  <span className="feed-name">{member?.name || item.who || '?'}</span>
+                  <span className="feed-action"> {displayAction}</span>
+                  {questTitle && (
+                    <span className="feed-quest"> "{questTitle}"</span>
+                  )}
+                </div>
+
+                {/* Höger: XP + tid */}
+                <div className="feed-meta">
+                  {xp > 0 && <span className="feed-xp">+{xp} XP</span>}
+                  <span className="feed-time">{timeAgo(ts as any)}</span>
+                </div>
               </motion.div>
             );
           })}
