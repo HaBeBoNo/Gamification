@@ -1,5 +1,7 @@
 import { S, save } from '../state/store';
+import { MEMBERS } from '../data/members';
 import { awardXP } from './useXP';
+import { sendPush } from '../lib/sendPush';
 
 /**
  * checkIn — registrerar närvaro på ett kalenderevent.
@@ -48,6 +50,15 @@ export function checkIn(eventId, eventTitle) {
 
   // Tilldela XP via awardXP — hanterar level-up, streak, stats, feed
   awardXP(quest, 40, null);
+
+  // Push-notis: kalender-incheckning
+  const memberName = MEMBERS[S.me]?.name || S.me;
+  sendPush(
+    `${memberName} checkade in`,
+    `Närvarade på ${eventTitle || 'bandaktivitet'}`,
+    S.me,
+    '/'
+  );
 
   save();
 }

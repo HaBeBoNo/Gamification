@@ -7,6 +7,7 @@
 import { S, save, notify } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { createLevelUpNotif, addNotifToAll } from '../state/notifications';
+import { sendPush } from '../lib/sendPush';
 
 // ── Interna hjälpfunktioner ──────────────────────────────────────
 
@@ -149,6 +150,12 @@ export async function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rol
     const memberName = MEMBERS[S.me]?.name || S.me;
     const notif = createLevelUpNotif(S.me, memberName, c.level);
     addNotifToAll(notif);
+    sendPush(
+      `${memberName} gick upp till Level ${c.level}`,
+      `Nytt level uppnått i Sektionen HQ 🎯`,
+      S.me,
+      '/'
+    );
   }
 
   // 5. Karaktärs-stats utifrån quest-kategori
@@ -211,16 +218,24 @@ export async function awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rol
   S.feed.unshift({ who: S.me, action: feedAction, ts });
   if (S.feed.length > 50) S.feed.length = 50;
 
-  // 10. Belöning (valfri)
+  // 10. Push-notis: quest slutfört
+  sendPush(
+    `${m.name || S.me} slutförde ett uppdrag`,
+    `"${q.title}" — +${totalXP} XP`,
+    S.me,
+    '/'
+  );
+
+  // 11. Belöning (valfri)
   if (rollReward) {
     const reward = rollReward(totalXP);
     if (reward && showRW) showRW(reward);
   }
 
-  // 11. Level-up overlay
+  // 12. Level-up overlay
   if (leveled && showLU) showLU(c.level);
 
-  // 12. Floating XP-text
+  // 13. Floating XP-text
   if (showXPPop) showXPPop(totalXP, event);
 
   save();
