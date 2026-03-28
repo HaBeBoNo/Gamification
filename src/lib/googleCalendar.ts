@@ -1,80 +1,54 @@
-import { getGoogleAccessToken } from './googleAuth';
-
-const CALENDAR_ID = import.meta.env.VITE_GOOGLE_CALENDAR_ID ||
-  '7b6c8d54ffb5de2adaf59ee68feceb14266a70dac26279e78d037549182dc452@group.calendar.google.com';
-
-async function getAccessToken(): Promise<string | null> {
-  return getGoogleAccessToken();
-}
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
+const CALENDAR_ID = import.meta.env.VITE_GOOGLE_CALENDAR_ID
 
 export interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
-  location?: string;
-  description?: string;
-  isAllDay: boolean;
+  id: string
+  title: string
+  start: string
+  end: string
+  location?: string
+  description?: string
 }
 
 export async function getUpcomingEvents(maxResults = 10): Promise<CalendarEvent[]> {
-  const token = await getAccessToken();
-  if (!token) return [];
+  const now = new Date().toISOString()
+  const url = new URL(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`
+  )
+  url.searchParams.set('key', API_KEY)
+  url.searchParams.set('timeMin', now)
+  url.searchParams.set('maxResults', String(maxResults))
+  url.searchParams.set('singleEvents', 'true')
+  url.searchParams.set('orderBy', 'startTime')
 
-  const now = new Date().toISOString();
-  const params = new URLSearchParams({
-    calendarId: CALENDAR_ID,
-    timeMin: now,
-    maxResults: String(maxResults),
-    singleEvents: 'true',
-    orderBy: 'startTime',
-  });
+  const res = await fetch(url.toString())
+  if (!res.ok) throw new Error(`Calendar API error: ${res.status}`)
+  const data = await res.json()
 
-  try {
-    const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!res.ok) return [];
-    const data = await res.json();
-
-    return (data.items || []).map((item: any) => ({
-      id: item.id,
-      title: item.summary || 'Namnlöst event',
-      start: item.start?.dateTime || item.start?.date || '',
-      end: item.end?.dateTime || item.end?.date || '',
-      location: item.location || '',
-      description: item.description || '',
-      isAllDay: !item.start?.dateTime,
-    }));
-  } catch {
-    return [];
-  }
+  return (data.items ?? []).map((item: any) => ({
+    id: item.id,
+    title: item.summary || 'Ingen titel',
+    start: item.start?.dateTime || item.start?.date || '',
+    end: item.end?.dateTime || item.end?.date || '',
+    location: item.location,
+    description: item.description,
+  }))
 }
 
-export function formatEventDate(dateStr: string, isAllDay: boolean): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  if (isAllDay) {
-    return date.toLocaleDateString('sv-SE', {
-      weekday: 'short', day: 'numeric', month: 'short'
-    });
-  }
-  return date.toLocaleDateString('sv-SE', {
-    weekday: 'short', day: 'numeric', month: 'short',
-    hour: '2-digit', minute: '2-digit'
-  });
+export function formatEventDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('sv-SE', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
 }
 
 export function isEventSoon(dateStr: string): boolean {
-  const event = new Date(dateStr);
-  const now = new Date();
-  const diff = event.getTime() - now.getTime();
-  return diff >= 0 && diff <= 30 * 60 * 1000; // inom 30 minuter
+  const diff = new Date(dateStr).getTime() - Date.now()
+  return diff > 0 && diff < 24 * 60 * 60 * 1000
 }
 
 export function isEventActive(start: string, end: string): boolean {
-  const now = new Date();
-  return new Date(start) <= now && now <= new Date(end);
+  const now = Date.now()
+  return new Date(start).getTime() <= now && new Date(end).getTime() >= now
 }

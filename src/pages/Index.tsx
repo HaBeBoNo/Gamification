@@ -390,9 +390,18 @@ export default function Index() {
                 onQuestTap={(q: any) => setDetailQuest(q)}
                 onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
               />
-            )} 
+            )}
             {activeTab === 'leaderboard' && <LeaderboardView />}
             {activeTab === 'skilltree' && <Scoreboard />}
+            {activeTab === 'bandhub' && (
+              <Suspense fallback={
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-3xl)', color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
+                  Laddar Band Hub…
+                </div>
+              }>
+                <BandHub />
+              </Suspense>
+            )}
           </div>
 
           <div
