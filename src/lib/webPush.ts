@@ -12,8 +12,11 @@ function urlBase64ToUint8Array(base64String: string) {
 export async function registerPush(memberKey: string): Promise<boolean> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
   try {
+    console.log('[Push] Starting registration...')
     const registration = await navigator.serviceWorker.register('/sw.js')
+    console.log('[Push] SW registered:', registration)
     const permission = await Notification.requestPermission()
+    console.log('[Push] Permission:', permission)
     if (permission !== 'granted') return false
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,

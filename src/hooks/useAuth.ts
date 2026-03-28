@@ -75,7 +75,8 @@ export function useAuth() {
       save();
 
       // Register for push notifications (non-blocking)
-      registerPush(key).catch(console.error);
+      console.log('[Auth] Calling registerPush for:', key)
+      registerPush(key).catch(e => console.error('[Push] Failed:', e));
     } else {
       console.log('No member match for email:', email);
       setMemberKey(null);
