@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
+import { awardInsightBonus } from '@/hooks/useXP';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -26,9 +28,8 @@ export default function QuestCompleteModal({
   const [unexpected, setUnexpected] = useState('');
   const [highFiveTo, setHighFiveTo] = useState<string | null>(null);
 
-  const otherMembers = Object.entries(MEMBERS).filter(
-    ([id]) => id !== S.me
-  );
+  const otherMembers = Object.entries(MEMBERS).filter(([id]) => id !== S.me);
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
 
   function submitPhase1() {
     if (!what.trim()) return;
@@ -40,26 +41,8 @@ export default function QuestCompleteModal({
   }
 
   function submitPhase2() {
-    // Spara insikt — synlig bara för coachen
-    if (unexpected.trim()) {
-      const q = S.quests.find((q: any) => q.id === quest.id);
-      if (q) {
-        q.insight = unexpected;
-        // Bonus XP för insikt
-        S.chars[S.me].xp = (S.chars[S.me].xp || 0) + 15;
-        S.chars[S.me].totalXp = (S.chars[S.me].totalXp || 0) + 15;
-        S.feed.unshift({
-          who: S.me,
-          action: `reflekterade över "${quest.title}" 💡`,
-          xp: 15,
-          time: new Date().toLocaleTimeString('sv-SE', {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        });
-        save();
-      }
-    }
+    // Insikt + bonus XP hanteras av awardInsightBonus i useXP
+    awardInsightBonus(quest.id, unexpected, quest.title);
     setPhase(3);
   }
 
@@ -95,6 +78,10 @@ export default function QuestCompleteModal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Quest genomfört"
         style={{
           background: 'var(--color-surface)',
           borderRadius: 'var(--radius-card)',

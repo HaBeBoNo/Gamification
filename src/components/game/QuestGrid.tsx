@@ -45,7 +45,7 @@ function getWeekNumber(): number {
   return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 }
 
-export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNudge, showXP, onOpenCoach }: QuestGridProps) {
+function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNudge, showXP, onOpenCoach }: QuestGridProps) {
   const [tab, setTab] = useState(S.tab || 'personal');
   const [filter, setFilter] = useState('alla');
   const [refreshing, setRefreshing] = useState(false);
@@ -374,3 +374,4 @@ export default function QuestGrid({ rerender, showLU, showRW, showSidequestNudge
     </div>
   );
 }
+export default React.memo(QuestGrid);

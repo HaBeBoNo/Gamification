@@ -24,7 +24,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   background: 'none',
   border: 'none',
   color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-  fontSize: '9px',
+  fontSize: '11px',
   fontFamily: 'var(--font-ui, var(--font-mono))',
   letterSpacing: '0.05em',
   padding: '8px 4px',
@@ -39,6 +39,8 @@ export function BottomNav({ activeTab, onTabChange, showMore, onMoreTap, unreadC
   return (
     <nav
       className="bottom-tab-bar"
+      role="tablist"
+      aria-label="Huvudnavigering"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -59,6 +61,9 @@ export function BottomNav({ activeTab, onTabChange, showMore, onMoreTap, unreadC
         return (
           <button
             key={id}
+            role="tab"
+            aria-selected={active}
+            aria-current={active ? 'page' : undefined}
             onClick={() => onTabChange(id)}
             style={tabStyle(active)}
           >
@@ -70,6 +75,9 @@ export function BottomNav({ activeTab, onTabChange, showMore, onMoreTap, unreadC
 
       {/* More / overflow button */}
       <button
+        role="tab"
+        aria-selected={showMore}
+        aria-label="Mer"
         onClick={onMoreTap}
         style={tabStyle(showMore)}
       >

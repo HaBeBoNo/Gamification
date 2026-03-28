@@ -1,14 +1,20 @@
 /**
- * useResponseProfile.js
+ * useResponseProfile.ts
  * Builds a linguistic/behavioral profile from onboarding answers
  * by calling the Claude API and returning structured JSON.
  */
 
+import { callClaude, parseJSON } from '../lib/claudeApi';
+import type { ResponseProfile } from '../types/game';
+
+export type { ResponseProfile };
+
 /**
- * @param {string[]} answers - Array of 5 onboarding answers
- * @returns {Promise<Object|null>} Parsed profile JSON, or null on failure
+ * buildResponseProfile(answers)
+ * @param answers - Array of 5 onboarding answers
+ * @returns Parsed ResponseProfile, or null on failure
  */
-export async function buildResponseProfile(answers) {
+export async function buildResponseProfile(answers: string[]): Promise<ResponseProfile | null> {
   const prompt = `Du får fem svar från en onboarding-enkät för en musikband-app.
 Analysera svaren och returnera ENBART ett JSON-objekt med följande struktur.
 Inga förklaringar, ingen text utanför JSON.
@@ -38,32 +44,8 @@ Returnera detta JSON-objekt:
 }`;
 
   try {
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text?.trim();
-    if (!text) return null;
-
-    // Strip markdown code fences if present
-    const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-
-    try {
-      return JSON.parse(clean);
-    } catch {
-      return null;
-    }
+    const text = await callClaude(prompt, 1000);
+    return parseJSON<ResponseProfile>(text);
   } catch {
     return null;
   }

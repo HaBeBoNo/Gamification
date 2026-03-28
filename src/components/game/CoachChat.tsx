@@ -63,9 +63,9 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const coachName = S.chars[S.me]?.coachName ||
+  const coachName = ((S.chars[S.me]?.coachName as string | undefined) ||
     ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
-       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' } as Record<string, string>)[S.me] || 'Coach';
+       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' } as Record<string, string>)[S.me!] || 'Coach') as string;
 
   const handlePressStart = () => {
     pressTimer.current = setTimeout(() => {

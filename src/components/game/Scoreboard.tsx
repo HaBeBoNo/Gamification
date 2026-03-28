@@ -5,7 +5,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import SkillNodes from './SkillNodes';
 import TrophyRoom from './TrophyRoom';
 
-export default function Scoreboard() {
+function Scoreboard() {
   const me = S.me || '';
   const member = MEMBERS[me];
   const char = S.chars[me];
@@ -46,3 +46,5 @@ export default function Scoreboard() {
     </div>
   );
 }
+
+export default React.memo(Scoreboard);

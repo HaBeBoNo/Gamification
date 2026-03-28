@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
-import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
+import { useGameStore } from '@/state/store';
 
 interface Props {
   onClick: () => void;
 }
 
 export default function NotificationBell({ onClick }: Props) {
-  const [count, setCount] = useState(getUnreadCount());
+  // Reactive: re-renders whenever notifications slice changes in Zustand
+  const count = useGameStore(s => s.notifications.filter(n => !n.read).length);
   const [pulse, setPulse] = useState(false);
+  const prevCount = useRef(count);
 
   useEffect(() => {
-    return subscribeNotifications(() => {
-      const newCount = getUnreadCount();
-      if (newCount > count) {
-        setPulse(true);
-        setTimeout(() => setPulse(false), 300);
-      }
-      setCount(newCount);
-    });
+    if (count > prevCount.current) {
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 300);
+      return () => clearTimeout(t);
+    }
+    prevCount.current = count;
   }, [count]);
 
   const display = count > 9 ? '9+' : count;
@@ -34,7 +34,7 @@ export default function NotificationBell({ onClick }: Props) {
         border: 'none',
         color: count > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
         cursor: 'pointer',
-        padding: '10px', // Increased padding for better size
+        padding: '10px',
         touchAction: 'manipulation',
       }}
     >
@@ -44,19 +44,19 @@ export default function NotificationBell({ onClick }: Props) {
           className="notif-bell-badge"
           style={{
             position: 'absolute',
-            top: '-5px', // Adjusted top positioning
-            right: '-5px', // Adjusted right positioning
+            top: '-5px',
+            right: '-5px',
             background: '#ff4444',
             color: '#fff',
             borderRadius: '999px',
-            fontSize: '12px', // Increased font size for badge
+            fontSize: '12px',
             fontWeight: 700,
             minWidth: 20,
             height: 20,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '0 6px', // Adjusted padding for badge
+            padding: '0 6px',
             fontFamily: 'var(--font-ui)',
           }}
         >

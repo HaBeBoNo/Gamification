@@ -14,7 +14,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const coachName = S.chars[S.me]?.coachName || 'Coach';
+  const coachName = (S.chars[S.me]?.coachName as string | undefined) || 'Coach';
 
   async function handleSend() {
     if (!input.trim()) return;

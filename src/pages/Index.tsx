@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { S, notify, useGameStore, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut, Clock, X } from 'lucide-react';
@@ -29,9 +29,12 @@ import QuestHistory from '@/components/game/QuestHistory';
 import ShortcutsOverlay from '@/components/game/ShortcutsOverlay';
 import { BottomNav } from '@/components/game/BottomNav';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { getUnreadCount, subscribeNotifications } from '@/state/notifications';
+import { useOverlays } from '@/hooks/useOverlays';
+import { markAllRead } from '@/state/notifications';
 import { useSupabaseData } from '@/hooks/useAuth';
-import { syncFromSupabase } from '@/hooks/useSupabaseSync';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { useLongPress } from '@/hooks/useLongPress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
@@ -57,25 +60,29 @@ export default function Index() {
   const [mobileTab, setMobileTab] = useState('quests');
   const [showMore, setShowMore] = useState(false);
 
-  const [levelUp, setLevelUp] = useState<number | null>(null);
-  const [reward, setReward] = useState<{ reward: any; tier?: string } | null>(null);
+  const {
+    levelUp, setLevelUp,
+    reward, setReward,
+    xpAmount, setXpAmount,
+    refreshMsg,
+    sidequestNudge, setSidequestNudge,
+    showLU, showRW, showXP, showSidequestNudge,
+    closeOverlays,
+  } = useOverlays();
+
   const [showMetrics, setShowMetrics] = useState(false);
-  const [refreshMsg, setRefreshMsg] = useState('');
-  const [sidequestNudge, setSidequestNudge] = useState<any[] | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [xpAmount, setXpAmount] = useState<number | null>(null);
   const [showCmd, setShowCmd] = useState(false);
   const [showAdminCenter, setShowAdminCenter] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
-  const [unreadCount, setUnreadCount] = useState(getUnreadCount());
-  const [refreshing, setRefreshing] = useState(false);
+  // Reactive unread count — re-renders automatically when notifications change
+  const unreadCount = useGameStore(s => s.notifications.filter((n: any) => !n.read).length);
+
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
   const [showHistory, setShowHistory] = useState(false);
 
-  const pullStartY = useRef(0);
-  const pullCurrentY = useRef(0);
-  const isPulling = useRef(false);
+  const { refreshing, handlePullStart, handlePullMove, handlePullEnd } = usePullToRefresh(S.me);
 
   // Google OAuth auth gate — wait for both auth and Supabase sync to complete
   const { user, memberKey, loading: authLoading, synced } = useAuth();
@@ -86,24 +93,11 @@ export default function Index() {
   const isAdmin = S.me === 'hannes';
   const isCurl  = S.me === 'carl';
 
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const touchStartTime = useRef(0);
-
-  // Track unread notifications for dot on ••• icon
-  useEffect(() => {
-    return subscribeNotifications(() => setUnreadCount(getUnreadCount()));
-  }, []);
-
-  function showLU(level: number) { setLevelUp(level); }
-  function showRW(rw: any, tier?: string) { setReward({ reward: rw, tier }); }
-  function showXP(amount: number) { setXpAmount(amount); }
+  const { handleTouchStart, handleTouchEnd } = useSwipeNavigation(mobileTab, handleTabTap);
 
   function openNotifications() {
     setShowNotifications(true);
-    (S.notifications || []).forEach((n: any) => n.read = true);
-    save();
-    notify();
+    markAllRead();
   }
 
   const closeAll = useCallback(() => {
@@ -113,17 +107,26 @@ export default function Index() {
     setDetailQuest(null);
     setShowAdmin(false);
     setShowMetrics(false);
-    setSidequestNudge(null);
     setShowMore(false);
+    closeOverlays();
+  }, [closeOverlays]);
+
+  // Stable callbacks for QuestGrid props — prevents React.memo from breaking
+  const handleQuestTap  = useCallback((q: any) => setDetailQuest(q), []);
+  const handleOpenCoach = useCallback((msg?: string) => {
+    if (msg) setCoachInsight(msg);
+    else handleTabTap('coach');
   }, []);
 
-  const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts({
+  const keyboardHandlers = useMemo(() => ({
     setMobileTab,
     setActiveTab,
     setShowCmd,
     closeAll,
     isCurl,
-  });
+  }), [closeAll, isCurl]);
+
+  const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts(keyboardHandlers);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -137,20 +140,7 @@ export default function Index() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isAdmin]);
 
-  const logoLongPressRef = useCallback((node: HTMLDivElement | null) => {
-    if (!node || !isAdmin) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const start = () => { timer = setTimeout(() => setShowAdminCenter(true), 2000); };
-    const cancel = () => clearTimeout(timer);
-    node.addEventListener('touchstart', start, { passive: true });
-    node.addEventListener('touchend', cancel);
-    node.addEventListener('touchcancel', cancel);
-    return () => {
-      node.removeEventListener('touchstart', start);
-      node.removeEventListener('touchend', cancel);
-      node.removeEventListener('touchcancel', cancel);
-    };
-  }, [isAdmin]);
+  const logoLongPressRef = useLongPress(() => setShowAdminCenter(true), isAdmin);
 
   // Show loading screen while auth is in progress OR Supabase sync hasn't completed yet
   if (authLoading || !synced) {
@@ -221,9 +211,9 @@ export default function Index() {
           showLU={showLU}
           showRW={showRW}
           showXP={showXP}
-          showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
-          onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
+          showSidequestNudge={showSidequestNudge}
+          onQuestTap={handleQuestTap}
+          onOpenCoach={handleOpenCoach}
         />
       );
       case 'skilltree': return <Scoreboard />;
@@ -264,9 +254,9 @@ export default function Index() {
           showLU={showLU}
           showRW={showRW}
           showXP={showXP}
-          showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
-          onQuestTap={(q: any) => setDetailQuest(q)}
-          onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
+          showSidequestNudge={showSidequestNudge}
+          onQuestTap={handleQuestTap}
+          onOpenCoach={handleOpenCoach}
         />
       );
     }
@@ -291,62 +281,7 @@ export default function Index() {
 
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
-  // ── Pull-to-refresh ───────────────────────────────────────────────
-  function handlePullStart(e: React.TouchEvent) {
-    const scrollEl = e.currentTarget;
-    if (scrollEl.scrollTop === 0) {
-      pullStartY.current = e.touches[0].clientY;
-      isPulling.current = true;
-    }
-  }
-
-  function handlePullMove(e: React.TouchEvent) {
-    if (!isPulling.current) return;
-    pullCurrentY.current = e.touches[0].clientY;
-  }
-
-  async function handlePullEnd() {
-    if (!isPulling.current) return;
-    isPulling.current = false;
-    const pullDistance = pullCurrentY.current - pullStartY.current;
-
-    if (pullDistance > 80 && S.me) {
-      setRefreshing(true);
-      try {
-        await syncFromSupabase(S.me);
-        notify();
-      } catch {}
-      setRefreshing(false);
-    }
-    pullStartY.current = 0;
-    pullCurrentY.current = 0;
-  }
-
-  // ── Swipe between main tabs ──────────────────────────────────────
-  const SWIPE_TAB_IDS = ['quests', 'skilltree', 'leaderboard', 'bandhub'];
-
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    const deltaX = touchStartX.current - e.changedTouches[0].clientX;
-    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-    const elapsed = Date.now() - touchStartTime.current;
-    const velocity = Math.abs(deltaX) / elapsed;
-    const currentIndex = SWIPE_TAB_IDS.indexOf(mobileTab);
-    if (currentIndex === -1) return;
-    if (deltaY > Math.abs(deltaX)) return;
-    if (Math.abs(deltaX) > 50 || velocity > 0.3) {
-      if (deltaX > 0 && currentIndex < SWIPE_TAB_IDS.length - 1) {
-        handleTabTap(SWIPE_TAB_IDS[currentIndex + 1]);
-      } else if (deltaX < 0 && currentIndex > 0) {
-        handleTabTap(SWIPE_TAB_IDS[currentIndex - 1]);
-      }
-    }
-  }
+  // ── Swipe between main tabs (see useSwipeNavigation) ──────────────
 
   return (
     <div className="app-shell">
@@ -373,7 +308,7 @@ export default function Index() {
         </div>
       )}
 
-      <div className="body-grid body-grid-no-sidebar">
+      <div id="main-content" className="body-grid body-grid-no-sidebar">
         <div className="sidebar-l">
           <div className="stagger-1"><AICoach rerender={rerender} /></div>
         </div>
@@ -386,7 +321,7 @@ export default function Index() {
                 showLU={showLU}
                 showRW={showRW}
                 showXP={showXP}
-                showSidequestNudge={(quests: any[]) => setSidequestNudge(quests)}
+                showSidequestNudge={showSidequestNudge}
                 onQuestTap={(q: any) => setDetailQuest(q)}
                 onOpenCoach={(msg?: string) => { if (msg) { setCoachInsight(msg); } else { handleTabTap('coach'); } }}
               />

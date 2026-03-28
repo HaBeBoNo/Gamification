@@ -62,7 +62,7 @@ const SORT_PILLS: { key: SortKey; label: string }[] = [
   { key: 'streak', label: 'Streak' },
 ];
 
-export default function LeaderboardView() {
+function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
@@ -312,3 +312,4 @@ export default function LeaderboardView() {
     </div>
   );
 }
+export default React.memo(LeaderboardView);

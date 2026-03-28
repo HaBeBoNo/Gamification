@@ -1,4 +1,5 @@
 import { S, save } from '@/state/store';
+import type { ResponseProfile } from '@/types/game';
 
 const RECALIBRATION_THRESHOLD = 10; // antal interaktioner innan re-kalibrering
 
@@ -21,7 +22,7 @@ export async function maybeRecalibrateCoach(memberKey: string): Promise<void> {
     .map((entry: any) => `Member: ${entry.user}\nCoach: ${entry.coach}`)
     .join('\n\n');
 
-  const snapshot = char.responseProfile?.onboardingSnapshot?.rawAnswers || [];
+  const snapshot = (char.responseProfile as ResponseProfile | undefined)?.onboardingSnapshot?.rawAnswers || [];
   const snapshotText = snapshot.join('\n');
 
   const prompt = `Du analyserar hur en persons kommunikationsstil har förändrats över tid.\n\nOnboarding-svar (hur de kommunicerade från början):\n${snapshotText}\n\nSenaste 10 coach-interaktioner (hur de kommunicerar nu):\n${recentText}\n\nReturnera ENBART ett JSON-objekt utan markdown eller förklaringar:\n{\n  "tone": "analytical" | "emotional" | "neutral",\n  "register": "concrete" | "abstract" | "mixed",\n  "languageComplexity": "simple" | "moderate" | "complex",\n  "pronounDominance": "jag" | "vi" | "man",\n  "dominantTheme": "kort beskrivning av vad personen fokuserar på nu",\n  "silences": ["dimensioner som fortfarande är frånvarande"],\n  "drift": "beskrivning av hur kommunikationen förändrats sedan onboarding, eller null om ingen tydlig förändring"\n}`;
@@ -42,14 +43,15 @@ export async function maybeRecalibrateCoach(memberKey: string): Promise<void> {
     const updated = JSON.parse(text);
 
     // Uppdatera responseProfile med nya värden
-    if (char.responseProfile) {
-      char.responseProfile.tone = updated.tone;
-      char.responseProfile.register = updated.register;
-      char.responseProfile.languageComplexity = updated.languageComplexity;
-      char.responseProfile.pronounDominance = updated.pronounDominance;
-      char.responseProfile.dominantTheme = updated.dominantTheme;
-      char.responseProfile.silences = updated.silences;
-      char.responseProfile.drift = updated.drift || null;
+    const profile = char.responseProfile as ResponseProfile | undefined;
+    if (profile) {
+      profile.tone               = updated.tone;
+      profile.register           = updated.register;
+      profile.languageComplexity = updated.languageComplexity;
+      profile.pronounDominance   = updated.pronounDominance;
+      profile.dominantTheme      = updated.dominantTheme;
+      profile.silences           = updated.silences;
+      profile.drift              = updated.drift || null;
     }
 
     // Spara tidpunkt för kalibrering

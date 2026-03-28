@@ -51,8 +51,8 @@ export default function CalendarView() {
     const xp = 40
     const c = S.chars[S.me]
     if (c) {
-      c.xp = (c.xp || 0) + xp
-      c.totalXP = (c.totalXP || 0) + xp
+      c.xp = ((c.xp as number) || 0) + xp
+      c.totalXp = ((c.totalXp as number) || 0) + xp
     }
 
     // Feed
@@ -62,7 +62,7 @@ export default function CalendarView() {
       action: `checkade in på ${event.title}`,
       xp,
       time: new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
-      ts: Date.now(),
+      ts:   new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
     })
 
     save()

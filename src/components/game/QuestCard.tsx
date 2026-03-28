@@ -69,7 +69,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     // Om kollaborativt quest: ge XP till alla participants
     if (quest.collaborative) {
-      completeCollaborativeQuest(quest, rerender);
+      const participants = (quest.participants as string[] | undefined) || [];
+      void completeCollaborativeQuest(quest, participants, quest.xp || 30);
     }
 
     // Spara i historik
@@ -140,7 +141,16 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 60, transition: { duration: 0.25 } }}
+        role="button"
+        tabIndex={0}
+        aria-label={`${quest.title} — ${quest.xp} XP`}
         onClick={() => !menuOpen && setShowDetail(true)}
+        onKeyDown={(e) => {
+          if ((e.key === 'Enter' || e.key === ' ') && !menuOpen) {
+            e.preventDefault();
+            setShowDetail(true);
+          }
+        }}
         style={{ cursor: 'pointer' }}
       >
         {isDone && <div className="done-stamp"><Check size={20} strokeWidth={3} /></div>}

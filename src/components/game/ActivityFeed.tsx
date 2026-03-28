@@ -54,7 +54,7 @@ const itemVariants = {
 };
 
 // ── Komponent ─────────────────────────────────────────────────────
-export default function ActivityFeed() {
+function ActivityFeed() {
   useGameStore((s: any) => s.tick); // prenumerera på store-uppdateringar
   const feed = S.feed || [];
 
@@ -224,3 +224,5 @@ export default function ActivityFeed() {
     </div>
   );
 }
+
+export default React.memo(ActivityFeed);

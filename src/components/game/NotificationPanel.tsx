@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  getNotifications, markAllRead, markRead,
-  subscribeNotifications,
-  type Notification,
-} from '@/state/notifications';
+import { markAllRead, markRead, type Notification } from '@/state/notifications';
+import { useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X } from 'lucide-react';
 
@@ -38,22 +35,24 @@ const TYPE_COLORS: Record<string, string> = {
 
 function getNotificationText(n: Notification): { title: string; subtitle: string } {
   const p = n.payload || {};
-  const memberName = p.memberId ? MEMBERS[p.memberId]?.name || p.memberId : '';
+  const memberId = p.memberId as string | undefined;
+  const memberName = memberId ? (MEMBERS as Record<string, { name?: string }>)[memberId]?.name || memberId : '';
+  const str = (v: unknown): string => (v as string) || '';
   switch (n.type) {
     case 'delegation_received':
-      return { title: `${memberName} skickade dig ett uppdrag`, subtitle: p.questTitle || '' };
+      return { title: `${memberName} skickade dig ett uppdrag`, subtitle: str(p.questTitle) };
     case 'delegation_accepted':
-      return { title: `${memberName} accepterade ditt uppdrag`, subtitle: p.questTitle || '' };
+      return { title: `${memberName} accepterade ditt uppdrag`, subtitle: str(p.questTitle) };
     case 'delegation_declined':
-      return { title: `${memberName} tackade nej till ditt uppdrag`, subtitle: p.questTitle || '' };
+      return { title: `${memberName} tackade nej till ditt uppdrag`, subtitle: str(p.questTitle) };
     case 'synergy_triggered':
-      return { title: 'Synergi aktiverad', subtitle: `${p.questTitle || ''} upplåst` };
+      return { title: 'Synergi aktiverad', subtitle: `${str(p.questTitle)} upplåst` };
     case 'badge_unlocked':
-      return { title: `Nytt märke: ${p.badgeName || ''}`, subtitle: p.desc || '' };
+      return { title: `Nytt märke: ${str(p.badgeName)}`, subtitle: str(p.desc) };
     case 'goal_milestone':
-      return { title: `Bandet passerade ${p.milestoneName || ''}!`, subtitle: '' };
+      return { title: `Bandet passerade ${str(p.milestoneName)}!`, subtitle: '' };
     case 'quest_completed':
-      return { title: `${memberName} klarade ${p.questTitle || ''}`, subtitle: '' };
+      return { title: `${memberName} klarade ${str(p.questTitle)}`, subtitle: '' };
     case 'level_up':
       return { title: n.title || 'Level up!', subtitle: n.body || '' };
     case 'high_five':
@@ -83,11 +82,8 @@ interface NotificationPanelProps {
 }
 
 export default function NotificationPanel({ onClose }: NotificationPanelProps) {
-  const [notifications, setNotifications] = useState(getNotifications());
-
-  useEffect(() => {
-    return subscribeNotifications(() => setNotifications([...getNotifications()]));
-  }, []);
+  // Reactive: re-renders whenever the notifications slice changes in Zustand
+  const notifications = useGameStore(s => s.notifications);
 
   return (
     <div className="notif-panel">

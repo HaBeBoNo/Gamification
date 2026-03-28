@@ -1,16 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-// useAI.js — Anthropic API-anrop för Sektionen Gamification
-// Mönster: direkt mutation av S + save() → notify() via Zustand
-// Exporterar: aiValidate, generatePersonalQuests,
-//             showSidequestNudge, refreshCoach, checkGhostQuest
+// aiPrompts.js — Promptmallar och coach-identiteter för Sektionen
+// Extraherat från useAI.js för separation av logik och text.
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save, notify } from '../state/store';
-import { MEMBERS, ROLE_TYPES } from '../data/members';
-import { awardXP } from './useXP';
-
-const API_URL = '/api/claude';
-const MODEL   = 'claude-sonnet-4-20250514';
+import { S } from '../state/store';
+import { ROLE_TYPES } from '../data/members';
 
 // ── Coach-identiteter ──────────────────────────────────────────────
 
@@ -47,36 +41,9 @@ const COACH_CONTEXT = {
   carl:     'Carl har påbörjat kontakt med Studiefrämjandet. Han behöver struktur och system, inte motivation. Hjälp honom bygga ett hållbart arbetssätt för bidragsansökningar. Alltid en fråga i slutet av varje coaching-session. Fokus på stiftelser, fonder, stipendier och kommunbidrag — var öppen för att det kan vara många olika typer av organisationer.',
 };
 
-// ── Intern hjälp ─────────────────────────────────────────────────
+// ── Promptbyggare ──────────────────────────────────────────────────
 
-async function callClaude(prompt, maxTokens = 400) {
-  const res = await fetch(API_URL, {
-    method:  'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model:      MODEL,
-      max_tokens: maxTokens,
-      messages:   [{ role: 'user', content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || '';
-}
-
-function parseJSON(raw) {
-  return JSON.parse(raw.replace(/```json|```/g, '').trim());
-}
-
-function ts() {
-  return new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
-}
-
-// ── Promptar ──────────────────────────────────────────────────────
-
-function buildValidatePrompt(m, c, q, desc) {
+export function buildValidatePrompt(m, c, q, desc) {
   return `Du är AI-coach för ${m.name} (${m.role}) i Sektionen.
 
 Deras profil:
@@ -97,7 +64,7 @@ VERDICT:[accepted|partial|rejected]
 FEEDBACK:[en mening svenska, max 110 tecken, personlig, direkt]`;
 }
 
-function buildQuestGenPrompt(m, c, refreshMode) {
+export function buildQuestGenPrompt(m, c, refreshMode) {
   const rtLabel = ROLE_TYPES[m.roleType]?.label || 'Amplifier';
   const rtDesc  = ROLE_TYPES[m.roleType]?.desc  || '';
 
@@ -123,7 +90,7 @@ Styrelsemedlem: ${m.name} (${m.role})
 ROLLKALIBRERING:
 - Varför de spelar musik: "${c.motivation || 'ej angiven'}"
 - Vad de faktiskt gör med glädje i sin roll: "${c.roleEnjoy || 'ej angiven'}"
-- Vad i rollen kostar mer än det ger: "${c.roleDrain || 'ej angiven'}"
+- Vad i rollen som kostar mer än det ger: "${c.roleDrain || 'ej angiven'}"
 - Dold insats som ingen förväntar sig: "${c.hiddenValue || 'ej angiven'}"
 - Gap de ser att ingen fyller: "${c.gap || 'ej angiven'}"
 ${c.roleReaction ? `\nDe reagerade på sin rollbeskrivning med: "${c.roleReaction}"
@@ -181,23 +148,19 @@ export function buildCoachPrompt(memberKey) {
   const coachName = c.coachName || DEFAULT_COACH_NAMES[memberKey] || 'Coach';
 
   const COACH_PERSONALITIES = {
-    hannes: `Du är ${coachName} — Hannes personliga coach. Hannes drivs av dopamin och kreativ energi. Han ser mönster och möjligheter innan andra. Din roll: skärp hans fokus utan att döda energin. Kort, precist, utmanande. Aldrig föreläsande.`,
-    martin: `Du är ${coachName} — Martins personliga coach. Martin drivs av vänskap och lojalitet mot de han spelar med. Han rör sig när relationen är stark. Din roll: koppla alltid insatser till bandet och de konkreta personerna i det. Aldrig abstrakt. Aldrig ensam.`,
-    niklas: `Du är ${coachName} — Niklas personliga coach. Niklas tänker i system och narrativ — han är Guild Architect. Han vill förstå hur delarna hänger ihop. Din roll: visa honom helheten och hans plats i den. Tekniskt konkret, aldrig vagt.`,
-    carl:   `Du är ${coachName} — Carls personliga coach. Carl tolkar och analyserar — han ser vad andra missar. Han behöver öppna frågor, inte direktiv. Din roll: ställ en fråga, lyssna på svaret, bygg vidare. Aldrig mer än tre meningar åt gången.`,
-    nisse:  `Du är ${coachName} — Nisses personliga coach. Nisse drivs av bekräftelse och synlighet — han behöver se att det han gör faktiskt spelar roll. Din roll: konkretisera hans impact utan att smickra. Visa vad som rör sig, inte vad som är bra.`,
-    simon:  `Du är ${coachName} — Simons personliga coach. Simon drivs av lojalitet och långsiktig tillit. Han bygger relationer som håller. Din roll: hjälp honom se när lojaliteten är en styrka och när den håller honom kvar för länge. Direkt, respektfullt.`,
+    hannes:   `Du är ${coachName} — Hannes personliga coach. Hannes drivs av dopamin och kreativ energi. Han ser mönster och möjligheter innan andra. Din roll: skärp hans fokus utan att döda energin. Kort, precist, utmanande. Aldrig föreläsande.`,
+    martin:   `Du är ${coachName} — Martins personliga coach. Martin drivs av vänskap och lojalitet mot de han spelar med. Han rör sig när relationen är stark. Din roll: koppla alltid insatser till bandet och de konkreta personerna i det. Aldrig abstrakt. Aldrig ensam.`,
+    niklas:   `Du är ${coachName} — Niklas personliga coach. Niklas tänker i system och narrativ — han är Guild Architect. Han vill förstå hur delarna hänger ihop. Din roll: visa honom helheten och hans plats i den. Tekniskt konkret, aldrig vagt.`,
+    carl:     `Du är ${coachName} — Carls personliga coach. Carl tolkar och analyserar — han ser vad andra missar. Han behöver öppna frågor, inte direktiv. Din roll: ställ en fråga, lyssna på svaret, bygg vidare. Aldrig mer än tre meningar åt gången.`,
+    nisse:    `Du är ${coachName} — Nisses personliga coach. Nisse drivs av bekräftelse och synlighet — han behöver se att det han gör faktiskt spelar roll. Din roll: konkretisera hans impact utan att smickra. Visa vad som rör sig, inte vad som är bra.`,
+    simon:    `Du är ${coachName} — Simons personliga coach. Simon drivs av lojalitet och långsiktig tillit. Han bygger relationer som håller. Din roll: hjälp honom se när lojaliteten är en styrka och när den håller honom kvar för länge. Direkt, respektfullt.`,
     johannes: `Du är ${coachName} — Johannes personliga coach. Johannes äger sitt territorium — logistik, merch, konsertuppbyggnad. Han behöver mandat och tydlighet. Din roll: bekräfta hans ägarskap och utmana honom att expandera det. Konkret, aldrig diffust.`,
-    ludvig: `Du är ${coachName} — Ludvigs personliga coach. Ludvig drivs av spontanitet och möjligheter. Han ser öppningar och vill agera. Din roll: hjälp honom kanalisera energin utan att bromsa den. Kort, snabbt, handlingsorienterat.`,
+    ludvig:   `Du är ${coachName} — Ludvigs personliga coach. Ludvig drivs av spontanitet och möjligheter. Han ser öppningar och vill agera. Din roll: hjälp honom kanalisera energin utan att bromsa den. Kort, snabbt, handlingsorienterat.`,
   };
 
-  const personality = COACH_PERSONALITIES[memberKey] || `Du är ${coachName}, personlig coach för ${memberKey} i Sektionen.`;
-
-  const contextNote = COACH_CONTEXT[memberKey] || '';
-  const contextNoteSection = contextNote ? `
-Bakgrundskontext om ${memberKey} (känn till detta, referera aldrig till det direkt):
-${contextNote}
-` : '';
+  const personality       = COACH_PERSONALITIES[memberKey] || `Du är ${coachName}, personlig coach för ${memberKey} i Sektionen.`;
+  const contextNote       = COACH_CONTEXT[memberKey] || '';
+  const contextNoteSection = contextNote ? `\nBakgrundskontext om ${memberKey} (känn till detta, referera aldrig till det direkt):\n${contextNote}\n` : '';
 
   const onboardingContext = `
 Onboarding-svar från ${memberKey}:
@@ -218,7 +181,6 @@ Regler som alltid gäller:
 - Om meddelandet är otvetydigt tvetydigt: ställ en enda precis fråga, aldrig fler
 - Svara alltid på svenska`;
 
-  /* ── responseProfile context ── */
   const profile = c.responseProfile;
   const profileContext = profile ? `
 Kommunikationsprofil:
@@ -236,7 +198,6 @@ Om metaphorical är true — använd bilder naturligt.
 Om languageComplexity är simple — håll dig konkret och kort.
 Om pronounDominance är vi — koppla alltid till bandet.` : '';
 
-  /* ── temporalBehavior context ── */
   const temporal = c.temporalBehavior;
   const temporalContext = temporal ? `
 Temporalt mönster: ${temporal.pattern}
@@ -248,19 +209,14 @@ Om urgency 0.3–0.7: fokuserad och konkret, inga sidospår.
 Om urgency < 0.3: utforskande och öppen.
 Om anomaly är true: något har förändrats — möt med nyfikenhet.` : '';
 
-  /* ── quest insights context ── */
   const insights = (S.quests || [])
     .filter(q => q.owner === memberKey && q.insight)
     .slice(-5)
     .map(q => `"${q.title}": ${q.insight}`)
     .join('\n');
-  const insightContext = insights ? `
-Senaste reflektioner:
-${insights}
-Använd som ingångspunkter — aldrig mekaniskt.` : '';
+  const insightContext = insights ? `\nSenaste reflektioner:\n${insights}\nAnvänd som ingångspunkter — aldrig mekaniskt.` : '';
 
-  /* ── Borttagningshistorik ── */
-  const deletedQuests = (S.chars[memberKey]?.deletedQuests || []).slice(-5);
+  const deletedQuests  = (S.chars[memberKey]?.deletedQuests || []).slice(-5);
   const deletionContext = deletedQuests.length > 0 ? `
 Borttagna uppdrag (member-signaler om kalibrering):
 ${deletedQuests.map(d => `- "${d.title}" (${d.cat}): ${
@@ -272,19 +228,13 @@ ${deletedQuests.map(d => `- "${d.title}" (${d.cat}): ${
 Undvik att generera liknande uppdrag inom samma kategori om reason är 'irrelevant'.
 Om reason är 'timing' — föreslå samma typ av uppdrag igen om 2–3 veckor.` : '';
 
-  /* ── Hyperfokus-signal ── */
-  const activeCount = (S.quests || []).filter(
-    q => q.owner === memberKey && !q.done
-  ).length;
-
-  const focusContext = activeCount <= 3 ? `
-${memberKey} har just ${activeCount} aktiva uppdrag. Det är ett medvetet val — hyperfokus.
-Uppmuntra det. Generera inte fler uppdrag om inte member explicit ber om det.` : '';
+  const activeCount  = (S.quests || []).filter(q => q.owner === memberKey && !q.done).length;
+  const focusContext = activeCount <= 3 ? `\n${memberKey} har just ${activeCount} aktiva uppdrag. Det är ett medvetet val — hyperfokus.\nUppmuntra det. Generera inte fler uppdrag om inte member explicit ber om det.` : '';
 
   return `${personality}\n${contextNoteSection}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}\n${deletionContext}\n${focusContext}`;
 }
 
-function buildGhostPrompt(m, c, daysSince) {
+export function buildGhostPrompt(m, c, daysSince) {
   return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — truminspelning juli 2026.
 
 ${m.name} har inte loggat in på ${Math.floor(daysSince)} dagar. Det betyder inte att de inte arbetat — systemet vet bara inte vad de gjort.
@@ -300,7 +250,7 @@ Svara EXAKT i JSON:
 {"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":75}`;
 }
 
-function buildSidequestPrompt(m, c) {
+export function buildSidequestPrompt(m, c) {
   return `Du är AI-coach för ${m.name} i Sektionen, ett indie-band från Göteborg i Operation POST II — truminspelning juli 2026.
 
 De har precis checkat in sin obligatoriska timme för veckan. Nu frågar du om de vill göra mer — ett sidequest.
@@ -319,223 +269,4 @@ XP ska vara lågt (25–50). Tonen inbjudande, aldrig pressande.
 
 Svara EXAKT i JSON:
 [{"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":25},{"title":"...","desc":"...","cat":"...","xp":35},{"title":"...","desc":"...","cat":"...","xp":50}]`;
-}
-
-// ── Exporterade funktioner ────────────────────────────────────────
-
-/**
- * aiValidate(q, desc, event, showLU, showRW, showXPPop, rollReward)
- *
- * Validerar ett quest-svar via AI, sätter q.aiVerdict direkt på quest-objektet,
- * och tilldelar XP proportionellt mot AI-score.
- * Alla UI-callbacks vidarebefordras till awardXP så level-up och rewards fungerar.
- *
- * q           Quest-objekt
- * desc        Användarens text-svar
- * event       MouseEvent (för XP-pop-position, kan vara null)
- * showLU      (level) => void   — level-up overlay (valfri)
- * showRW      (reward) => void  — reward overlay (valfri)
- * showXPPop   (xp, event) => void (valfri)
- * rollReward  (xp) => reward | null (valfri)
- */
-export async function aiValidate(q, desc, event, showLU, showRW, showXPPop, rollReward) {
-  const m = MEMBERS[S.me];
-  const c = S.chars[S.me];
-  if (!m || !c) return;
-
-  // Optimistisk UI: markera som "thinking"
-  const questIdx = S.quests.findIndex(sq => sq.id === q.id);
-  if (questIdx !== -1) S.quests[questIdx].aiThinking = true;
-  notify();
-
-  try {
-    const txt      = await callClaude(buildValidatePrompt(m, c, q, desc), 150);
-    const score    = parseInt(txt.match(/SCORE:(\d+)/)?.[1]  || '50');
-    const verdict  = txt.match(/VERDICT:(accepted|partial|rejected)/)?.[1] || 'partial';
-    const feedback = txt.match(/FEEDBACK:(.+)/)?.[1]?.trim() || 'Noterat.';
-    const xpEarned = Math.round(q.xp * (score / 100));
-
-    const cls = verdict === 'accepted' ? 'v-accepted'
-              : verdict === 'partial'  ? 'v-partial'
-              : 'v-rejected';
-
-    if (questIdx !== -1) {
-      S.quests[questIdx].aiThinking = false;
-      S.quests[questIdx].aiVerdict  = { text: `${feedback} — ${score}/100 → ${xpEarned} XP`, cls };
-    }
-    notify();
-
-    if (verdict !== 'rejected' && xpEarned > 0) {
-      setTimeout(() => awardXP(q, xpEarned, event, showLU, showRW, showXPPop, rollReward), 1200);
-    }
-  } catch {
-    if (questIdx !== -1) {
-      S.quests[questIdx].aiThinking = false;
-      S.quests[questIdx].aiVerdict  = { text: 'AI ej tillgänglig — halvt XP tilldelat', cls: 'v-partial' };
-    }
-    notify();
-    setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, showLU, showRW, showXPPop, rollReward), 800);
-  }
-}
-
-/**
- * generatePersonalQuests(refreshMode)
- *
- * Genererar 4 personliga AI-quests baserade på rollkalibrering.
- * Lägger direkt till i S.quests och sparar (save() triggar notify()).
- * I refreshMode: tar bort gamla completade personal quests först.
- */
-export async function generatePersonalQuests(refreshMode = false) {
-  const m = MEMBERS[S.me];
-  const c = S.chars[S.me];
-  if (!m || !c) return;
-
-  try {
-    const txt    = await callClaude(buildQuestGenPrompt(m, c, refreshMode), 700);
-    const parsed = parseJSON(txt);
-
-    if (refreshMode) {
-      // Ta bort gamla completade personal quests (men behåll ghost quests och aktiva)
-      S.quests = S.quests.filter(q =>
-        !(q.owner === S.me && q.personal && q.type !== 'ghost' && q.done)
-      );
-    }
-
-    let nextId = Math.max(400, ...S.quests.map(q => q.id || 0)) + 1;
-    parsed.forEach(q => {
-      S.quests.push({
-        id:        nextId++,
-        owner:     S.me,
-        title:     q.title,
-        desc:      q.desc,
-        cat:       q.cat,
-        xp:        q.xp,
-        stars:     '',
-        region:    '🌐 Personal',
-        recur:     'none',
-        type:      q.type,
-        done:      false,
-        aiVerdict: null,
-        personal:  true,
-      });
-    });
-
-    // Store generated titles so next generation doesn't repeat
-    const newTitles = parsed.map(q => q.title);
-    S.chars[S.me].generatedHistory = [
-      ...(S.chars[S.me].generatedHistory || []),
-      ...newTitles
-    ].slice(-20);
-  } catch {
-    // Fallback: minimal quest om AI misslyckas
-    S.quests.push({
-      id:        401,
-      owner:     S.me,
-      title:     `${MEMBERS[S.me]?.name}: en sak den här veckan`,
-      desc:      'Baserat på din rollkalibrering — välj den enda saken som faktiskt spelar roll att göra nu.',
-      cat:       'wisdom',
-      xp:        75,
-      stars:     '',
-      region:    '🌐 Personal',
-      recur:     'none',
-      type:      'strategic',
-      done:      false,
-      aiVerdict: null,
-      personal:  true,
-    });
-  }
-
-  save();
-}
-
-/**
- * refreshCoach()
- * Hämtar en personlig coaching-insikt och returnerar texten som sträng.
- * UIen (AICoach.jsx) ansvarar för loading-state och rendering.
- * Returnerar alltid en sträng — aldrig undefined.
- */
-export async function refreshCoach() {
-  if (!S.me || !S.chars[S.me]) return 'Laddar din profil...';
-
-  try {
-    return await callClaude(buildCoachPrompt(S.me), 200);
-  } catch {
-    return 'Håll ut. Det du bygger nu syns inte ännu — men det spelar roll.';
-  }
-}
-
-/**
- * checkGhostQuest()
- * Kontrollerar om ghost quest ska triggas (7 dagars quest-inaktivitet).
- * Lägger till en ghost quest i S.quests om villkoren är uppfyllda.
- */
-export async function checkGhostQuest() {
-  const c = S.chars[S.me];
-  const m = MEMBERS[S.me];
-  if (!c || !m) return;
-
-  const lastQuestDate = c.lastQuestDate || c.lastSeen || (Date.now() - 8 * 24 * 60 * 60 * 1000);
-  const daysSince = (Date.now() - lastQuestDate) / (1000 * 60 * 60 * 24);
-
-  if (daysSince < 7) return;
-  if (S.quests.some(q => q.owner === S.me && q.type === 'ghost' && !q.done)) return;
-
-  let ghostData;
-  try {
-    const txt = await callClaude(buildGhostPrompt(m, c, daysSince), 200);
-    ghostData = parseJSON(txt);
-  } catch {
-    ghostData = {
-      title: 'Välkommen tillbaka — vad har du gjort?',
-      desc:  'Du var borta ett tag. Registrera din insats retroaktivt och ta XP för det du faktiskt bidragit med.',
-      cat:   'wisdom',
-      xp:    75,
-    };
-  }
-
-  S.quests.push({
-    id:        900 + Math.floor(Math.random() * 99),
-    owner:     S.me,
-    title:     ghostData.title || 'Vad hände den senaste veckan?',
-    desc:      ghostData.desc  || 'Du har jobbat. Systemet vet inte vad. Berätta.',
-    cat:       ghostData.cat   || 'wisdom',
-    xp:        ghostData.xp   || 75,
-    stars:     '👻',
-    region:    '🌐 Personal',
-    recur:     'none',
-    type:      'ghost',
-    done:      false,
-    aiVerdict: null,
-    personal:  true,
-  });
-
-  save();
-}
-
-/**
- * showSidequestNudge(weekKey)
- * Genererar 3 sidequest-förslag och returnerar dem som array.
- * WeeklyCheckout.jsx / SidequestNudge.jsx renderar listan.
- * weekKey används av komponenten för att markera veckan som "sidequested".
- * Returnerar alltid en array — aldrig undefined.
- */
-export async function showSidequestNudge(weekKey) {
-  const m = MEMBERS[S.me];
-  const c = S.chars[S.me];
-
-  const fallbacks = [
-    { title: 'Spela utan mål',     desc: 'Ta upp instrumentet och spela vad som kommer. Ingen agenda.',       cat: 'health', xp: 25 },
-    { title: 'Kreativt fragment',  desc: 'Skriv ett vers, ett riff eller en melodi. Bara ett fragment.',     cat: 'wisdom', xp: 35 },
-    { title: 'Ring någon i bandet', desc: 'Prata musik med ett bandmedlem — inte planering, bara musik.',   cat: 'global', xp: 25 },
-  ];
-
-  if (!m || !c) return fallbacks;
-
-  try {
-    const txt    = await callClaude(buildSidequestPrompt(m, c), 400);
-    const parsed = parseJSON(txt);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : fallbacks;
-  } catch {
-    return fallbacks;
-  }
 }

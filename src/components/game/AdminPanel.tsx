@@ -65,7 +65,7 @@ export default function AdminPanel({ rerender, onClose }: AdminPanelProps) {
   }
 
   function handleResetQuests() {
-    S.quests = BASE_QUESTS.map(q => ({ ...q, done: false, aiVerdict: null, personal: false }));
+    S.quests = (BASE_QUESTS as unknown[]).map(q => ({ ...(q as object), done: false, aiVerdict: null, personal: false })) as typeof S.quests;
     save();
     rerender();
   }
