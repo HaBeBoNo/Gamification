@@ -5,6 +5,17 @@ import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
 import { registerPush } from '@/lib/webPush';
 
+const EMAIL_TO_MEMBER: Record<string, string> = {
+  'hannes.norrby@gmail.com':  'hannes',
+  'mschulzprivate@gmail.com': 'martin',
+  'luddeslinser@gmail.com':   'ludvig',
+  'johanneslincke@gmail.com': 'johannes',
+  'simonfalk90@gmail.com':    'simon',
+  'nilsmedskils@gmail.com':   'nisse',
+  'niklas.arkhede@gmail.com': 'niklas',
+  'callegh9351@gmail.com':    'carl',
+}
+
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [memberKey, setMemberKey] = useState<string | null>(null);
@@ -58,29 +69,25 @@ export function useAuth() {
     console.log('handleUser called for:', supabaseUser.email);
     setUser(supabaseUser);
 
-    const email = supabaseUser.email?.toLowerCase();
-    const match = Object.entries(MEMBERS).find(
-      ([, m]) => (m as any).email?.toLowerCase() === email
-    );
-
-    if (match) {
-      const key = match[0];
-      setMemberKey(key);
-      S.me = key;
-
-      await syncFromSupabase(key).catch((e) => console.error('sync error:', e));
-
-      console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
-      S.me = key;
-      save();
-
-      // Register for push notifications (non-blocking)
-      console.log('[Auth] Calling registerPush for:', key)
-      registerPush(key).catch(e => console.error('[Push] Failed:', e));
-    } else {
-      console.log('No member match for email:', email);
-      setMemberKey(null);
+    const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
+    if (!memberKey) {
+      console.warn('No member match for email:', supabaseUser.email)
+      return
     }
+    console.log('[Auth] Matched member:', memberKey)
+
+    setMemberKey(memberKey);
+    S.me = memberKey;
+
+    await syncFromSupabase(memberKey).catch((e) => console.error('sync error:', e));
+
+    console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
+    S.me = memberKey;
+    save();
+
+    // Register for push notifications (non-blocking)
+    console.log('[Auth] Calling registerPush for:', memberKey)
+    registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
 
     if (timeout) clearTimeout(timeout);
     setLoading(false);
