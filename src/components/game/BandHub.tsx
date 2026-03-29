@@ -8,8 +8,8 @@ import CalendarView from './CalendarView';
 const PINNED_IDS_KEY = 'sektionen_pinned_files';
 
 const TABS = [
-  { id: 'drive', label: 'DRIVE' },
   { id: 'kalender', label: 'KALENDER' },
+  { id: 'drive', label: 'DRIVE' },
 ];
 
 function getMimeIcon(mimeType: string) {
@@ -22,7 +22,7 @@ function getMimeIcon(mimeType: string) {
 }
 
 export default function BandHub() {
-  const [activeTab, setActiveTab] = useState('drive');
+  const [activeTab, setActiveTab] = useState('kalender');
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

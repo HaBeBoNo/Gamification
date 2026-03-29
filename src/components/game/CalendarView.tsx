@@ -5,6 +5,7 @@ import {
 } from '@/lib/googleCalendar'
 import { S, save } from '@/state/store'
 import { MEMBERS } from '@/data/members'
+import { sendPush } from '@/lib/sendPush'
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -33,7 +34,7 @@ export default function CalendarView() {
   }
 
   function getCheckInCount(eventId: string): number {
-    return (S.checkIns ?? []).filter((c: any) => c.eventId === eventId).length
+    return (S.checkIns ?? []).filter((c: any) => c.eventId === eventId && c.type !== 'rsvp').length
   }
 
   function handleCheckIn(event: CalendarEvent) {
@@ -66,6 +67,75 @@ export default function CalendarView() {
     })
 
     save()
+  }
+
+  // RSVP-state — lagras i S.checkIns med type: 'rsvp'
+  function getRSVPCount(eventId: string): number {
+    return (S.checkIns ?? []).filter(
+      (c: any) => c.eventId === eventId && c.type === 'rsvp'
+    ).length
+  }
+
+  function hasRSVP(eventId: string): boolean {
+    return (S.checkIns ?? []).some(
+      (c: any) => c.eventId === eventId && c.type === 'rsvp' && c.memberKey === S.me
+    )
+  }
+
+  function handleRSVP(event: CalendarEvent) {
+    if (hasRSVP(event.id)) {
+      // Ta bort RSVP
+      S.checkIns = (S.checkIns ?? []).filter(
+        (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
+      )
+    } else {
+      // Lägg till RSVP
+      if (!S.checkIns) S.checkIns = []
+      S.checkIns.push({
+        eventId: event.id,
+        eventTitle: event.title,
+        memberKey: S.me,
+        type: 'rsvp',
+        ts: Date.now(),
+      })
+    }
+    save()
+  }
+
+  // Påminnelse via localStorage
+  function hasReminder(eventId: string): boolean {
+    const reminders = JSON.parse(localStorage.getItem('hq_reminders') || '[]')
+    return reminders.some((r: any) => r.eventId === eventId && r.memberKey === S.me)
+  }
+
+  function handleReminder(event: CalendarEvent) {
+    const reminders = JSON.parse(localStorage.getItem('hq_reminders') || '[]')
+
+    if (hasReminder(event.id)) {
+      // Ta bort påminnelse
+      const updated = reminders.filter(
+        (r: any) => !(r.eventId === event.id && r.memberKey === S.me)
+      )
+      localStorage.setItem('hq_reminders', JSON.stringify(updated))
+    } else {
+      // Lägg till påminnelse
+      reminders.push({
+        eventId: event.id,
+        eventTitle: event.title,
+        memberKey: S.me,
+        eventStart: event.start,
+        ts: Date.now(),
+      })
+      localStorage.setItem('hq_reminders', JSON.stringify(reminders))
+
+      // Skicka bekräftelse-notis direkt
+      sendPush(
+        '🔔 Påminnelse satt',
+        `Du får en påminnelse dagen innan ${event.title}`,
+        undefined,
+        '/'
+      )
+    }
   }
 
   if (loading) return (
@@ -158,6 +228,49 @@ export default function CalendarView() {
                   : <><CheckCircle size={14} /> Checka in (+40 XP)</>}
               </button>
             )}
+
+            {/* RSVP */}
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', marginTop: 8
+            }}>
+              <button
+                onClick={() => handleRSVP(event)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'transparent',
+                  color: hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                  border: `1px solid ${hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                  borderRadius: '999px', padding: '6px 14px',
+                  fontSize: 12, fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer', touchAction: 'manipulation',
+                }}
+              >
+                {hasRSVP(event.id) ? '✓ Jag kommer' : '+ Jag kommer'}
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {getRSVPCount(event.id) > 0 && (
+                  <span style={{
+                    fontSize: 11, color: 'var(--color-text-muted)'
+                  }}>
+                    {getRSVPCount(event.id)} kommer
+                  </span>
+                )}
+                <button
+                  onClick={() => handleReminder(event)}
+                  style={{
+                    background: 'transparent',
+                    color: hasReminder(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                    border: 'none', padding: '6px',
+                    cursor: 'pointer', fontSize: 16,
+                    touchAction: 'manipulation',
+                  }}
+                  title={hasReminder(event.id) ? 'Ta bort påminnelse' : 'Sätt påminnelse'}
+                >
+                  {hasReminder(event.id) ? '🔔' : '🔕'}
+                </button>
+              </div>
+            </div>
           </div>
         )
       })}
