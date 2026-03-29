@@ -55,7 +55,9 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       aiVerdict: null,
       personal: true,
       collaborative,
-      participants: [],
+      participants: collaborative ? [S.me, ...invitedMembers] : [],
+      completedBy: [],
+      initiator: S.me,
     };
 
     if (motivation.trim()) {
@@ -73,19 +75,26 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       '/'
     );
 
-    // Skicka inbjudningsnotis till inbjudna members
+    // Skicka inbjudningsnotis och push till inbjudna members
     if (collaborative && invitedMembers.length > 0) {
       const ownerName = (MEMBERS as any)[S.me]?.name || S.me;
       invitedMembers.forEach(memberId => {
         addNotifToAll({
           id: Date.now() + Math.random(),
-          type: 'quest_invite',
+          type: 'collaborative_invite',
           title: `${ownerName} bjuder in dig till ett uppdrag`,
           body: `"${newQuest.title}" — kollaborativt uppdrag`,
           memberKey: memberId,
+          questId: newQuest.id,
           ts: Date.now(),
           read: false,
-        });
+        } as any);
+        sendPush(
+          `${ownerName} bjuder in dig till ett uppdrag`,
+          `"${newQuest.title}"`,
+          S.me,
+          '/'
+        );
       });
     }
 

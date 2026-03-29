@@ -61,7 +61,9 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
     if (tab === 'all') return quests;
     if (tab === 'personal') {
       const collaborativeQuests = quests.filter(
-        (q: any) => q.collaborative && !q.done
+        (q: any) => q.collaborative &&
+          !q.done &&
+          (q.participants?.includes(me) || q.initiator === me)
       );
 
       const allPersonalActive = quests

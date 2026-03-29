@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { getRoleHidden } from '@/data/quests';
-import { awardXP, calcQuestXP, completeCollaborativeQuest } from '@/hooks/useXP';
+import { awardXP, calcQuestXP } from '@/hooks/useXP';
+import { sendPush } from '@/lib/sendPush';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -57,6 +58,75 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     const xpEarned = calcQuestXP(me, quest.xp || 30);
     const idx = S.quests.findIndex((q: any) => q.id === quest.id);
+
+    // Kollaborativt quest med deltagare — per-deltagare completion
+    if (quest.collaborative && quest.participants?.length > 0) {
+      if (idx < 0) return;
+      const q = S.quests[idx];
+      if (!q.completedBy) q.completedBy = [];
+      if (!q.completedBy.includes(me)) q.completedBy.push(me);
+
+      // XP till den som just slutförde
+      awardXP(quest, xpEarned, null,
+        (level) => showLU?.(level),
+        (reward, tier) => showRW?.(reward, tier),
+      );
+      showXP?.(xpEarned);
+
+      const everyoneDone = q.participants.every(
+        (id: string) => q.completedBy.includes(id)
+      );
+
+      if (everyoneDone) {
+        q.done = true;
+        const memberName = (MEMBERS as any)[me]?.name || me;
+        sendPush(
+          `${memberName} slutförde ert gemensamma uppdrag`,
+          `"${quest.title}" — alla deltagare klara! 🎉`,
+          me,
+          '/'
+        );
+      } else {
+        const memberName = (MEMBERS as any)[me]?.name || me;
+        const remaining = q.participants.filter(
+          (id: string) => !q.completedBy.includes(id)
+        ).length;
+        sendPush(
+          `${memberName} slutförde sin del`,
+          `"${quest.title}" — ${remaining} kvar`,
+          me,
+          '/'
+        );
+      }
+
+      if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
+      S.chars[me].completedQuests.push({
+        id: quest.id,
+        title: quest.title,
+        xp: xpEarned,
+        cat: quest.cat,
+        reflection: '',
+        completedAt: Date.now(),
+      });
+
+      save();
+
+      if (everyoneDone) {
+        setTimeout(() => {
+          S.quests = S.quests.filter((sq: any) => sq.id !== quest.id);
+          save();
+          rerender?.();
+        }, 1500);
+      } else {
+        rerender?.();
+      }
+
+      setLastXP(xpEarned);
+      setCompletingQuest({ ...quest, done: everyoneDone, completedAt: Date.now() });
+      return;
+    }
+
+    // Vanligt quest — befintlig logik oförändrad
     const completedQuest = { ...quest, done: true, completedAt: Date.now() };
     if (idx >= 0) S.quests[idx] = completedQuest;
 
@@ -66,12 +136,6 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
-
-    // Om kollaborativt quest: ge XP till alla participants
-    if (quest.collaborative) {
-      const participants = (quest.participants as string[] | undefined) || [];
-      void completeCollaborativeQuest(quest, participants, quest.xp || 30);
-    }
 
     // Spara i historik
     if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
@@ -88,7 +152,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     // Auto-ta bort quest efter 1.5 sekunder
     setTimeout(() => {
-      S.quests = S.quests.filter((q: any) => q.id !== quest.id);
+      S.quests = S.quests.filter((sq: any) => sq.id !== quest.id);
       save();
       rerender?.();
     }, 1500);
@@ -211,6 +275,31 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           }}>
             KOLLABORATIVT
           </span>
+        )}
+
+        {/* Initiator-info för icke-initiativtagare */}
+        {quest.collaborative && quest.initiator && quest.initiator !== S.me && (
+          <div style={{
+            fontSize: 11,
+            color: (MEMBERS as any)[quest.initiator]?.color || 'var(--color-accent)',
+            marginTop: 4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            {(MEMBERS as any)[quest.initiator]?.emoji} från {(MEMBERS as any)[quest.initiator]?.name}
+          </div>
+        )}
+
+        {/* Progress-indikator — hur många deltagare har slutfört */}
+        {quest.collaborative && quest.participants?.length > 0 && (
+          <div style={{
+            fontSize: 11,
+            color: 'var(--color-text-muted)',
+            marginTop: 4,
+          }}>
+            {quest.completedBy?.length || 0}/{quest.participants.length} klara
+          </div>
         )}
 
         {/* Anslut-knapp för icke-ägare */}

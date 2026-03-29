@@ -126,6 +126,29 @@ export function addNotifToAll(notif: Notification): void {
   }));
 }
 
+/**
+ * addNotifToMembers(notif, memberKeys)
+ * Lägger till ett notifikationsobjekt riktat till en lista av specifika members.
+ * Skapar ett unikt id och ts per mottagare. Stöder extra fält (t.ex. questId) via cast.
+ */
+export function addNotifToMembers(
+  notif: Omit<Notification, 'id' | 'read' | 'ts'> & { questId?: number; [key: string]: any },
+  memberKeys: string[]
+): void {
+  memberKeys.forEach(memberKey => {
+    const fullNotif: Notification = {
+      ...notif,
+      id:        Date.now() + Math.random(),
+      memberKey,
+      ts:        Date.now(),
+      read:      false,
+    };
+    useGameStore.setState(s => ({
+      notifications: [fullNotif, ...s.notifications].slice(0, 50),
+    }));
+  });
+}
+
 /** Markerar alla notifikationer som lästa. */
 export function markAllRead(): void {
   useGameStore.setState(s => ({
