@@ -64,7 +64,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       if (idx < 0) return;
       const q = S.quests[idx];
       if (!q.completedBy) q.completedBy = [];
-      if (!q.completedBy.includes(me)) q.completedBy.push(me);
+      const completedBy = q.completedBy as string[];
+      if (!completedBy.includes(me)) completedBy.push(me);
 
       // XP till den som just slutförde
       awardXP(quest, xpEarned, null,
@@ -73,8 +74,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       );
       showXP?.(xpEarned);
 
-      const everyoneDone = q.participants.every(
-        (id: string) => q.completedBy.includes(id)
+      const everyoneDone = (q.participants as string[]).every(
+        (id: string) => completedBy.includes(id)
       );
 
       if (everyoneDone) {
@@ -88,8 +89,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         );
       } else {
         const memberName = (MEMBERS as any)[me]?.name || me;
-        const remaining = q.participants.filter(
-          (id: string) => !q.completedBy.includes(id)
+        const remaining = (q.participants as string[]).filter(
+          (id: string) => !completedBy.includes(id)
         ).length;
         sendPush(
           `${memberName} slutförde sin del`,
