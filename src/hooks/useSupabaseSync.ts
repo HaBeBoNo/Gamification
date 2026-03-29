@@ -37,7 +37,15 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
 // Minimala fält som behövs för leaderboard
 const LEADERBOARD_FIELDS = ['xp', 'level', 'streak', 'totalXp', 'questsDone'] as const;
 
+let isSyncing = false;
+
 export async function syncFromSupabase(memberKey: string): Promise<void> {
+  if (isSyncing) {
+    console.log('[Sync] Already syncing, skipping duplicate call');
+    return;
+  }
+  isSyncing = true;
+  try {
   if (!supabase || !memberKey) return;
 
   // Hämta full data för inloggad member
@@ -103,4 +111,7 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
 
   // Spara explicit till localStorage via save()
   save();
+  } finally {
+    isSyncing = false;
+  }
 }
