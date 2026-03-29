@@ -155,6 +155,8 @@ function LeaderboardView() {
     return [...rows].sort(compare).map((r, i) => ({ ...r, rank: i + 1 }));
   }, [rows, sortKey]);
 
+  console.log('[Leaderboard] chars:', Object.keys(S.chars), 'me:', S.me, 'loadingData:', loadingData);
+
   if (loadingData) {
     return (
       <div style={{

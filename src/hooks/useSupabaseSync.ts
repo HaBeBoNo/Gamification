@@ -49,13 +49,21 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
 
   if (myError || !myRow?.data) return;
 
-  // Hämta minimal data för övriga members (bara chars för leaderboard)
-  const { data: othersRows, error: othersError } = await supabase
+  // Hämta full data för övriga members (diagnostik)
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Sync timeout')), 5000)
+  );
+  const syncPromise = supabase
     .from('member_data')
-    .select('member_key, chars:data->chars')
+    .select('member_key, data')
     .neq('member_key', memberKey);
 
-  console.log('[Sync] othersRows structure:', JSON.stringify(othersRows?.slice(0, 1)));
+  const { data: othersData, error: othersError } = await Promise.race([
+    syncPromise,
+    timeoutPromise,
+  ]) as any;
+
+  console.log('[Sync] othersData:', othersData?.length, 'othersError:', othersError);
 
   // Applicera full data för inloggad member
   const remote = myRow.data as any;
@@ -74,10 +82,10 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;
 
   // Applicera minimala leaderboard-fält för övriga members
-  if (!othersError && othersRows) {
-    for (const row of othersRows) {
+  if (!othersError && othersData) {
+    for (const row of othersData) {
       const otherKey = row.member_key as string;
-      const chars = (row as any).chars as Record<string, any> | null;
+      const chars = (row as any).data?.chars as Record<string, any> | null;
       if (!chars) continue;
 
       // chars är { [otherKey]: charData } — stöd både nytt format (1 member) och gammalt (alla 8)
