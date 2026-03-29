@@ -4,6 +4,7 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { addNotifToAll } from '@/state/notifications';
 import { sendPush } from '@/lib/sendPush';
+import { createCollaborativeQuest } from '@/lib/collaborativeQuests';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -37,68 +38,82 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
     );
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!title.trim()) return;
 
-    const newQuest: any = {
-      id: Date.now(),
-      owner: S.me,
-      title: title.trim(),
-      desc: desc.trim(),
-      cat,
-      xp,
-      stars: '',
-      region: '🌐 Personal',
-      recur: 'none',
-      type: 'personal',
-      done: false,
-      aiVerdict: null,
-      personal: true,
-      collaborative,
-      participants: collaborative ? [S.me, ...invitedMembers] : [],
-      completedBy: [],
-      initiator: S.me,
-    };
-
-    if (motivation.trim()) {
-      newQuest.motivation = motivation.trim();
-    }
-
-    S.quests.push(newQuest);
-
-    // Push-notis: nytt uppdrag skapas
-    const ownerNameForPush = (MEMBERS as any)[S.me]?.name || S.me;
-    sendPush(
-      `${ownerNameForPush} skapade ett nytt uppdrag`,
-      `"${newQuest.title}"`,
-      S.me,
-      '/'
-    );
-
-    // Skicka inbjudningsnotis och push till inbjudna members
     if (collaborative && invitedMembers.length > 0) {
-      const ownerName = (MEMBERS as any)[S.me]?.name || S.me;
-      invitedMembers.forEach(memberId => {
-        addNotifToAll({
-          id: Date.now() + Math.random(),
-          type: 'collaborative_invite',
-          title: `${ownerName} bjuder in dig till ett uppdrag`,
-          body: `"${newQuest.title}" — kollaborativt uppdrag`,
-          memberKey: memberId,
-          questId: newQuest.id,
-          ts: Date.now(),
-          read: false,
-        } as any);
+      const participants = [S.me, ...invitedMembers];
+      const questData = {
+        id: Date.now(),
+        title: title.trim(),
+        desc: desc.trim(),
+        xp,
+        cat,
+        type: 'collaborative',
+        owner: S.me,
+        collaborative: true,
+        participants,
+        completedBy: [],
+        initiator: S.me,
+        recur: 'none',
+        done: false,
+        region: '🌐 Global',
+        personal: false,
+        aiVerdict: null,
+      };
+
+      // Spara i Supabase
+      await createCollaborativeQuest(questData, participants);
+
+      // Push-notis till inbjudna
+      const initiatorName = (MEMBERS as any)[S.me]?.name || S.me;
+      invitedMembers.forEach((memberKey: string) => {
         sendPush(
-          `${ownerName} bjuder in dig till ett uppdrag`,
-          `"${newQuest.title}"`,
+          `${initiatorName} bjuder in dig till ett uppdrag`,
+          `"${title.trim()}"`,
           S.me,
           '/'
         );
       });
+    } else {
+      // Vanligt quest
+      const newQuest: any = {
+        id: Date.now(),
+        owner: S.me,
+        title: title.trim(),
+        desc: desc.trim(),
+        cat,
+        xp,
+        stars: '',
+        region: '🌐 Personal',
+        recur: 'none',
+        type: 'personal',
+        done: false,
+        aiVerdict: null,
+        personal: true,
+        collaborative: false,
+        completedBy: [],
+        initiator: S.me,
+      };
+
+      if (motivation.trim()) {
+        newQuest.motivation = motivation.trim();
+      }
+
+      S.quests.push(newQuest);
+
+      // Push-notis: nytt uppdrag skapas
+      const ownerNameForPush = (MEMBERS as any)[S.me]?.name || S.me;
+      sendPush(
+        `${ownerNameForPush} skapade ett nytt uppdrag`,
+        `"${newQuest.title}"`,
+        S.me,
+        '/'
+      );
+
+      save();
     }
 
-    save();
     rerender();
     onClose();
   }

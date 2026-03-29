@@ -10,6 +10,9 @@ import { Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateQuestModal from './CreateQuestModal';
+import { fetchMyCollaborativeQuests, subscribeCollaborativeQuests } from '@/lib/collaborativeQuests';
+import CollaborativeQuestCard from './CollaborativeQuestCard';
+import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
 
 const TABS = [
   { id: 'personal', label: 'MINA' },
@@ -51,6 +54,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const [refreshing, setRefreshing] = useState(false);
   const [coachMessage, setCoachMessage] = useState('');
   const [showCreateQuest, setShowCreateQuest] = useState(false);
+  const [collabQuests, setCollabQuests] = useState<CollaborativeQuest[]>([]);
 
   const me = S.me;
   const char = me ? S.chars[me] : null;
@@ -60,25 +64,11 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
     const quests = S.quests || [];
     if (tab === 'all') return quests;
     if (tab === 'personal') {
-      const collaborativeQuests = quests.filter(
-        (q: any) => q.collaborative &&
-          !q.done &&
-          (q.participants?.includes(me) || q.initiator === me)
-      );
-
       const allPersonalActive = quests
         .filter((q: any) => (q.owner === me || q.personal) && !q.done && !q.collaborative)
         .sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
 
-      const slot3 = collaborativeQuests[0] || null;
-
-      const displayQuests = [
-        ...allPersonalActive.slice(0, 2),
-        ...(slot3 ? [slot3] : []),
-        ...allPersonalActive.slice(2, 4),
-      ].slice(0, 5);
-
-      return displayQuests;
+      return allPersonalActive.slice(0, 5);
     }
     if (tab === 'daily') return quests.filter((q: any) => q.recur === 'daily');
     if (tab === 'strategic') return quests.filter((q: any) => q.type === 'strategic');
@@ -150,6 +140,25 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
     }),
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.15 } },
   };
+
+  // Hämta och prenumerera på collaborative quests
+  useEffect(() => {
+    fetchMyCollaborativeQuests().then(setCollabQuests)
+
+    const sub = subscribeCollaborativeQuests((updatedQuest) => {
+      setCollabQuests(prev => {
+        const idx = prev.findIndex(q => q.id === updatedQuest.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = updatedQuest
+          return next.filter(q => !q.done)
+        }
+        return [...prev, updatedQuest]
+      })
+    })
+
+    return () => { sub?.unsubscribe() }
+  }, [S.me])
 
   const activePersonalCount = (S.quests || []).filter(
     (q: any) => q.owner === me && !q.done
@@ -336,13 +345,26 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
           </AnimatePresence>
         </div>
       ) : (
-        <SortableQuestList
-          quests={active}
-          rerender={rerender}
-          showLU={showLU}
-          showRW={showRW}
-          showXP={showXP}
-        />
+        <>
+          {collabQuests.length > 0 && (
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              {collabQuests.map(q => (
+                <CollaborativeQuestCard
+                  key={q.id}
+                  quest={q}
+                  onUpdate={() => fetchMyCollaborativeQuests().then(setCollabQuests)}
+                />
+              ))}
+            </div>
+          )}
+          <SortableQuestList
+            quests={active}
+            rerender={rerender}
+            showLU={showLU}
+            showRW={showRW}
+            showXP={showXP}
+          />
+        </>
       )}
 
 
