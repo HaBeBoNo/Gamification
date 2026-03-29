@@ -1,6 +1,6 @@
-import { supabase } from './supabase'
-
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -23,12 +23,21 @@ export async function registerPush(memberKey: string): Promise<boolean> {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     })
     const { endpoint, keys } = subscription.toJSON() as any
-    await supabase.from('push_subscriptions').upsert({
-      member_key: memberKey,
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth,
-    }, { onConflict: 'endpoint' })
+    await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        member_key: memberKey,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      }),
+    })
     return true
   } catch (err) {
     console.error('Push registration failed:', err)
