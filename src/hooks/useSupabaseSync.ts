@@ -37,14 +37,23 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
 // Minimala fält som behövs för leaderboard
 const LEADERBOARD_FIELDS = ['xp', 'level', 'streak', 'totalXp', 'questsDone'] as const;
 
-let isSyncing = false;
+let isSyncing = false
+let syncTimeout: ReturnType<typeof setTimeout> | null = null
 
 export async function syncFromSupabase(memberKey: string): Promise<void> {
   if (isSyncing) {
-    console.log('[Sync] Already syncing, skipping duplicate call');
-    return;
+    console.log('[Sync] Already syncing, skipping duplicate call')
+    return
   }
-  isSyncing = true;
+
+  isSyncing = true
+
+  // Säkerhets-timeout — återställer guard efter 10s oavsett vad
+  syncTimeout = setTimeout(() => {
+    console.warn('[Sync] Safety timeout triggered — resetting isSyncing')
+    isSyncing = false
+  }, 10000)
+
   try {
   if (!supabase || !memberKey) return;
 
@@ -112,6 +121,10 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   // Spara explicit till localStorage via save()
   save();
   } finally {
-    isSyncing = false;
+    if (syncTimeout) {
+      clearTimeout(syncTimeout)
+      syncTimeout = null
+    }
+    isSyncing = false
   }
 }
