@@ -142,19 +142,17 @@ export default function Index() {
 
   const logoLongPressRef = useLongPress(() => setShowAdminCenter(true), isAdmin);
 
-  // Show loading screen while auth is in progress OR Supabase sync hasn't completed yet
-  if (authLoading || !synced) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100dvh', background: 'var(--color-bg)',
-        color: 'var(--color-text-muted)', fontSize: 13,
-        fontFamily: 'var(--font-ui)', letterSpacing: '0.08em',
-      }}>
-        ...
-      </div>
-    );
-  }
+  // Show loading screen until Supabase sync is complete (guards onboarding check)
+  if (!synced) return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', background: 'var(--color-bg)',
+      color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)',
+      fontFamily: 'var(--font-ui)', letterSpacing: '0.1em'
+    }}>
+      SEKTIONEN HQ
+    </div>
+  );
 
   if (!user) {
     return <AuthScreen />;
@@ -169,7 +167,7 @@ export default function Index() {
   console.log('shouldOnboard:', !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded));
   console.log('===================');
 
-  const shouldOnboard = !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded);
+  const shouldOnboard = synced && (!S.onboarded || !S.me);
   if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
   }
