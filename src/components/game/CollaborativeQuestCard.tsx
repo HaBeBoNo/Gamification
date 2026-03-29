@@ -8,6 +8,7 @@ import { sendPush } from '@/lib/sendPush'
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests'
 
 interface Props {
+  key?: React.Key
   quest: CollaborativeQuest
   onUpdate: () => void
 }
