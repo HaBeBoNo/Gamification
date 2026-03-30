@@ -54,6 +54,13 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
     isSyncing = false
   }, 10000)
 
+  // AbortController — avbryter hängande fetch-anrop efter 8s
+  const controller = new AbortController()
+  const abortTimer = setTimeout(() => {
+    console.warn('[Sync] Aborting stuck sync after 8s')
+    controller.abort()
+  }, 8000)
+
   try {
   if (!supabase || !memberKey) return;
 
@@ -62,23 +69,17 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
     .from('member_data')
     .select('data')
     .eq('member_key', memberKey)
-    .single();
+    .single()
+    .abortSignal(controller.signal);
 
   if (myError || !myRow?.data) return;
 
   // Hämta full data för övriga members (diagnostik)
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Sync timeout')), 5000)
-  );
-  const syncPromise = supabase
+  const { data: othersData, error: othersError } = await supabase
     .from('member_data')
     .select('member_key, data')
-    .neq('member_key', memberKey);
-
-  const { data: othersData, error: othersError } = await Promise.race([
-    syncPromise,
-    timeoutPromise,
-  ]) as any;
+    .neq('member_key', memberKey)
+    .abortSignal(controller.signal);
 
   console.log('[Sync] othersData:', othersData?.length, 'othersError:', othersError);
 
@@ -128,7 +129,10 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
 
   // Spara explicit till localStorage via save()
   save();
+  } catch (err) {
+    console.error('[Sync] Error or abort:', err)
   } finally {
+    clearTimeout(abortTimer)
     if (syncTimeout) {
       clearTimeout(syncTimeout)
       syncTimeout = null
