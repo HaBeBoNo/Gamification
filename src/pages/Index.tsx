@@ -90,10 +90,10 @@ export default function Index() {
 
   // Säkerställ att S.onboarded är hämtat från Supabase innan vi visar onboarding-check
   useEffect(() => {
-    if (synced && S.me) {
+    if (synced && memberKey) {
       setOnboardChecked(true);
     }
-  }, [synced, S.me]);
+  }, [synced, memberKey]);
 
   // Sync från Supabase när S.me är satt (vid varje app-start)
   useSupabaseData(S.me);
