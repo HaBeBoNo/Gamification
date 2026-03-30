@@ -86,6 +86,10 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
   const remote = myRow.data as any;
   S.me = memberKey;
   if (remote.onboarded !== undefined) S.onboarded = remote.onboarded;
+  // Återställ onboarded-status från chars om den finns där
+  if (remote.chars?.[memberKey]?.onboarded === true) {
+    S.onboarded = true
+  }
   if (remote.chars) Object.assign(S.chars, remote.chars);
   if (remote.quests?.length) S.quests = remote.quests;
   if (remote.feed?.length) S.feed = remote.feed;
