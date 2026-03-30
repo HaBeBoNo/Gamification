@@ -65,6 +65,8 @@ export function useAuth() {
       const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
       if (!memberKey) {
         console.warn('No member match for email:', supabaseUser.email)
+        setLoading(false)
+        setSynced(true)
         return
       }
       console.log('[Auth] Matched member:', memberKey)
@@ -72,7 +74,10 @@ export function useAuth() {
       setMemberKey(memberKey);
       S.me = memberKey;
 
-      await syncFromSupabase(memberKey).catch((e) => console.error('sync error:', e));
+      await syncFromSupabase(memberKey, () => {
+        setLoading(false)
+        setSynced(true)
+      });
 
       console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
       S.me = memberKey;
@@ -81,9 +86,8 @@ export function useAuth() {
       // Register for push notifications (non-blocking)
       console.log('[Auth] Calling registerPush for:', memberKey)
       registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
-    } finally {
-      setLoading(false);
-      setSynced(true);
+    } catch (e) {
+      console.error('handleUser error:', e)
     }
   }
 

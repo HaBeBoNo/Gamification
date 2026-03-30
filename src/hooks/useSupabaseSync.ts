@@ -40,9 +40,10 @@ const LEADERBOARD_FIELDS = ['xp', 'level', 'streak', 'totalXp', 'questsDone'] as
 let isSyncing = false
 let syncTimeout: ReturnType<typeof setTimeout> | null = null
 
-export async function syncFromSupabase(memberKey: string): Promise<void> {
+export async function syncFromSupabase(memberKey: string, onComplete?: () => void): Promise<void> {
   if (isSyncing) {
     console.log('[Sync] Already syncing, skipping duplicate call')
+    onComplete?.()
     return
   }
 
@@ -138,5 +139,6 @@ export async function syncFromSupabase(memberKey: string): Promise<void> {
       syncTimeout = null
     }
     isSyncing = false
+    onComplete?.()
   }
 }
