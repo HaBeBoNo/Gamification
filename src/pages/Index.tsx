@@ -139,6 +139,31 @@ export default function Index() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing
+        if (!newWorker) return
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Ny version tillgänglig — ladda om automatiskt
+            console.log('[SW] New version available — reloading')
+            window.location.reload()
+          }
+        })
+      })
+    })
+
+    // Lyssna på controller-byte och ladda om
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('[SW] Controller changed — reloading')
+      window.location.reload()
+    })
+  }, [])
+
   const logoLongPressRef = useLongPress(() => setShowAdminCenter(true), isAdmin);
 
   // Show loading screen until Supabase sync is complete (guards onboarding check)
