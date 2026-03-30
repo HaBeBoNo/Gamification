@@ -59,30 +59,32 @@ export function useAuth() {
 
   async function handleUser(supabaseUser: any) {
     console.log('handleUser called for:', supabaseUser.email);
-    setUser(supabaseUser);
+    try {
+      setUser(supabaseUser);
 
-    const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
-    if (!memberKey) {
-      console.warn('No member match for email:', supabaseUser.email)
-      return
+      const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
+      if (!memberKey) {
+        console.warn('No member match for email:', supabaseUser.email)
+        return
+      }
+      console.log('[Auth] Matched member:', memberKey)
+
+      setMemberKey(memberKey);
+      S.me = memberKey;
+
+      await syncFromSupabase(memberKey).catch((e) => console.error('sync error:', e));
+
+      console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
+      S.me = memberKey;
+      save();
+
+      // Register for push notifications (non-blocking)
+      console.log('[Auth] Calling registerPush for:', memberKey)
+      registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
+    } finally {
+      setLoading(false);
+      setSynced(true);
     }
-    console.log('[Auth] Matched member:', memberKey)
-
-    setMemberKey(memberKey);
-    S.me = memberKey;
-
-    await syncFromSupabase(memberKey).catch((e) => console.error('sync error:', e));
-
-    console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
-    S.me = memberKey;
-    save();
-
-    // Register for push notifications (non-blocking)
-    console.log('[Auth] Calling registerPush for:', memberKey)
-    registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
-
-    setLoading(false);
-    setSynced(true);
   }
 
   return { user, memberKey, loading, synced };
