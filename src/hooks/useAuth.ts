@@ -29,16 +29,10 @@ export function useAuth() {
       return;
     }
 
-    const timeout = setTimeout(() => {
-      setLoading(false);
-      setSynced(true);
-    }, 8000);
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        handleUser(session.user, timeout);
+        handleUser(session.user);
       } else {
-        clearTimeout(timeout);
         setLoading(false);
         setSynced(true);
       }
@@ -48,9 +42,8 @@ export function useAuth() {
       async (event, session) => {
         console.log('Auth event:', event, session?.user?.email);
         if (session?.user) {
-          await handleUser(session.user, timeout);
+          await handleUser(session.user);
         } else {
-          clearTimeout(timeout);
           setUser(null);
           setMemberKey(null);
           setLoading(false);
@@ -60,12 +53,11 @@ export function useAuth() {
     );
 
     return () => {
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
 
-  async function handleUser(supabaseUser: any, timeout?: ReturnType<typeof setTimeout>) {
+  async function handleUser(supabaseUser: any) {
     console.log('handleUser called for:', supabaseUser.email);
     setUser(supabaseUser);
 
@@ -89,7 +81,6 @@ export function useAuth() {
     console.log('[Auth] Calling registerPush for:', memberKey)
     registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
 
-    if (timeout) clearTimeout(timeout);
     setLoading(false);
     setSynced(true);
   }
