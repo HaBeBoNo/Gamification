@@ -62,9 +62,17 @@ export function useAuth() {
     try {
       setUser(supabaseUser);
 
+      // Backup — garanterar att appen aldrig fastnar oavsett sync-status
+      const backupTimer = setTimeout(() => {
+        console.warn('[Auth] Backup timer fired — forcing synced=true')
+        setLoading(false)
+        setSynced(true)
+      }, 10000)
+
       const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
       if (!memberKey) {
         console.warn('No member match for email:', supabaseUser.email)
+        clearTimeout(backupTimer)
         setLoading(false)
         setSynced(true)
         return
@@ -75,6 +83,7 @@ export function useAuth() {
       S.me = memberKey;
 
       await syncFromSupabase(memberKey, () => {
+        clearTimeout(backupTimer)
         setLoading(false)
         setSynced(true)
       });
