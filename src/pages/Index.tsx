@@ -167,7 +167,10 @@ export default function Index() {
   console.log('shouldOnboard:', !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded));
   console.log('===================');
 
-  const shouldOnboard = synced && (!S.onboarded || !S.me);
+  const shouldOnboard = synced && (
+    !S.onboarded &&
+    !S.chars[S.me]?.onboarded
+  );
   if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
   }
