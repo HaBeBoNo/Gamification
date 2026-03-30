@@ -81,19 +81,10 @@ export default function Index() {
 
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
   const [showHistory, setShowHistory] = useState(false);
-  const [onboardChecked, setOnboardChecked] = useState(false);
-
   const { refreshing, handlePullStart, handlePullMove, handlePullEnd } = usePullToRefresh(S.me);
 
   // Google OAuth auth gate — wait for both auth and Supabase sync to complete
   const { user, memberKey, loading: authLoading, synced } = useAuth();
-
-  // Säkerställ att S.onboarded är hämtat från Supabase innan vi visar onboarding-check
-  useEffect(() => {
-    if (synced && memberKey) {
-      setOnboardChecked(true);
-    }
-  }, [synced, memberKey]);
 
   // Sync från Supabase när S.me är satt (vid varje app-start)
   useSupabaseData(S.me);
@@ -151,7 +142,7 @@ export default function Index() {
   const logoLongPressRef = useLongPress(() => setShowAdminCenter(true), isAdmin);
 
   // Show loading screen until Supabase sync is complete (guards onboarding check)
-  if (!synced || !onboardChecked) return (
+  if (!synced) return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       height: '100vh', background: 'var(--color-bg)',
@@ -175,10 +166,7 @@ export default function Index() {
   console.log('shouldOnboard:', !S.me || (!S.onboarded && !S.chars[S.me]?.onboarded));
   console.log('===================');
 
-  const shouldOnboard = synced && (
-    !S.onboarded &&
-    !S.chars[S.me]?.onboarded
-  );
+  const shouldOnboard = synced && !S.onboarded && !S.chars[S.me]?.onboarded;
   if (shouldOnboard) {
     return <Onboarding rerender={rerender} />;
   }
