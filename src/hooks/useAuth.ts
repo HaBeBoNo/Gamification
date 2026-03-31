@@ -82,13 +82,16 @@ export function useAuth() {
       setMemberKey(memberKey);
       S.me = memberKey;
 
-      await syncFromSupabase(memberKey, () => {
-        clearTimeout(backupTimer)
-        setLoading(false)
-        setSynced(true)
-      });
+      // Visa appen direkt med lokal data — synka Supabase i bakgrunden
+      clearTimeout(backupTimer)
+      setLoading(false)
+      setSynced(true)
 
-      console.log('After sync:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
+      syncFromSupabase(memberKey).catch(e =>
+        console.warn('[Auth] Background sync failed:', e)
+      );
+
+      console.log('After memberKey resolve:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
       S.me = memberKey;
       save();
 
