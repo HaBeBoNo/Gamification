@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { S, useGameStore } from '@/state/store';
+import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -81,41 +81,33 @@ const itemVariants = {
 
 // ── Komponent ─────────────────────────────────────────────────────
 function ActivityFeed() {
-  const tick = useGameStore((s: any) => s.tick); // prenumerera på store-uppdateringar
-  const feed = S.feed || [];
-
-  // feedItems speglar S.feed men kan ha reaktioner uppdaterade via Realtime
+  // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
 
-  // Synkronisera feedItems med S.feed när store uppdateras (tick ändras)
+  // Vid mount: hämta de 30 senaste posterna från activity_feed
   useEffect(() => {
-    setFeedItems(prev => {
-      const storeItems = S.feed || [];
-      const prevById: Record<string, any> = {};
-      prev.forEach((p: any) => { if (p.id) prevById[p.id] = p; });
-      return storeItems.map((item: any) => ({
-        ...item,
-        reactions: prevById[item.id]?.reactions ?? item.reactions ?? {},
-      }));
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick]);
+    async function loadFeed() {
+      const { data } = await supabase
+        .from('activity_feed')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (data) setFeedItems(data);
+    }
+    loadFeed();
+  }, []);
 
-  // Prenumerera på Realtime-uppdateringar för activity_feed
+  // Prenumerera på Realtime INSERT och UPDATE för activity_feed
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
-      .channel('activity-reactions')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'activity_feed',
-      }, (payload: any) => {
-        // Uppdatera lokal state med nya reaktioner
+      .channel('activity-feed-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, (payload: any) => {
+        setFeedItems(prev => [payload.new, ...prev].slice(0, 30));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'activity_feed' }, (payload: any) => {
         setFeedItems(prev =>
-          prev.map((item: any) =>
-            item.id === payload.new.id ? { ...item, reactions: payload.new.reactions } : item
-          )
+          prev.map((item: any) => item.id === payload.new.id ? payload.new : item)
         );
       })
       .subscribe();
@@ -124,13 +116,12 @@ function ActivityFeed() {
   }, []);
 
   // ── Bandstatus ─────────────────────────────────────────────────
-  // Obs: feed-objekten saknar numeriskt timestamp — vi räknar alla i feeden
   const activeMemberKeys = [...new Set(
-    feed
+    feedItems
       .map((e: any) => e.who || e.memberKey || e.member_key)
       .filter(Boolean)
   )];
-  const weeklyXP = feed.reduce((sum: number, e: any) => {
+  const weeklyXP = feedItems.reduce((sum: number, e: any) => {
     const explicit = e.xp || 0;
     // useXP.js bäddar in XP i action-texten istället för ett separat fält
     const fromText = explicit === 0 ? (extractXPFromText(e.action || '') ?? 0) : 0;
@@ -163,7 +154,7 @@ function ActivityFeed() {
       </div>
 
       {/* ── Bandstatus-rad ─────────────────────────────────────── */}
-      {feed.length > 0 && (
+      {feedItems.length > 0 && (
         <div className="feed-band-status">
           <span>⚡ {activeMemberKeys.length} members aktiva denna vecka</span>
           {weeklyXP > 0 && (
@@ -176,7 +167,7 @@ function ActivityFeed() {
       )}
 
       {/* ── Tom state ──────────────────────────────────────────── */}
-      {feed.length === 0 ? (
+      {feedItems.length === 0 ? (
         <div className="empty-state" style={{ padding: 'var(--space-xl) var(--space-lg)' }}>
           <Activity size={48} strokeWidth={1} />
           <div className="empty-text">Ingen aktivitet ännu. Första steget är ditt.</div>
