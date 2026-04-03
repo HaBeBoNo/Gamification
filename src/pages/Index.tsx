@@ -9,6 +9,7 @@ import Onboarding from '@/components/game/Onboarding';
 import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
+import { BandPulse } from '@/components/game/BandPulse';
 import QuestGrid from '@/components/game/QuestGrid';
 import Scoreboard from '@/components/game/Scoreboard';
 import LeaderboardView from '@/components/game/LeaderboardView';
@@ -253,6 +254,7 @@ export default function Index() {
                 {memberDef?.role} · <span style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', textTransform: 'uppercase' }}>{memberDef?.roleType}</span>
               </p>
             </div>
+            <BandPulse />
             <MetricsBar onMetricClick={() => setShowMetrics(true)} />
             <AICoach rerender={rerender} />
           </div>

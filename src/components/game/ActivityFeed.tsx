@@ -73,6 +73,22 @@ async function toggleReaction(
     .eq('id', feedId);
 }
 
+// ── Witness-funktion ──────────────────────────────────────────────
+async function toggleWitness(feedId: string, currentWitnesses: string[]) {
+  const me = S.me;
+  if (!me || !supabase) return;
+
+  const hasWitnessed = currentWitnesses.includes(me);
+  const updated = hasWitnessed
+    ? currentWitnesses.filter(k => k !== me)
+    : [...currentWitnesses, me];
+
+  await supabase
+    .from('activity_feed')
+    .update({ witnesses: updated })
+    .eq('id', feedId);
+}
+
 // ── Framer Motion ─────────────────────────────────────────────────
 const itemVariants = {
   hidden:  { opacity: 0, x: -16 },
@@ -294,6 +310,34 @@ function ActivityFeed() {
                       );
                     })}
                   </div>
+
+                  {/* ── Witness-rad (för item.xp >= 50) ────────────────── */}
+                  {(item.xp ?? 0) >= 50 && (
+                    <div style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                      <button
+                        onClick={() => toggleWitness(item.id, item.witnesses ?? [])}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '2px 10px',
+                          borderRadius: 'var(--radius-pill)',
+                          border: `1px solid ${(item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                          background: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent-muted)' : 'var(--color-surface-elevated)',
+                          cursor: 'pointer',
+                          fontSize: 'var(--text-caption)',
+                          color: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                        }}
+                      >
+                        ✍️ Jag var där {(item.witnesses ?? []).length > 0 && `· ${item.witnesses.length}`}
+                      </button>
+                      {(item.witnesses ?? []).length > 0 && (
+                        <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>
+                          {item.witnesses.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Höger: XP + tid */}

@@ -256,7 +256,12 @@ function LeaderboardView() {
                       )}
                     </div>
                     <div className="lbv-info">
-                      <span className="lbv-name">{row.name}</span>
+                      <span className="lbv-name">
+                        {memberDataMap[row.id]?.mvp_badge && (
+                          <span style={{ fontSize: 14, marginRight: 4 }} title="Veckans MVP">👑</span>
+                        )}
+                        {row.name}
+                      </span>
                       <span className="lbv-role">{row.role}</span>
                       {roleInfo && (
                         <span className="lbv-role-type" style={{ color: roleInfo.color }}>

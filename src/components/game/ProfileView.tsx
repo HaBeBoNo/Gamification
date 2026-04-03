@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -7,6 +7,7 @@ import TrophyRoom from './TrophyRoom';
 import ActivityHeatmap from './ActivityHeatmap';
 import { Star, Flame, Zap, Target, Calendar, TrendingUp, Award, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -214,6 +215,42 @@ export default function ProfileView() {
   const char = S.chars[me];
   if (!member || !char) return null;
 
+  // Endorsements state
+  const [endorsements, setEndorsements] = useState<Record<string, string[]>>({});
+  const [profileData, setProfileData] = useState<any>({});
+  const STAT_KEYS = ['vit', 'wis', 'for', 'cha'] as const;
+  const STAT_LABELS: Record<string, string> = { vit: 'Vitality', wis: 'Wisdom', for: 'Fortitude', cha: 'Charisma' };
+
+  useEffect(() => {
+    async function loadEndorsements() {
+      const { data } = await supabase
+        .from('member_data')
+        .select('member_key, data')
+        .eq('member_key', me);
+      if (data?.[0]) {
+        setProfileData(data[0].data ?? {});
+        setEndorsements(data[0].data?.endorsements ?? {});
+      }
+    }
+    loadEndorsements();
+  }, [me]);
+
+  async function giveEndorsement(stat: string) {
+    if (!me) return;
+
+    const myEndorsements = endorsements[stat] ?? [];
+    if (myEndorsements.includes(me)) return;
+
+    const updated = { ...endorsements, [stat]: [...myEndorsements, me] };
+
+    await supabase
+      .from('member_data')
+      .update({ data: { ...profileData, endorsements: updated } })
+      .eq('member_key', me);
+
+    setEndorsements(updated);
+  }
+
   const xpColor = member.xpColor || 'var(--color-accent)';
   const level = char.level || 1;
   const xp = char.xp || 0;
@@ -420,6 +457,64 @@ export default function ProfileView() {
           <span>{seasonStart.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
           <span style={{ color: xpColor }}>{seasonPercent}%</span>
           <span>{seasonEnd.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      </motion.div>
+
+      {/* ── Endorsements ── */}
+      <motion.div
+        className="pv-endorsements"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.35 }}
+        style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-lg)', background: 'var(--color-surface-elevated)', borderRadius: 'var(--radius-md)' }}
+      >
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-sm)', margin: 0 }}>
+          Endorsements
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', marginTop: 'var(--space-sm)' }}>
+          {STAT_KEYS.map(stat => {
+            const endorsers = endorsements[stat] ?? [];
+            const isMine = true;
+            const hasEndorsed = endorsers.includes(me);
+            return (
+              <button
+                key={stat}
+                onClick={() => !isMine && giveEndorsement(stat)}
+                disabled={isMine || hasEndorsed}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: 'var(--space-xs) var(--space-md)',
+                  borderRadius: 'var(--radius-pill)',
+                  border: `1px solid ${hasEndorsed ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: hasEndorsed ? 'var(--color-primary-muted)' : 'var(--color-surface)',
+                  color: hasEndorsed ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontSize: 'var(--text-caption)',
+                  cursor: isMine || hasEndorsed ? 'default' : 'pointer',
+                  opacity: isMine ? 0.5 : 1,
+                }}
+              >
+                {STAT_LABELS[stat]}
+                {endorsers.length > 0 && (
+                  <span style={{
+                    background: 'var(--color-primary)',
+                    color: 'var(--color-surface)',
+                    borderRadius: '50%',
+                    width: 16,
+                    height: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    fontFamily: 'var(--font-mono)',
+                  }}>
+                    {endorsers.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
