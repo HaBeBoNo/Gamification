@@ -62,8 +62,7 @@ export default function CalendarView() {
       who: S.me,
       action: `checkade in på ${event.title}`,
       xp,
-      time: new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
-      ts:   new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
+      ts: new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
     })
 
     save()
