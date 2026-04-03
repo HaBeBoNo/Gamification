@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -47,6 +48,31 @@ function extractXPFromText(text: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
+// ── Reaktionsfunktion ─────────────────────────────────────────────
+async function toggleReaction(
+  feedId: string | undefined,
+  emoji: string,
+  currentReactions: Record<string, string[]>
+) {
+  if (!feedId || !supabase) return;
+  const me = S.me;
+  if (!me) return;
+
+  const existing = currentReactions[emoji] ?? [];
+  const hasReacted = existing.includes(me);
+  const updated = hasReacted
+    ? existing.filter((k: string) => k !== me)
+    : [...existing, me];
+
+  const newReactions = { ...currentReactions, [emoji]: updated };
+  if (newReactions[emoji].length === 0) delete newReactions[emoji];
+
+  await supabase
+    .from('activity_feed')
+    .update({ reactions: newReactions })
+    .eq('id', feedId);
+}
+
 // ── Framer Motion ─────────────────────────────────────────────────
 const itemVariants = {
   hidden:  { opacity: 0, x: -16 },
@@ -55,10 +81,47 @@ const itemVariants = {
 
 // ── Komponent ─────────────────────────────────────────────────────
 function ActivityFeed() {
-  useGameStore((s: any) => s.tick); // prenumerera på store-uppdateringar
+  const tick = useGameStore((s: any) => s.tick); // prenumerera på store-uppdateringar
   const feed = S.feed || [];
 
-  // console.log('feed item:', feed[0]); // STEG 1 diagnostik
+  // feedItems speglar S.feed men kan ha reaktioner uppdaterade via Realtime
+  const [feedItems, setFeedItems] = useState<any[]>([]);
+
+  // Synkronisera feedItems med S.feed när store uppdateras (tick ändras)
+  useEffect(() => {
+    setFeedItems(prev => {
+      const storeItems = S.feed || [];
+      const prevById: Record<string, any> = {};
+      prev.forEach((p: any) => { if (p.id) prevById[p.id] = p; });
+      return storeItems.map((item: any) => ({
+        ...item,
+        reactions: prevById[item.id]?.reactions ?? item.reactions ?? {},
+      }));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
+
+  // Prenumerera på Realtime-uppdateringar för activity_feed
+  useEffect(() => {
+    if (!supabase) return;
+    const channel = supabase
+      .channel('activity-reactions')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'activity_feed',
+      }, (payload: any) => {
+        // Uppdatera lokal state med nya reaktioner
+        setFeedItems(prev =>
+          prev.map((item: any) =>
+            item.id === payload.new.id ? { ...item, reactions: payload.new.reactions } : item
+          )
+        );
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // ── Bandstatus ─────────────────────────────────────────────────
   // Obs: feed-objekten saknar numeriskt timestamp — vi räknar alla i feeden
@@ -120,7 +183,7 @@ function ActivityFeed() {
         </div>
       ) : (
         <div className="feed-list feed-list-flat">
-          {feed.map((item: any, i: number) => {
+          {feedItems.map((item: any, i: number) => {
 
             // ── Synergy-kort ──────────────────────────────────────
             if (isSynergy(item)) {
@@ -185,6 +248,9 @@ function ActivityFeed() {
             // Ta bort avslutande komma om det uppstår
             if (displayAction.endsWith(',')) displayAction = displayAction.slice(0, -1).trim();
 
+            // Reaktioner för detta item
+            const itemReactions: Record<string, string[]> = item.reactions ?? {};
+
             return (
               <motion.div
                 key={i}
@@ -209,6 +275,34 @@ function ActivityFeed() {
                   {questTitle && (
                     <span className="feed-quest"> "{questTitle}"</span>
                   )}
+
+                  {/* ── Reaktionsknappar ───────────────────────── */}
+                  <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
+                    {(['🔥', '👏', '💀'] as const).map(emoji => {
+                      const reactors = itemReactions[emoji] ?? [];
+                      const hasReacted = S.me ? reactors.includes(S.me) : false;
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => toggleReaction(item.id, emoji, itemReactions)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: `1px solid ${hasReacted ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: hasReacted ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                            cursor: 'pointer',
+                            fontSize: 'var(--text-caption)',
+                            color: hasReacted ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          }}
+                        >
+                          {emoji} {reactors.length > 0 && <span>{reactors.length}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Höger: XP + tid */}

@@ -62,11 +62,23 @@ const SORT_PILLS: { key: SortKey; label: string }[] = [
   { key: 'streak', label: 'Streak' },
 ];
 
+// Avgör om en member är aktiv idag baserat på deras feed
+function isActiveToday(memberData: any): boolean {
+  const feed = memberData?.feed ?? [];
+  const today = new Date().toDateString();
+  return feed.some((item: any) => {
+    const ts = item.ts ?? item.time;
+    if (!ts) return false;
+    return new Date(ts).toDateString() === today;
+  });
+}
+
 function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
+  const [memberDataMap, setMemberDataMap] = useState<Record<string, any>>({});
   const rerender = () => forceUpdate(n => n + 1);
 
   useEffect(() => {
@@ -79,6 +91,7 @@ function LeaderboardView() {
         .select('member_key, data');
 
       if (data) {
+        const dataMap: Record<string, any> = {};
         data.forEach(row => {
           if (row.data?.chars?.[row.member_key]) {
             S.chars[row.member_key] = {
@@ -86,7 +99,10 @@ function LeaderboardView() {
               ...row.data.chars[row.member_key],
             };
           }
+          // Spara full data (inkl. feed) för isActiveToday
+          dataMap[row.member_key] = row.data;
         });
+        setMemberDataMap(dataMap);
       }
       setLoadingData(false);
     }
@@ -225,6 +241,19 @@ function LeaderboardView() {
                     <div className="lbv-avatar" style={{ position: 'relative' }}>
                       <MemberIcon id={row.id} size={28} color={row.xpColor} />
                       <MemberStatusDot memberId={row.id} size={28} />
+                      {isActiveToday(memberDataMap[row.id]) && (
+                        <span style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: 'var(--color-accent)',
+                          border: '2px solid var(--color-surface)',
+                          pointerEvents: 'none',
+                        }} />
+                      )}
                     </div>
                     <div className="lbv-info">
                       <span className="lbv-name">{row.name}</span>

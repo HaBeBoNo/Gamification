@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
+import { supabase } from '@/lib/supabase';
 import { getRoleHidden } from '@/data/quests';
 import { awardXP, calcQuestXP } from '@/hooks/useXP';
 import { sendPush } from '@/lib/sendPush';
@@ -46,6 +47,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const [completingQuest, setCompletingQuest] = useState<any>(null);
   const [lastXP, setLastXP] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
+  const [delegationNote, setDelegationNote] = useState('');
 
   const me = S.me;
   const isDone = quest.done;
@@ -179,6 +181,10 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     quest.participants.push(S.me);
 
+    // Spara kommentar på quest-objektet
+    const noteValue = delegationNote.trim() || null;
+    if (noteValue) quest.note = noteValue;
+
     S.feed.unshift({
       who: S.me,
       action: `anslöt sig till "${quest.title}" 🤝`,
@@ -189,6 +195,22 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
     });
 
     save();
+
+    // Synka till collaborative_quests-tabellen med note
+    if (supabase && quest.id) {
+      supabase
+        .from('collaborative_quests')
+        .upsert({
+          quest_id: quest.id,
+          member_key: S.me,
+          note: noteValue,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'quest_id,member_key' })
+        .then(({ error }: any) => {
+          if (error) console.warn('collaborative_quests upsert failed:', error.message);
+        });
+    }
+
     rerender?.();
   }
 
@@ -305,24 +327,53 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
         {/* Anslut-knapp för icke-ägare */}
         {quest.collaborative && quest.owner !== S.me && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleJoin(quest); }}
-            style={{
-              background: isParticipant
-                ? 'var(--color-accent)20'
-                : 'var(--color-primary)',
-              color: isParticipant ? 'var(--color-accent)' : '#fff',
-              border: 'none',
-              borderRadius: '999px',
-              padding: '6px 14px',
-              fontSize: 12,
-              fontFamily: 'var(--font-ui)',
-              cursor: isParticipant ? 'default' : 'pointer',
-              touchAction: 'manipulation',
-            }}
-          >
-            {isParticipant ? '✓ Ansluten' : 'Anslut'}
-          </button>
+          <>
+            {/* Kommentarfält innan anslutning */}
+            {!isParticipant && (
+              <div style={{ marginTop: 'var(--space-sm)' }} onClick={e => e.stopPropagation()}>
+                <input
+                  type="text"
+                  maxLength={100}
+                  placeholder="Lägg till en rad... (valfritt)"
+                  value={delegationNote}
+                  onChange={e => setDelegationNote(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--color-surface-elevated)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: 'var(--space-sm) var(--space-md)',
+                    color: 'var(--color-text)',
+                    fontSize: 'var(--text-caption)',
+                    fontFamily: 'var(--font-sans)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <p style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', textAlign: 'right', margin: '2px 0 0' }}>
+                  {delegationNote.length}/100
+                </p>
+              </div>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); handleJoin(quest); }}
+              style={{
+                background: isParticipant
+                  ? 'var(--color-accent)20'
+                  : 'var(--color-primary)',
+                color: isParticipant ? 'var(--color-accent)' : '#fff',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '6px 14px',
+                fontSize: 12,
+                fontFamily: 'var(--font-ui)',
+                cursor: isParticipant ? 'default' : 'pointer',
+                touchAction: 'manipulation',
+              }}
+            >
+              {isParticipant ? '✓ Ansluten' : 'Anslut'}
+            </button>
+          </>
         )}
 
         {/* Participants-avatarer */}
@@ -350,6 +401,20 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
               </span>
             ))}
           </div>
+        )}
+
+        {/* Sparad kommentar vid delegering/join */}
+        {quest.note && (
+          <p style={{
+            fontSize: 'var(--text-caption)',
+            color: 'var(--color-text-muted)',
+            fontStyle: 'italic',
+            margin: 'var(--space-xs) 0 0',
+            paddingLeft: 'var(--space-sm)',
+            borderLeft: '2px solid var(--color-border)',
+          }}>
+            "{quest.note}"
+          </p>
         )}
 
         {needsAI && !isDone && (
