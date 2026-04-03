@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut, Clock } from 'lucide-react';
+import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -218,12 +219,45 @@ export default function Index() {
       case 'bandhub': return <Suspense fallback={BandHubFallback}><BandHub /></Suspense>;
       case 'profile': return <ProfileView />;
       case 'season': return <div style={{ padding: 'var(--space-lg)' }}><SeasonView /></div>;
-      case 'home': return (
-        <div>
-          <MetricsBar onMetricClick={() => setShowMetrics(true)} />
-          <AICoach rerender={rerender} />
-        </div>
-      );
+      case 'home': {
+        const memberDef = MEMBERS[S.me!];
+        return (
+          <div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-sm)', paddingBottom: 'var(--space-lg)' }}>
+              {/* Medlemsikon — samma ikon och färg som i leaderboard */}
+              <div style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'var(--color-surface-elevated)',
+                border: '2px solid var(--color-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <MemberIcon id={S.me!} size={32} />
+              </div>
+
+              {/* Välkomsttext */}
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
+                Välkommen till Headquarters
+              </p>
+
+              {/* Titel */}
+              <h1 style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-heading)', color: 'var(--color-text)', margin: 0, letterSpacing: '0.05em' }}>
+                SEKTIONEN HQ
+              </h1>
+
+              {/* Roll */}
+              <p style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', margin: 0 }}>
+                {memberDef?.role} · <span style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', textTransform: 'uppercase' }}>{memberDef?.roleType}</span>
+              </p>
+            </div>
+            <MetricsBar onMetricClick={() => setShowMetrics(true)} />
+            <AICoach rerender={rerender} />
+          </div>
+        );
+      }
       default: return (
         <QuestGrid
           rerender={rerender}
