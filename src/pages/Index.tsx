@@ -189,6 +189,7 @@ export default function Index() {
     }
     if (id === 'admin') { setShowAdmin(true); return; }
     if (id === 'history') { setShowHistory(true); return; }
+    if (id === 'home') { setActiveView('home'); return; }
     setActiveView('tab');
     setMobileTab(id);
     setActiveTab(id);

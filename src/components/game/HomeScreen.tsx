@@ -8,21 +8,64 @@ import ActivityFeed from './ActivityFeed';
 import MetricsBar from './MetricsBar';
 import { getUpcomingEvents, CalendarEvent } from '@/lib/googleCalendar';
 
+// ── SectionHeader ───────────────────────────────────────────────────
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 'var(--space-sm) var(--space-md) 0',
+    }}>
+      <span style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+      }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 // ── HomeHeader ──────────────────────────────────────────────────────
 function HomeHeader() {
   const memberDef = MEMBERS[S.me!];
+  const level = (S.chars as any)?.[S.me!]?.level ?? 1;
+
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      gap: 'var(--space-sm)', paddingBottom: 'var(--space-lg)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 'var(--space-sm)',
+      padding: 'var(--space-lg) var(--space-md)',
+      background: 'linear-gradient(180deg, var(--color-surface-elevated) 0%, transparent 100%)',
+      borderBottom: '1px solid var(--color-border)',
     }}>
       <div style={{
-        width: 56, height: 56, borderRadius: '50%',
+        width: 80, height: 80, borderRadius: '50%',
         background: 'var(--color-surface-elevated)',
         border: '2px solid var(--color-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <MemberIcon id={S.me!} size={32} />
+        <MemberIcon id={S.me!} size={64} />
+      </div>
+
+      {/* LVL badge */}
+      <div style={{
+        background: 'var(--color-primary)',
+        color: 'var(--color-surface)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        borderRadius: 'var(--radius-pill)',
+        padding: '2px 8px',
+        letterSpacing: '0.06em',
+        lineHeight: 1.4,
+      }}>
+        LVL {level}
       </div>
 
       <p style={{
@@ -70,8 +113,6 @@ function UpcomingEvents() {
       .catch(() => {});
   }, []);
 
-  if (events.length === 0) return null;
-
   return (
     <div style={{
       margin: '0 var(--space-md) var(--space-md)',
@@ -79,38 +120,34 @@ function UpcomingEvents() {
       borderRadius: 'var(--radius-md)',
       overflow: 'hidden',
     }}>
-      <p style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 'var(--text-micro)',
-        color: 'var(--color-text-muted)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        padding: 'var(--space-sm) var(--space-md)',
-        margin: 0,
-        borderBottom: '1px solid var(--color-border)',
-      }}>
-        Kommande
-      </p>
-      {events.slice(0, 3).map(event => (
-        <div key={event.id} style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: 'var(--space-sm) var(--space-md)',
-          borderBottom: '1px solid var(--color-border)',
-        }}>
-          <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
-            {event.title}
-          </span>
-          <span style={{
-            fontSize: 'var(--text-caption)',
-            color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-mono)',
-          }}>
-            {formatEventDate(event.start)}
+      {events.length === 0 ? (
+        <div style={{ padding: 'var(--space-md)', textAlign: 'center' }}>
+          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
+            Inga kommande events
           </span>
         </div>
-      ))}
+      ) : (
+        events.slice(0, 3).map(event => (
+          <div key={event.id} style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 'var(--space-sm) var(--space-md)',
+            borderBottom: '1px solid var(--color-border)',
+          }}>
+            <span style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)' }}>
+              {event.title}
+            </span>
+            <span style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              {formatEventDate(event.start)}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -123,13 +160,29 @@ interface HomeScreenProps {
 
 export function HomeScreen({ rerender, onMetricClick }: HomeScreenProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 0,
+      paddingBottom: 'calc(var(--nav-height, 80px) + var(--space-xl))',
+    }}>
       <HomeHeader />
-      <BandPulse />
+
       <MetricsBar onMetricClick={onMetricClick} />
-      <AICoach rerender={rerender} />
+
+      <SectionHeader label="Bandpuls" />
+      <BandPulse />
+
+      <SectionHeader label="Kommande" />
       <UpcomingEvents />
-      <ActivityFeed />
+
+      <SectionHeader label="Coach" />
+      <div style={{ margin: '0 0 var(--space-md)' }}>
+        <AICoach rerender={rerender} />
+      </div>
+
+      <SectionHeader label="Aktivitet" />
+      <ActivityFeed hideHeader />
     </div>
   );
 }
