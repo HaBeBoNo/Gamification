@@ -10,6 +10,7 @@ import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
 import MetricsBar from '@/components/game/MetricsBar';
 import { BandPulse } from '@/components/game/BandPulse';
+import { HomeScreen } from '@/components/game/HomeScreen';
 import QuestGrid from '@/components/game/QuestGrid';
 import Scoreboard from '@/components/game/Scoreboard';
 import LeaderboardView from '@/components/game/LeaderboardView';
@@ -51,6 +52,7 @@ export default function Index() {
   useGameStore(s => s.tick);
   const rerender = notify;
 
+  const [activeView, setActiveView] = useState<'home' | 'tab'>('home');
   const [activeTab, setActiveTab] = useState('quests');
   const [mobileTab, setMobileTab] = useState('quests');
   const [showMore, setShowMore] = useState(false);
@@ -187,12 +189,14 @@ export default function Index() {
     }
     if (id === 'admin') { setShowAdmin(true); return; }
     if (id === 'history') { setShowHistory(true); return; }
+    setActiveView('tab');
     setMobileTab(id);
     setActiveTab(id);
   }
 
   function handleTabTap(tabId: string) {
     if (tabId === 'more') { setShowMore(true); return; }
+    setActiveView('tab');
     setMobileTab(tabId);
     setActiveTab(tabId);
   }
@@ -200,6 +204,10 @@ export default function Index() {
   // ── Content renderers ─────────────────────────────────────────────
 
   function renderContent(tab: string) {
+    if (activeView === 'home') {
+      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} />;
+    }
+
     switch (tab) {
       case 'quests': return (
         <QuestGrid
@@ -220,46 +228,6 @@ export default function Index() {
       case 'bandhub': return <Suspense fallback={BandHubFallback}><BandHub /></Suspense>;
       case 'profile': return <ProfileView />;
       case 'season': return <div style={{ padding: 'var(--space-lg)' }}><SeasonView /></div>;
-      case 'home': {
-        const memberDef = MEMBERS[S.me!];
-        return (
-          <div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-sm)', paddingBottom: 'var(--space-lg)' }}>
-              {/* Medlemsikon — samma ikon och färg som i leaderboard */}
-              <div style={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                background: 'var(--color-surface-elevated)',
-                border: '2px solid var(--color-border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <MemberIcon id={S.me!} size={32} />
-              </div>
-
-              {/* Välkomsttext */}
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
-                Välkommen till Headquarters
-              </p>
-
-              {/* Titel */}
-              <h1 style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-heading)', color: 'var(--color-text)', margin: 0, letterSpacing: '0.05em' }}>
-                SEKTIONEN HQ
-              </h1>
-
-              {/* Roll */}
-              <p style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', margin: 0 }}>
-                {memberDef?.role} · <span style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', textTransform: 'uppercase' }}>{memberDef?.roleType}</span>
-              </p>
-            </div>
-            <BandPulse />
-            <MetricsBar onMetricClick={() => setShowMetrics(true)} />
-            <AICoach rerender={rerender} />
-          </div>
-        );
-      }
       default: return (
         <QuestGrid
           rerender={rerender}
@@ -307,6 +275,7 @@ export default function Index() {
         onAdmin={() => setShowAdmin(true)}
         logoRef={logoLongPressRef}
         onNotifications={openNotifications}
+        onLogoClick={() => setActiveView('home')}
       />
 
       {refreshing && (

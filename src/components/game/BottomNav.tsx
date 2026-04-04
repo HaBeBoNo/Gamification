@@ -1,11 +1,10 @@
 import React from 'react';
-import { Map, TreePine, Trophy, Globe, MoreHorizontal } from 'lucide-react';
+import { Target, Trophy, Globe, MoreHorizontal } from 'lucide-react';
 
 const TABS = [
-  { id: 'quests',      label: 'QUESTS',      icon: Map },
-  { id: 'skilltree',   label: 'SKILLTREE',   icon: TreePine },
-  { id: 'leaderboard', label: 'LEADERBOARD', icon: Trophy },
-  { id: 'bandhub',     label: 'BAND HUB',    icon: Globe },
+  { id: 'quests',      label: 'QUESTS',    icon: Target },
+  { id: 'bandhub',     label: 'BAND HUB',  icon: Globe },
+  { id: 'leaderboard', label: 'RANKING',   icon: Trophy },
 ];
 
 interface BottomNavProps {

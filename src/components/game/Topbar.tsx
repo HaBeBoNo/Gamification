@@ -13,16 +13,24 @@ interface TopbarProps {
   onAdmin: () => void;
   logoRef?: (node: HTMLDivElement | null) => void;
   onNotifications?: () => void;
+  onLogoClick?: () => void;
 }
 
-export default function Topbar({ rerender, activeTab, setActiveTab, onAdmin, logoRef, onNotifications }: TopbarProps) {
+export default function Topbar({ rerender, activeTab, setActiveTab, onAdmin, logoRef, onNotifications, onLogoClick }: TopbarProps) {
   const me = S.me;
   const member = me ? MEMBERS[me] : null;
   const char = me ? S.chars[me] : null;
 
   return (
     <div className="topbar">
-      <div className="topbar-logo" ref={logoRef}>
+      <div
+        className="topbar-logo"
+        ref={logoRef}
+        onClick={onLogoClick}
+        style={{ cursor: 'pointer' }}
+        role="button"
+        tabIndex={0}
+      >
         SEKTIONEN <span>HEADQUARTERS</span>
       </div>
       <div className="topbar-op">
