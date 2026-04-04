@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { S, notify } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
-import { Trophy, Flame, Zap, Check } from 'lucide-react';
+import { Trophy, Flame, Zap, Check, Star } from 'lucide-react';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import ActivityHeatmap from './ActivityHeatmap';
@@ -334,13 +334,16 @@ function LeaderboardView() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: 16,
-                          opacity: 0.6,
-                          padding: '0 var(--space-xs)',
+                          padding: '0 4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: expandedEndorse === row.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          opacity: expandedEndorse === row.id ? 1 : 0.4,
+                          transition: 'opacity 0.15s, color 0.15s',
                         }}
                         title="Endorsa"
                       >
-                        ⭐
+                        <Star size={12} fill={expandedEndorse === row.id ? 'currentColor' : 'none'} strokeWidth={1.5} />
                       </button>
                     )}
                   </div>
