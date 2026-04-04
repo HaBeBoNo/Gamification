@@ -331,6 +331,7 @@ export default function Index() {
       {/* Bottom tab bar */}
       <BottomNav
         activeTab={mobileTab}
+        activeView={activeView}
         onTabChange={handleTabTap}
         showMore={showMore}
         onMoreTap={() => setShowMore(true)}

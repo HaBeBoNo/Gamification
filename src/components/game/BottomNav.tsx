@@ -9,6 +9,7 @@ const TABS = [
 
 interface BottomNavProps {
   activeTab: string;
+  activeView: 'home' | 'tab';
   onTabChange: (id: string) => void;
   showMore: boolean;
   onMoreTap: () => void;
@@ -34,7 +35,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   minHeight: 44,
 });
 
-export function BottomNav({ activeTab, onTabChange, showMore, onMoreTap, unreadCount = 0 }: BottomNavProps) {
+export function BottomNav({ activeTab, activeView, onTabChange, showMore, onMoreTap, unreadCount = 0 }: BottomNavProps) {
   return (
     <nav
       className="bottom-tab-bar"
@@ -56,7 +57,7 @@ export function BottomNav({ activeTab, onTabChange, showMore, onMoreTap, unreadC
       }}
     >
       {TABS.map(({ id, label, icon: Icon }) => {
-        const active = activeTab === id && !showMore;
+        const active = activeView === 'tab' && activeTab === id && !showMore;
         return (
           <button
             key={id}

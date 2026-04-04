@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { S } from '@/state/store';
-import { Music, Play, Camera, Video, Ticket, Zap } from 'lucide-react';
 
-const METRIC_DEFS = [
-  { key: 'spf', label: 'Spotify Followers', Icon: Music },
-  { key: 'str', label: 'Streams', Icon: Play },
-  { key: 'ig', label: 'Instagram', Icon: Camera },
-  { key: 'x', label: 'TikTok', Icon: Video },
-  { key: 'tix', label: 'Biletto', Icon: Ticket },
+const METRICS = [
+  { key: 'spf', label: 'Spotify',   icon: '🎵' },
+  { key: 'str', label: 'Streams',   icon: '▶️' },
+  { key: 'ig',  label: 'Instagram', icon: '📸' },
+  { key: 'x',   label: 'Japan X',   icon: '🇯🇵' },
+  { key: 'tix', label: 'Tickets',   icon: '🎟️' },
 ];
 
-function formatVal(key: string, val: number) {
-  if (key === 'str' && val >= 1000) return (val / 1000).toFixed(1) + 'K';
-  return String(val);
+function formatMetric(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
 
 function AnimatedNumber({ value, format }: { value: number; format: (v: number) => string }) {
@@ -43,50 +43,52 @@ interface MetricsBarProps {
 }
 
 export default function MetricsBar({ onMetricClick }: MetricsBarProps) {
-  const metrics = S.metrics || {};
-  const prev = S.prev || {};
-  const totalXP = Object.values(S.chars || {}).reduce((sum: number, c: any) => sum + (c.totalXp || 0), 0);
-
-  const visibleMetrics = METRIC_DEFS.filter(def => {
-    if (def.key === 'tix') {
-      const val = metrics[def.key] || 0;
-      const prevVal = prev[def.key] || 0;
-      if (val === 0 && prevVal === 0) return false;
-    }
-    return true;
-  });
+  const pts = S.metrics || {};
 
   return (
-    <div className="metrics-strip">
-      {visibleMetrics.map(def => {
-        const val = metrics[def.key] || 0;
-        const prevVal = prev[def.key] || 0;
-        const delta = val - prevVal;
-        const hasDelta = prevVal !== 0 || delta !== 0;
-        const Icon = def.Icon;
-        return (
-          <div key={def.key} className="metrics-strip-item" onClick={() => onMetricClick?.()} title={`${def.label}: ${formatVal(def.key, val)}`}>
-            <Icon size={14} strokeWidth={1.5} className="metrics-strip-icon" />
-            <span className="metrics-strip-val">
-              <AnimatedNumber value={val} format={(v) => formatVal(def.key, v)} />
-            </span>
-            {hasDelta && delta !== 0 && (
-              <span className={`metrics-strip-delta ${delta > 0 ? 'up' : 'down'}`}>
-                {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-              </span>
-            )}
-            {hasDelta && delta === 0 && (
-              <span className="metrics-strip-delta flat">→</span>
-            )}
-          </div>
-        );
-      })}
-      <div className="metrics-strip-item" onClick={() => onMetricClick?.()} title={`Guild XP: ${totalXP}`}>
-        <Zap size={14} strokeWidth={1.5} className="metrics-strip-icon" />
-        <span className="metrics-strip-val">
-          <AnimatedNumber value={totalXP} format={(v) => String(v)} />
-        </span>
-      </div>
+    <div style={{
+      margin: '0 var(--space-md) var(--space-md)',
+      display: 'flex',
+      gap: 'var(--space-sm)',
+      overflowX: 'auto',
+      paddingBottom: 4,
+      scrollbarWidth: 'none',
+    }}>
+      {METRICS.map(m => (
+        <div
+          key={m.key}
+          onClick={() => onMetricClick?.()}
+          style={{
+            flex: '0 0 auto',
+            background: 'var(--color-surface-elevated)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-sm) var(--space-md)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            minWidth: 80,
+            cursor: onMetricClick ? 'pointer' : 'default',
+          }}
+        >
+          <span style={{ fontSize: 16 }}>{m.icon}</span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-body)',
+            color: 'var(--color-text)',
+            fontWeight: 600,
+          }}>
+            <AnimatedNumber value={pts[m.key] ?? 0} format={formatMetric} />
+          </span>
+          <span style={{
+            fontSize: 'var(--text-micro)',
+            color: 'var(--color-text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}>
+            {m.label}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
