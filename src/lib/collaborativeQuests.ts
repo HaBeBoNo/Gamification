@@ -41,7 +41,12 @@ export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]
         initiator: row.initiator,
         done: row.done ?? false,
         completed_by: row.completed_by ?? [],
-      })
+        owner: row.initiator,
+        region: '🌐 Global',
+        recur: 'none',
+        type: 'collaborative',
+        personal: false,
+      } as any)
     } else {
       existing.participants = row.participants ?? []
       existing.initiator = row.initiator
