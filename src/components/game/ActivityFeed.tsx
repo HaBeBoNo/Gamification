@@ -114,11 +114,13 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // Vid mount: hämta de 50 senaste posterna + prenumerera på Realtime INSERT/UPDATE
   useEffect(() => {
     async function loadFeed() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
+
+      console.log('[ActivityFeed] data:', data?.length, 'error:', error);
       if (data) setFeedItems(data);
     }
 
