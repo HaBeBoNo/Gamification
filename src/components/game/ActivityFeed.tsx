@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -33,6 +33,98 @@ function formatFeedTime(ts: string | number | undefined): string {
 function getMemberName(memberKey?: string): string {
   if (!memberKey) return 'Någon';
   return (MEMBERS as Record<string, { name?: string }>)[memberKey]?.name || memberKey;
+}
+
+function getMemberKeyByName(name?: string): string | null {
+  if (!name) return null;
+  const normalized = name.trim().toLowerCase();
+  const entry = Object.entries(MEMBERS).find(([, member]) => member.name?.toLowerCase() === normalized);
+  return entry?.[0] || null;
+}
+
+interface ParsedCommentAction {
+  targetName: string;
+  targetKey: string | null;
+  contextLabel: string;
+  comment: string;
+}
+
+function parseCommentAction(action?: string): ParsedCommentAction | null {
+  if (!action || !action.startsWith('kommenterade ')) return null;
+
+  const targetEntry = Object.values(MEMBERS)
+    .map((member: any) => member?.name)
+    .filter(Boolean)
+    .sort((a: any, b: any) => String(b).length - String(a).length)
+    .find((name: any) => action.startsWith(`kommenterade ${name}s `));
+
+  if (!targetEntry) return null;
+
+  const remainder = action.slice(`kommenterade ${targetEntry}s `.length);
+  const match = remainder.match(/^(aktivitet|"([^"]+)"):\s*"([^"]+)"$/);
+  if (!match) return null;
+
+  return {
+    targetName: String(targetEntry),
+    targetKey: getMemberKeyByName(String(targetEntry)),
+    contextLabel: match[2] || 'aktivitet',
+    comment: match[3] || '',
+  };
+}
+
+function isCommentItem(item: any): boolean {
+  return Boolean(parseCommentAction(item?.action));
+}
+
+function getFeedContextLabel(item: any): string {
+  if (!item?.action) return 'aktivitet';
+  const quoted = item.action.match(/[""]([^""]+)[""]/);
+  return quoted?.[1] || 'aktivitet';
+}
+
+function buildFeedPresentation(feedItems: any[]) {
+  const commentsByItemId = new Map<string, Array<any>>();
+  const hiddenCommentIds = new Set<string>();
+  const pendingSpecific = new Map<string, Array<any>>();
+  const pendingGeneric = new Map<string, Array<any>>();
+
+  feedItems.forEach((item) => {
+    const parsed = parseCommentAction(item.action);
+    const itemId = String(item.id || '');
+
+    if (parsed) {
+      const enriched = { ...item, parsedComment: parsed };
+      if (parsed.contextLabel === 'aktivitet') {
+        const list = pendingGeneric.get(parsed.targetKey || parsed.targetName) || [];
+        list.push(enriched);
+        pendingGeneric.set(parsed.targetKey || parsed.targetName, list);
+      } else {
+        const key = `${parsed.targetKey || parsed.targetName}|${parsed.contextLabel}`;
+        const list = pendingSpecific.get(key) || [];
+        list.push(enriched);
+        pendingSpecific.set(key, list);
+      }
+      return;
+    }
+
+    const ownerKey = item.who || item.memberKey || item.member_key || '';
+    const contextLabel = getFeedContextLabel(item);
+    const specificKey = `${ownerKey}|${contextLabel}`;
+
+    const attachedSpecific = pendingSpecific.get(specificKey) || [];
+    const attachedGeneric = pendingGeneric.get(ownerKey) || [];
+    const attached = [...attachedSpecific, ...attachedGeneric];
+
+    if (attached.length > 0 && itemId) {
+      commentsByItemId.set(itemId, attached);
+      attached.forEach(commentItem => hiddenCommentIds.add(String(commentItem.id || '')));
+    }
+
+    pendingSpecific.delete(specificKey);
+    pendingGeneric.delete(ownerKey);
+  });
+
+  return { commentsByItemId, hiddenCommentIds };
 }
 
 // ── EVENT_MAP: händelsetyp → ikon + label ─────────────────────────
@@ -81,6 +173,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
   const hasLoaded = useRef(false);
+  const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
 
   function mergeIncomingFeedItem(prev: any[], incoming: any) {
     const incomingCreatedAt = incoming?.created_at || incoming?.ts || incoming?.time;
@@ -329,6 +422,14 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       ) : (
         <div className="feed-list feed-list-flat">
           {feedItems.map((item: any, i: number) => {
+            const itemId = String(item.id || '');
+            const parsedComment = parseCommentAction(item.action);
+            const inlineComments = presentation.commentsByItemId.get(itemId) || [];
+            const hideStandaloneComment = parsedComment && presentation.hiddenCommentIds.has(itemId);
+
+            if (hideStandaloneComment) {
+              return null;
+            }
 
             // ── Synergy-kort ──────────────────────────────────────
             if (isSynergy(item)) {
@@ -370,6 +471,62 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
               );
             }
 
+            if (parsedComment) {
+              const commenter = (MEMBERS as any)[item.who] || null;
+              const targetMember = parsedComment.targetKey ? (MEMBERS as any)[parsedComment.targetKey] : null;
+              const ts = formatFeedTime(item.ts ?? item.time ?? item.created_at);
+              return (
+                <motion.div
+                  key={item.id || i}
+                  className="feed-row"
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                >
+                  <div
+                    className="feed-avatar"
+                    style={{ background: commenter?.xpColor || 'var(--color-surface-elevated)' }}
+                  >
+                    {commenter ? <MemberIcon id={(item.who ?? '').toLowerCase()} size={28} /> : '💬'}
+                  </div>
+
+                  <div className="feed-content">
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      marginBottom: 4,
+                      flexWrap: 'wrap',
+                    }}>
+                      <span className="feed-name">{commenter?.name || item.who || '?'}</span>
+                      <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
+                        svarade {targetMember ? `på ${targetMember.name}` : ''}
+                      </span>
+                      {parsedComment.contextLabel !== 'aktivitet' && (
+                        <span className="feed-quest">"{parsedComment.contextLabel}"</span>
+                      )}
+                    </div>
+                    <div style={{
+                      background: 'var(--color-surface-elevated)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '10px 12px',
+                      color: 'var(--color-text)',
+                      fontSize: 'var(--text-caption)',
+                      lineHeight: 1.5,
+                    }}>
+                      {parsedComment.comment}
+                    </div>
+                  </div>
+
+                  <div className="feed-meta">
+                    <span className="feed-time">{ts}</span>
+                  </div>
+                </motion.div>
+              );
+            }
+
             // ── Standard feed-rad ─────────────────────────────────
             const KNOWN_MEMBERS = ['hannes','ludvig','martin','nisse','simon','johannes','carl','niklas'];
             const memberKey = (item.who ?? '').toLowerCase();
@@ -401,10 +558,20 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             const hasOpenComment = openCommentId === item.id;
             const commentDraft = commentDrafts[item.id] ?? '';
             const witnessNames = (item.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
+            const feedbackReactionLabels = Object.entries(itemReactions)
+              .flatMap(([emoji, memberIds]) =>
+                (memberIds as string[])
+                  .filter((memberId: string) => memberId && memberId !== item.who)
+                  .map((memberId: string) => `${emoji} ${getMemberName(memberId)}`)
+              );
+            const feedbackWitnessLabels = (item.witnesses ?? [])
+              .filter((memberId: string) => memberId && memberId !== item.who)
+              .map((memberId: string) => `✍️ ${getMemberName(memberId)}`);
+            const socialFeedback = [...feedbackReactionLabels, ...feedbackWitnessLabels].slice(0, 4);
 
             return (
               <motion.div
-                key={i}
+                key={item.id || i}
                 className="feed-row"
                 variants={itemVariants}
                 initial="hidden"
@@ -428,6 +595,81 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                   <span className="feed-action"> {displayAction}</span>
                   {questTitle && (
                     <span className="feed-quest"> "{questTitle}"</span>
+                  )}
+
+                  {(socialFeedback.length > 0 || inlineComments.length > 0) && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-xs)',
+                      marginTop: 'var(--space-xs)',
+                    }}>
+                      {socialFeedback.length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 6,
+                        }}>
+                          {socialFeedback.map((label, idx) => (
+                            <span
+                              key={`${label}-${idx}`}
+                              style={{
+                                fontSize: 'var(--text-micro)',
+                                color: 'var(--color-text-muted)',
+                                background: 'var(--color-surface-elevated)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-pill)',
+                                padding: '2px 8px',
+                              }}
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {inlineComments.length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                        }}>
+                          {inlineComments.slice(0, 3).map((commentItem: any) => {
+                            const commenter = (MEMBERS as any)[commentItem.who] || null;
+                            return (
+                              <div
+                                key={commentItem.id}
+                                style={{
+                                  background: 'var(--color-surface-elevated)',
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: 'var(--radius-md)',
+                                  padding: '8px 10px',
+                                }}
+                              >
+                                <div style={{
+                                  fontSize: 'var(--text-micro)',
+                                  color: 'var(--color-text-muted)',
+                                  marginBottom: 4,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                }}>
+                                  <span>{commenter?.name || commentItem.who}</span>
+                                  <span>sa:</span>
+                                </div>
+                                <div style={{
+                                  fontSize: 'var(--text-caption)',
+                                  color: 'var(--color-text)',
+                                  lineHeight: 1.5,
+                                }}>
+                                  {commentItem.parsedComment?.comment || ''}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* ── Reaktionsknappar ───────────────────────── */}
