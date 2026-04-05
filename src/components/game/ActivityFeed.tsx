@@ -6,6 +6,7 @@ import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
+import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -172,7 +173,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const [intentVersion, setIntentVersion] = useState(0);
   const hasLoaded = useRef(false);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastHandledIntentId = useRef<string | null>(null);
   const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
 
   function mergeIncomingFeedItem(prev: any[], incoming: any) {
@@ -355,6 +360,44 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     return () => { supabase.removeChannel(channel); };
   }, [S.me]);
+
+  useEffect(() => {
+    return subscribeFeedIntent(() => {
+      setIntentVersion(version => version + 1);
+    });
+  }, []);
+
+  useEffect(() => {
+    const intent = getFeedIntent();
+    if (!intent || !isFreshFeedIntent(intent) || feedItems.length === 0) return;
+    if (lastHandledIntentId.current === intent.id) return;
+
+    const targetItem = resolveFeedIntentItem(intent, feedItems);
+    if (!targetItem?.id) return;
+
+    const targetId = String(targetItem.id);
+    lastHandledIntentId.current = intent.id;
+    setHighlightedItemId(targetId);
+
+    if (intent.mode === 'reply') {
+      setOpenCommentId(targetId);
+      if (intent.draft) {
+        setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || intent.draft || '' }));
+      }
+    }
+
+    window.setTimeout(() => {
+      itemRefs.current[targetId]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+
+    const timeoutId = window.setTimeout(() => {
+      setHighlightedItemId(current => current === targetId ? null : current);
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [feedItems, intentVersion]);
 
   // ── Bandstatus ─────────────────────────────────────────────────
   const activeMemberKeys = [...new Set(
@@ -577,6 +620,15 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                 initial="hidden"
                 animate="visible"
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                ref={(node) => {
+                  itemRefs.current[String(item.id || i)] = node;
+                }}
+                style={highlightedItemId === String(item.id || i)
+                  ? {
+                      boxShadow: '0 0 0 1px var(--color-primary), 0 0 0 4px var(--color-primary-muted)',
+                      borderRadius: 'var(--radius-lg)',
+                    }
+                  : undefined}
               >
                 {/* Vänster: avatar */}
                 <div

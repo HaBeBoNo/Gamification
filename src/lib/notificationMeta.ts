@@ -1,5 +1,6 @@
 import { MEMBERS } from '@/data/members';
 import type { Notification } from '@/types/game';
+import type { FeedIntent } from '@/lib/feedIntent';
 
 export type NotificationTarget = 'activity' | 'quests' | 'coach' | 'profile' | 'notifications';
 
@@ -105,5 +106,24 @@ export function getNotificationPriority(notification: Notification): number {
       return 70;
     default:
       return 50;
+  }
+}
+
+export function getNotificationFeedIntent(notification: Notification): Omit<FeedIntent, 'id' | 'createdAt'> | null {
+  switch (notification.type) {
+    case 'feed_comment':
+      return {
+        mode: 'reply',
+        ownerKey: notification.memberKey,
+        contextLabel: notification.payload?.contextLabel as string | undefined,
+      };
+    case 'feed_reaction':
+    case 'feed_witness':
+      return {
+        mode: notification.type === 'feed_reaction' ? 'reply' : 'focus',
+        feedItemId: notification.payload?.feedItemId as string | undefined,
+      };
+    default:
+      return null;
   }
 }

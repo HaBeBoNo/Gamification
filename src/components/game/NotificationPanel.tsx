@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
 import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye } from 'lucide-react';
-import { getNotificationActionLabel, getNotificationTarget, getNotificationText } from '@/lib/notificationMeta';
+import { setFeedIntent } from '@/lib/feedIntent';
+import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText } from '@/lib/notificationMeta';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -64,6 +65,11 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
     markRead(notification.id);
 
     const target = getNotificationTarget(notification);
+    const feedIntent = getNotificationFeedIntent(notification);
+    if (feedIntent) {
+      setFeedIntent(feedIntent);
+    }
+
     if (target === 'coach') {
       onOpenCoach?.(notification.body || notification.title);
       onClose();

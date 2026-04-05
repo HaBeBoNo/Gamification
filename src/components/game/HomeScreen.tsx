@@ -9,7 +9,8 @@ import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
 import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { markRead, type Notification } from '@/state/notifications';
-import { getNotificationActionLabel, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
+import { setFeedIntent } from '@/lib/feedIntent';
+import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -279,6 +280,7 @@ type AttentionSignal = {
   target: NotificationTarget;
   cta: string;
   notificationId?: number;
+  notification?: Notification;
 };
 
 function DailyCoachCard({
@@ -496,6 +498,7 @@ function WaitingOnYouCard({
           target: getNotificationTarget(notification),
           cta: getNotificationActionLabel(notification),
           notificationId: notification.id,
+          notification,
         });
       });
 
@@ -657,6 +660,10 @@ function WaitingOnYouCard({
               key={signal.id}
               onClick={() => {
                 if (signal.notificationId) markRead(signal.notificationId);
+                if (signal.notification) {
+                  const feedIntent = getNotificationFeedIntent(signal.notification);
+                  if (feedIntent) setFeedIntent(feedIntent);
+                }
 
                 if (signal.target === 'notifications') {
                   onOpenNotifications?.();
