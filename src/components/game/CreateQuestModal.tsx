@@ -4,7 +4,7 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { addNotifToAll } from '@/state/notifications';
 import { sendPush } from '@/lib/sendPush';
-import { createCollaborativeQuest } from '@/lib/collaborativeQuests';
+import { createCollaborativeQuest, fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -62,8 +62,9 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
         aiVerdict: null,
       };
 
-      // Spara i Supabase
+      // Spara i Supabase och synka tillbaka direkt
       await createCollaborativeQuest(questData, participants);
+      await fetchMyCollaborativeQuests();
 
       // Push-notis till inbjudna
       const initiatorName = (MEMBERS as any)[S.me]?.name || S.me;

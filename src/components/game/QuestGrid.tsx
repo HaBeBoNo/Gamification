@@ -158,8 +158,10 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         event: '*',
         schema: 'public',
         table: 'collaborative_quests',
-      }, () => {
-        fetchMyCollaborativeQuests()
+      }, async () => {
+        await fetchMyCollaborativeQuests()
+        const updated = S.quests.filter((q: any) => q.collaborative)
+        setCollabQuests(updated)
       })
       .subscribe()
 
