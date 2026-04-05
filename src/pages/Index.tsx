@@ -206,7 +206,7 @@ export default function Index() {
 
   function renderContent(tab: string) {
     if (activeView === 'home') {
-      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} />;
+      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} onNavigate={handleTabTap} />;
     }
 
     switch (tab) {
