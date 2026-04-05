@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
+import { MemberIcon } from '@/components/icons/MemberIcons';
 import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
@@ -284,7 +285,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                   className="feed-avatar"
                   style={{ background: member?.xpColor || 'var(--color-surface-elevated)' }}
                 >
-                  {member?.emoji || icon}
+                  <MemberIcon id={item.who} size={28} />
                 </div>
 
                 {/* Mitten: text */}
