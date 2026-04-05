@@ -21,11 +21,11 @@ export function getQuestOrigin(quest: any): 'generated' | 'collaborative' | 'per
   // Kollaborativa — har collaborative-flagga eller participants-fält
   if (quest.collaborative || quest.participants !== undefined) return 'collaborative';
 
-  // Genererade av AI-coach — personal: true men INTE user-created (type !== 'personal')
-  if (quest.personal === true && quest.type !== 'personal') return 'generated';
+  // Egenskapade — skapade via "Skapa uppdrag" i UI (type: 'personal')
+  if (quest.type === 'personal') return 'personal';
 
-  // Egenskapade (CreateQuestModal type:'personal') eller bas-quests från quests.js
-  return 'personal';
+  // Allt annat: bas-quests från quests.js + AI-genererade quests → 'generated'
+  return 'generated';
 }
 
 export const ORIGIN_LABELS: Record<string, string> = {
