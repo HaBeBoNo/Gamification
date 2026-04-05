@@ -7,6 +7,7 @@ import { awardXP, calcQuestXP } from '@/hooks/useXP';
 import { sendPush } from '@/lib/sendPush';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
+import { getQuestOrigin, ORIGIN_LABELS } from '@/lib/questUtils';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
@@ -279,6 +280,9 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           {quest.region && quest.region !== 'all' && (
             <span className="quest-region">{quest.region}</span>
           )}
+          <span style={{ fontSize: 12, marginRight: 'var(--space-xs)', opacity: 0.7 }}>
+            {ORIGIN_LABELS[getQuestOrigin(quest)]}
+          </span>
           <span className="quest-xp"><Zap size={12} style={{ display: 'inline', verticalAlign: '-1px' }} /> {quest.xp} XP</span>
         </div>
 

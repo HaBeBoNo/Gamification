@@ -13,6 +13,7 @@ import CreateQuestModal from './CreateQuestModal';
 import { fetchMyCollaborativeQuests, subscribeCollaborativeQuests } from '@/lib/collaborativeQuests';
 import CollaborativeQuestCard from './CollaborativeQuestCard';
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
+import { getQuestOrigin } from '@/lib/questUtils';
 
 const TABS = [
   { id: 'personal', label: 'MINA' },
@@ -24,11 +25,10 @@ const TABS = [
 ];
 
 const FILTERS = [
-  { id: 'alla', label: 'Alla' },
-  { id: 'aktiva', label: 'Aktiva' },
-  { id: 'veckovisa', label: 'Veckovisa' },
-  { id: 'strategiska', label: 'Strategiska' },
-  { id: 'kreativa', label: 'Kreativa' },
+  { id: 'alla',          label: 'Alla' },
+  { id: 'generated',    label: 'Genererade' },
+  { id: 'collaborative', label: 'Kollaborativa' },
+  { id: 'personal',     label: 'Egenskapade' },
 ];
 
 interface QuestGridProps {
@@ -82,14 +82,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   }
 
   function applyFilter(quests: any[]) {
-    switch (filter) {
-      case 'aktiva': return quests.filter((q: any) => !q.done);
-      case 'avklarade': return quests.filter((q: any) => q.done);
-      case 'veckovisa': return quests.filter((q: any) => q.recur === 'weekly' || q.recur === 'daily');
-      case 'strategiska': return quests.filter((q: any) => q.type === 'strategic' || q.cat === 'strategic');
-      case 'kreativa': return quests.filter((q: any) => q.cat === 'social' || q.cat === 'personal' || q.type === 'sidequest');
-      default: return quests;
-    }
+    if (filter === 'alla') return quests;
+    return quests.filter((q: any) => getQuestOrigin(q) === filter);
   }
 
   const baseVisible = getVisibleQuests();
