@@ -1,72 +1,99 @@
 import React from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { Shield, Flame, Star } from 'lucide-react';
-import { MemberIcon } from '@/components/icons/MemberIcons';
+import { Bell } from 'lucide-react';
 import NotificationBell from './NotificationBell';
-import MemberStatusDot from './MemberStatusDot';
 
 interface TopbarProps {
   rerender: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onAdmin: () => void;
-  logoRef?: (node: HTMLDivElement | null) => void;
+  logoRef?: (node: any) => void;
   onNotifications?: () => void;
   onLogoClick?: () => void;
 }
 
-export default function Topbar({ rerender, activeTab, setActiveTab, onAdmin, logoRef, onNotifications, onLogoClick }: TopbarProps) {
+export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick }: TopbarProps) {
   const me = S.me;
-  const member = me ? MEMBERS[me] : null;
   const char = me ? S.chars[me] : null;
+  const streak = char?.streak ?? 0;
+  const isAdmin = me === 'hannes';
+  const operationLabel = S.operationName;
+  const weekNumber = S.weekNum;
 
   return (
-    <div className="topbar">
-      <div
-        className="topbar-logo"
-        ref={logoRef}
-        onClick={onLogoClick}
-        style={{ cursor: 'pointer' }}
-        role="button"
-        tabIndex={0}
-      >
-        SEKTIONEN <span>HEADQUARTERS</span>
-      </div>
-      <div className="topbar-op">
-        <div className="topbar-op-name">{S.operationName}</div>
-        <div className="topbar-week">VECKA {S.weekNum}</div>
-      </div>
-      {char && char.streak > 0 && (
-        <div className={`topbar-streak streak-tier-${char.streak >= 14 ? 'max' : char.streak >= 7 ? 'high' : char.streak >= 3 ? 'mid' : 'low'}`}>
-          <Flame size={16} />
-          <span className="topbar-streak-num">{char.streak}</span>
-          <span className="topbar-streak-label">dagar</span>
-        </div>
-      )}
-      {onNotifications && <NotificationBell onClick={onNotifications} />}
-      {me === 'hannes' && (
-        <button className="topbar-admin-btn" onClick={onAdmin}>
-          <Shield size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-          ADMIN
-        </button>
-      )}
-      {member && (
-        <div className="topbar-player">
-          <span className="topbar-player-avatar" style={{ position: 'relative' }}>
-            <MemberIcon id={S.me!} size={20} />
-            <MemberStatusDot memberId={S.me!} size={20} />
-          </span>
-          <span className="topbar-player-name">
-            <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{member.name}</span>
-            <span className="topbar-player-meta">
-              <Star size={14} className="topbar-level-star" />
-              <span className="topbar-level-num">{char?.level || 1}</span>
-              <span> · {member.role}</span>
+    <div style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      background: 'var(--color-surface)',
+      borderBottom: '1px solid var(--color-border)',
+    }}>
+      {/* Huvudrad */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 'var(--space-sm) var(--space-md)',
+        height: 48,
+      }}>
+        {/* Vänster — logotyp */}
+        <button
+          ref={logoRef}
+          onClick={onLogoClick}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '0.08em' }}>
+              SEKTIONEN
             </span>
-          </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', letterSpacing: '0.06em' }}>
+              HQ · {operationLabel} · V{weekNumber}
+            </span>
+          </div>
+        </button>
+
+        {/* Höger — streak + notis + admin */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          {/* Streak */}
+          {streak > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'var(--color-surface-elevated)',
+              borderRadius: 'var(--radius-pill)',
+              padding: '3px 8px',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              🔥 {streak}
+            </div>
+          )}
+          {/* Notis-klocka */}
+          {onNotifications && (
+            <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)' }}>
+              <Bell size={18} />
+            </button>
+          )}
+          {/* Admin — bara för Hannes */}
+          {isAdmin && (
+            <button onClick={onAdmin} style={{
+              background: 'none',
+              border: '1px solid var(--color-accent)',
+              borderRadius: 'var(--radius-pill)',
+              padding: '3px 10px',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-accent)',
+              fontFamily: 'var(--font-mono)',
+              cursor: 'pointer',
+              letterSpacing: '0.06em',
+            }}>
+              ADMIN
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

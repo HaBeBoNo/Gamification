@@ -214,16 +214,13 @@ function BandStatusRow() {
 
   return (
     <div style={{
-      display: 'flex',
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
       gap: 'var(--space-sm)',
-      overflowX: 'auto',
       padding: '0 var(--space-md)',
-      scrollbarWidth: 'none',
     }}>
       {cards.map((card, i) => (
         <div key={i} style={{
-          flex: '0 0 auto',
-          minWidth: 140,
           background: 'var(--color-surface-elevated)',
           borderRadius: 'var(--radius-md)',
           padding: 'var(--space-md)',
@@ -245,20 +242,16 @@ function BandStatusRow() {
             fontSize: 'var(--text-caption)',
             color: 'var(--color-text)',
             marginTop: 2,
-            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: 140,
           }}>
             {card.label}
           </span>
           <span style={{
             fontSize: 'var(--text-micro)',
             color: 'var(--color-text-muted)',
-            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: 140,
           }}>
             {card.sub}
           </span>

@@ -34,6 +34,7 @@ import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useLongPress } from '@/hooks/useLongPress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useFeedSync } from '@/hooks/useFeedSync';
 
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
@@ -51,6 +52,7 @@ export default function Index() {
   // Zustand-driven reactivity: alla save()/notify() triggar re-render
   useGameStore(s => s.tick);
   const rerender = notify;
+  useFeedSync();
 
   const [activeView, setActiveView] = useState<'home' | 'tab'>('home');
   const [activeTab, setActiveTab] = useState('quests');
