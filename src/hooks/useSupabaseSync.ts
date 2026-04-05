@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { S, save } from '@/state/store';
+import { S, save, useGameStore } from '@/state/store';
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -14,7 +14,7 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     onboarded: S.onboarded,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
-    notifications: S.notifications,
+    notifications: useGameStore.getState().notifications,
     seasonStart: S.seasonStart,
     seasonEnd: S.seasonEnd,
   };
@@ -104,7 +104,9 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   if (remote.metrics) S.metrics = remote.metrics;
   if (remote.prev) S.prev = remote.prev;
   if (remote.checkIns) S.checkIns = remote.checkIns;
-  if (remote.notifications) S.notifications = remote.notifications;
+  if (remote.notifications) {
+    useGameStore.setState({ notifications: remote.notifications });
+  }
   if (remote.seasonStart) S.seasonStart = remote.seasonStart;
   if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;
 

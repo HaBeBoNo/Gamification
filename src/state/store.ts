@@ -56,7 +56,7 @@ import { create } from 'zustand';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
-import type { GameStoreState, CharData, Quest, Metrics, FeedEntry } from '../types/game';
+import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification } from '../types/game';
 
 // ── Zustand store ────────────────────────────────────────────────
 
@@ -147,6 +147,10 @@ const RAW = (() => {
   catch { return null; }
 })();
 
+useGameStore.setState({
+  notifications: ((RAW?.notifications as Notification[]) || []).slice(0, 50),
+});
+
 export const S: SState = {
   checkIns:       (RAW?.checkIns as unknown[])  || [],
   me:             (RAW?.me as string | null)     || null,
@@ -177,6 +181,7 @@ export const S: SState = {
 // ── Persist + notify ─────────────────────────────────────────────
 
 export function save(): void {
+  const notifications = useGameStore.getState().notifications;
   localStorage.setItem('sek-v6', JSON.stringify({
     me:              S.me,
     onboarded:       S.onboarded,
@@ -188,6 +193,7 @@ export function save(): void {
     checkIns:        S.checkIns,
     operationName:   S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
+    notifications,
     seasonStart:     S.seasonStart,
     seasonEnd:       S.seasonEnd,
   }));

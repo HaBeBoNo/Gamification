@@ -17,7 +17,7 @@
 //   useGameStore(s => s.notifications)
 // ═══════════════════════════════════════════════════════════════
 
-import { useGameStore } from './store';
+import { save, useGameStore } from './store';
 import type { Notification } from '../types/game';
 
 export type { Notification };
@@ -41,6 +41,9 @@ export const NOTIF_TYPES = {
   QUEST_COMPLETE:         'quest_complete',
   FIRST_LOGIN:            'first_login',
   STREAK:                 'streak',
+  FEED_COMMENT:           'feed_comment',
+  FEED_REACTION:          'feed_reaction',
+  FEED_WITNESS:           'feed_witness',
 } as const;
 
 // ── Factory-funktioner ───────────────────────────────────────────
@@ -115,8 +118,9 @@ export function getUnreadCount(): number {
 export function addNotification(notification: Omit<Notification, 'id' | 'read'>): void {
   const notif: Notification = { ...notification, id: Date.now(), read: false };
   useGameStore.setState(s => ({
-    notifications: [notif, ...s.notifications],
+    notifications: [notif, ...s.notifications].slice(0, 50),
   }));
+  save();
 }
 
 /** Lägger till ett redan format notif-objekt (med id + ts) och trunkerar till 50. */
@@ -124,6 +128,7 @@ export function addNotifToAll(notif: Notification): void {
   useGameStore.setState(s => ({
     notifications: [notif, ...s.notifications].slice(0, 50),
   }));
+  save();
 }
 
 /**
@@ -147,6 +152,7 @@ export function addNotifToMembers(
       notifications: [fullNotif, ...s.notifications].slice(0, 50),
     }));
   });
+  save();
 }
 
 /** Markerar alla notifikationer som lästa. */
@@ -154,6 +160,7 @@ export function markAllRead(): void {
   useGameStore.setState(s => ({
     notifications: s.notifications.map(n => ({ ...n, read: true })),
   }));
+  save();
 }
 
 /** Markerar en enskild notifikation som läst. */
@@ -161,6 +168,7 @@ export function markRead(id: number): void {
   useGameStore.setState(s => ({
     notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n),
   }));
+  save();
 }
 
 /**

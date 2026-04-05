@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X } from 'lucide-react';
+import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye } from 'lucide-react';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -17,6 +17,9 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   high_five: Award,
   collaborative_complete: CheckCircle,
   quest_complete: CheckCircle,
+  feed_comment: MessageCircle,
+  feed_reaction: Award,
+  feed_witness: Eye,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -31,6 +34,9 @@ const TYPE_COLORS: Record<string, string> = {
   high_five: 'var(--color-green)',
   collaborative_complete: 'var(--color-green)',
   quest_complete: 'var(--color-green)',
+  feed_comment: 'var(--color-primary)',
+  feed_reaction: 'var(--color-accent)',
+  feed_witness: 'var(--color-green)',
 };
 
 function getNotificationText(n: Notification): { title: string; subtitle: string } {
@@ -61,6 +67,12 @@ function getNotificationText(n: Notification): { title: string; subtitle: string
       return { title: n.title || 'Kollaborativt uppdrag klart', subtitle: n.body || '' };
     case 'quest_complete':
       return { title: n.title || 'Uppdrag slutfört', subtitle: n.body || '' };
+    case 'feed_comment':
+      return { title: n.title || 'Ny kommentar', subtitle: n.body || '' };
+    case 'feed_reaction':
+      return { title: n.title || 'Ny reaktion', subtitle: n.body || '' };
+    case 'feed_witness':
+      return { title: n.title || 'Någon såg din aktivitet', subtitle: n.body || '' };
     default:
       return { title: n.title || 'Notifikation', subtitle: n.body || '' };
   }

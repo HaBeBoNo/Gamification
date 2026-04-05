@@ -35,6 +35,7 @@ import { useLongPress } from '@/hooks/useLongPress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useFeedSync } from '@/hooks/useFeedSync';
+import { useSocialNotifications } from '@/hooks/useSocialNotifications';
 
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
@@ -53,6 +54,7 @@ export default function Index() {
   useGameStore(s => s.tick);
   const rerender = notify;
   useFeedSync();
+  useSocialNotifications();
 
   const [activeView, setActiveView] = useState<'home' | 'tab'>('home');
   const [activeTab, setActiveTab] = useState('quests');
