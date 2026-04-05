@@ -18,11 +18,11 @@
  * via Math.max(400, ...S.quests) + 1 och identifieras bättre via personal-flaggan.
  */
 export function getQuestOrigin(quest: any): 'generated' | 'collaborative' | 'personal' {
-  // Kollaborativa — har collaborative-flagga eller participants-fält
-  if (quest.collaborative || quest.participants !== undefined) return 'collaborative';
+  // Kollaborativa checkas först — collaborative-flagga eller icke-tom participants-array
+  if (quest.collaborative === true || (quest.participants && quest.participants.length > 0)) return 'collaborative';
 
-  // Egenskapade — skapade via "Skapa uppdrag" i UI (type: 'personal')
-  if (quest.type === 'personal') return 'personal';
+  // Egenskapade — användarskapade soloquest via CreateQuestModal (type: 'personal', ej collaborative)
+  if (quest.type === 'personal' && !quest.collaborative) return 'personal';
 
   // Allt annat: bas-quests från quests.js + AI-genererade quests → 'generated'
   return 'generated';
