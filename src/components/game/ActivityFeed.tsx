@@ -111,16 +111,16 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
 
-  // Vid mount: hämta de 50 senaste posterna + prenumerera på Realtime INSERT/UPDATE
+  // Hämta feed + prenumerera — väntar på att S.me är satt (auth klar)
   useEffect(() => {
+    if (!S.me) return;
+
     async function loadFeed() {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-
-      console.log('[ActivityFeed] data:', data?.length, 'error:', error);
       if (data) setFeedItems(data);
     }
 
@@ -147,7 +147,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [S.me]);
 
   // ── Bandstatus ─────────────────────────────────────────────────
   const activeMemberKeys = [...new Set(
