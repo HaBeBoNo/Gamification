@@ -8,27 +8,34 @@ export function useFeedSync() {
   const lastSyncedLength = useRef(0);
 
   useEffect(() => {
-    const feed = S.feed;
-    const me = S.me;
-    if (!feed || !me) return;
-    if (feed.length <= lastSyncedLength.current) return;
+    console.log('[FeedSync] tick fired, feed length:', S.feed?.length, 'me:', S.me, 'lastSynced:', lastSyncedLength.current);
 
-    // Synka bara nya items (de som tillkommit sedan senaste sync)
-    const newItems = feed.slice(lastSyncedLength.current);
-    lastSyncedLength.current = feed.length;
+    if (!S.feed || !S.me) {
+      console.log('[FeedSync] abort — feed or me missing');
+      return;
+    }
+    if (S.feed.length <= lastSyncedLength.current) {
+      console.log('[FeedSync] abort — no new items');
+      return;
+    }
+
+    const newItems = S.feed.slice(lastSyncedLength.current);
+    console.log('[FeedSync] syncing', newItems.length, 'new items:', newItems);
+    lastSyncedLength.current = S.feed.length;
 
     for (const item of newItems) {
-      // item.ts kan vara ISO (nya poster) eller HH:MM (gamla) — fallback till nu
+      console.log('[FeedSync] inserting item:', item);
       supabase.from('activity_feed').insert({
-        who: item.who ?? me,
+        who: item.who ?? S.me,
         action: item.action,
         xp: item.xp ?? 0,
         created_at: item.ts && !isNaN(new Date(item.ts).getTime())
           ? new Date(item.ts).toISOString()
           : new Date().toISOString(),
-      }).then(({ error }) => {
-        if (error) console.error('Feed sync error:', error);
+      }).then(({ error, data }) => {
+        if (error) console.error('[FeedSync] insert error:', error);
+        else console.log('[FeedSync] insert success:', data);
       });
     }
-  }, [tick]);
+  }, [tick, S.me]);
 }
