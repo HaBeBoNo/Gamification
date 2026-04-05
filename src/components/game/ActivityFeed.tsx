@@ -111,30 +111,35 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
 
-  // Vid mount: hämta de 30 senaste posterna från activity_feed
+  // Vid mount: hämta de 50 senaste posterna + prenumerera på Realtime INSERT/UPDATE
   useEffect(() => {
     async function loadFeed() {
       const { data } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(50);
       if (data) setFeedItems(data);
     }
-    loadFeed();
-  }, []);
 
-  // Prenumerera på Realtime INSERT och UPDATE för activity_feed
-  useEffect(() => {
-    if (!supabase) return;
+    loadFeed();
+
     const channel = supabase
-      .channel('activity-feed-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, (payload: any) => {
-        setFeedItems(prev => [payload.new, ...prev].slice(0, 30));
+      .channel('activity-feed-global')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'activity_feed',
+      }, payload => {
+        setFeedItems(prev => [payload.new as any, ...prev].slice(0, 50));
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'activity_feed' }, (payload: any) => {
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'activity_feed',
+      }, payload => {
         setFeedItems(prev =>
-          prev.map((item: any) => item.id === payload.new.id ? payload.new : item)
+          prev.map(item => item.id === (payload.new as any).id ? payload.new as any : item)
         );
       })
       .subscribe();

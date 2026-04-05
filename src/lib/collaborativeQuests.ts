@@ -14,19 +14,43 @@ export interface CollaborativeQuest {
   updated_at: string
 }
 
-// Hämta alla aktiva collaborative quests där S.me är deltagare
+// Hämta alla collaborative quests där S.me är initiator eller deltagare
 export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]> {
   if (!supabase || !S.me) return []
   const { data, error } = await supabase
     .from('collaborative_quests')
     .select('*')
-    .contains('participants', [S.me])
-    .eq('done', false)
-  if (error) {
+    .or(`initiator.eq.${S.me},participants.cs.{${S.me}}`)
+  if (error || !data) {
     console.error('[CollabQuests] fetch error:', error)
     return []
   }
-  return data ?? []
+
+  // Synka till S.quests
+  for (const row of data) {
+    const existing = S.quests.find((q: any) => q.id === row.quest_id)
+    if (!existing) {
+      S.quests.push({
+        id: row.quest_id,
+        title: row.quest_data?.title ?? '',
+        desc: row.quest_data?.desc ?? '',
+        xp: row.quest_data?.xp ?? 0,
+        cat: row.quest_data?.cat ?? '',
+        collaborative: true,
+        participants: row.participants ?? [],
+        initiator: row.initiator,
+        done: row.done ?? false,
+        completed_by: row.completed_by ?? [],
+      })
+    } else {
+      existing.participants = row.participants ?? []
+      existing.initiator = row.initiator
+      existing.done = row.done ?? false
+      existing.completed_by = row.completed_by ?? []
+    }
+  }
+
+  return data
 }
 
 // Skapa ett nytt collaborative quest i Supabase
@@ -39,11 +63,18 @@ export async function createCollaborativeQuest(
     .from('collaborative_quests')
     .insert({
       quest_id: questData.id,
-      quest_data: questData,
+      quest_data: {
+        title: questData.title,
+        desc: questData.desc ?? '',
+        xp: questData.xp,
+        cat: questData.cat ?? '',
+      },
       initiator: S.me,
       participants,
       completed_by: [],
       done: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single()

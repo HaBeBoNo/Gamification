@@ -195,18 +195,18 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     save();
 
-    // Synka till collaborative_quests-tabellen med note
+    // Uppdatera participants i collaborative_quests-tabellen
     if (supabase && quest.id) {
+      const updatedParticipants = quest.participants;
       supabase
         .from('collaborative_quests')
-        .upsert({
-          quest_id: quest.id,
-          member_key: S.me,
-          note: noteValue,
+        .update({
+          participants: updatedParticipants,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'quest_id,member_key' })
+        })
+        .eq('quest_id', quest.id)
         .then(({ error }: any) => {
-          if (error) console.warn('collaborative_quests upsert failed:', error.message);
+          if (error) console.warn('collaborative_quests update failed:', error.message);
         });
     }
 

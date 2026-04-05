@@ -10,7 +10,8 @@ import { Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateQuestModal from './CreateQuestModal';
-import { fetchMyCollaborativeQuests, subscribeCollaborativeQuests } from '@/lib/collaborativeQuests';
+import { fetchMyCollaborativeQuests, subscribeCollaborativeQuests } from '@/lib/collaborativeQuests'
+import { supabase } from '@/lib/supabase';
 import CollaborativeQuestCard from './CollaborativeQuestCard';
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { getQuestOrigin } from '@/lib/questUtils';
@@ -151,7 +152,21 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
       })
     })
 
-    return () => { sub?.unsubscribe() }
+    const collabChannel = supabase
+      .channel('collaborative-quests-global')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'collaborative_quests',
+      }, () => {
+        fetchMyCollaborativeQuests()
+      })
+      .subscribe()
+
+    return () => {
+      sub?.unsubscribe()
+      supabase.removeChannel(collabChannel)
+    }
   }, [S.me])
 
   const activePersonalCount = (S.quests || []).filter(
