@@ -90,8 +90,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         sendPush(
           `${memberName} slutförde ert gemensamma uppdrag`,
           `"${quest.title}" — alla deltagare klara! 🎉`,
-          me,
-          '/'
+          {
+            excludeMember: me,
+            targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
+            url: '/',
+          }
         );
       } else {
         const memberName = (MEMBERS as any)[me]?.name || me;
@@ -101,8 +104,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         sendPush(
           `${memberName} slutförde sin del`,
           `"${quest.title}" — ${remaining} kvar`,
-          me,
-          '/'
+          {
+            excludeMember: me,
+            targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
+            url: '/',
+          }
         );
       }
 

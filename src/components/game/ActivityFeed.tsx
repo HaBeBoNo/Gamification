@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
+import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -390,13 +391,21 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     setCommentDrafts(prev => ({ ...prev, [itemId]: '' }));
     setFeedItems(prev => mergeIncomingFeedItem(prev, optimisticItem));
 
-    if (item.who && item.who !== me) {
+    const targetMemberKeys = [...new Set([
+      replyTarget?.memberKey,
+      !replyTarget?.memberKey ? item.who : undefined,
+    ].filter((memberKey): memberKey is string => Boolean(memberKey) && memberKey !== me))];
+
+    if (shouldPushForSocialSignal('comment') && targetMemberKeys.length > 0) {
       const commenterName = getMemberName(me);
       void sendPush(
         `${commenterName} kommenterade din aktivitet`,
         comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
-        me,
-        '/'
+        {
+          excludeMember: me,
+          targetMemberKeys,
+          url: '/',
+        }
       );
     }
 

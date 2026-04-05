@@ -116,7 +116,7 @@ export function getUnreadCount(): number {
 
 /** Lägger till en ny notifikation längst fram. */
 export function addNotification(notification: Omit<Notification, 'id' | 'read'>): void {
-  const notif: Notification = { ...notification, id: Date.now(), read: false };
+  const notif: Notification = { ...notification, id: Date.now() + Math.random(), read: false };
   useGameStore.setState(s => ({
     notifications: [notif, ...s.notifications].slice(0, 50),
   }));

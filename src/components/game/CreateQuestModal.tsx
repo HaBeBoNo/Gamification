@@ -68,14 +68,15 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
 
       // Push-notis till inbjudna
       const initiatorName = (MEMBERS as any)[S.me]?.name || S.me;
-      invitedMembers.forEach((memberKey: string) => {
-        sendPush(
-          `${initiatorName} bjuder in dig till ett uppdrag`,
-          `"${title.trim()}"`,
-          S.me,
-          '/'
-        );
-      });
+      sendPush(
+        `${initiatorName} bjuder in dig till ett uppdrag`,
+        `"${title.trim()}"`,
+        {
+          excludeMember: S.me || undefined,
+          targetMemberKeys: invitedMembers,
+          url: '/',
+        }
+      );
     } else {
       // Vanligt quest
       const newQuest: any = {

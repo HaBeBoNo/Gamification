@@ -32,8 +32,11 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
       sendPush(
         `${memberName} slutförde ert gemensamma uppdrag`,
         `"${q.title}" — alla klara! 🎉`,
-        S.me,
-        '/'
+        {
+          excludeMember: S.me || undefined,
+          targetMemberKeys: participants.filter((p: string) => p !== S.me),
+          url: '/',
+        }
       )
     } else {
       const remaining = participants.filter(
@@ -42,8 +45,11 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
       sendPush(
         `${memberName} slutförde sin del`,
         `"${q.title}" — ${remaining} kvar`,
-        S.me,
-        '/'
+        {
+          excludeMember: S.me || undefined,
+          targetMemberKeys: participants.filter((p: string) => p !== S.me),
+          url: '/',
+        }
       )
     }
 
