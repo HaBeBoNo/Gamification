@@ -189,9 +189,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       who: S.me,
       action: `anslöt sig till "${quest.title}" 🤝`,
       xp: 0,
-      ts: new Date().toLocaleTimeString('sv-SE', {
-        hour: '2-digit', minute: '2-digit'
-      }),
+      ts: new Date().toISOString(),
     });
 
     save();

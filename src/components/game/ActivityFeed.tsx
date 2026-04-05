@@ -18,6 +18,16 @@ function timeAgo(ts: number | string): string {
   return `${Math.floor(hrs / 24)}d sedan`;
 }
 
+function formatFeedTime(ts: string | number | undefined): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) {
+    // Redan ett HH:MM-format från gamla data — visa som det är
+    return typeof ts === 'string' && ts.length <= 5 ? ts : '';
+  }
+  return d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+}
+
 // ── EVENT_MAP: händelsetyp → ikon + label ─────────────────────────
 const EVENT_MAP: Record<string, { icon: string; label: string }> = {
   quest_completed:  { icon: '✅', label: 'slutförde' },
@@ -199,7 +209,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
               const members = parseSynergyMembers(item);
               const mA = members ? (MEMBERS as any)[members[0]] : null;
               const mB = members ? (MEMBERS as any)[members[1]] : null;
-              const ts = item.ts || item.time || item.t || '';
+              const ts = formatFeedTime(item.ts ?? item.time ?? item.t);
               return (
                 <motion.div
                   key={i}
@@ -229,7 +239,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                   <div className="feed-synergy-text">
                     {item.action?.replace('[synk]', '').trim()}
                   </div>
-                  <div className="feed-synergy-ts">{timeAgo(ts as any)}</div>
+                  <div className="feed-synergy-ts">{ts}</div>
                 </motion.div>
               );
             }
@@ -242,7 +252,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             // XP: explicit fält eller extraherat ur action-text
             const xp         = item.xp || extractXPFromText(actionText) || 0;
             // Timestamp: item.ts (useXP.js) eller item.time (övriga)
-            const ts         = item.ts || item.time || item.t || '';
+            const ts         = formatFeedTime(item.ts ?? item.time ?? item.t);
 
             // Extrahera citerad quest-titel: "Titel"
             const questMatch = actionText.match(/[""]([^""]+)[""]/);
@@ -345,7 +355,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                 {/* Höger: XP + tid */}
                 <div className="feed-meta">
                   {xp > 0 && <span className="feed-xp">+{xp} XP</span>}
-                  <span className="feed-time">{timeAgo(ts as any)}</span>
+                  <span className="feed-time">{ts}</span>
                 </div>
               </motion.div>
             );

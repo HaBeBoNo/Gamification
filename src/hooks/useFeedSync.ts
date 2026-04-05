@@ -18,12 +18,14 @@ export function useFeedSync() {
     lastSyncedLength.current = feed.length;
 
     for (const item of newItems) {
-      // item.ts är HH:MM — använd alltid aktuell tid som created_at
+      // item.ts kan vara ISO (nya poster) eller HH:MM (gamla) — fallback till nu
       supabase.from('activity_feed').insert({
         who: item.who ?? me,
         action: item.action,
         xp: item.xp ?? 0,
-        created_at: new Date().toISOString(),
+        created_at: item.ts && !isNaN(new Date(item.ts).getTime())
+          ? new Date(item.ts).toISOString()
+          : new Date().toISOString(),
       }).then(({ error }) => {
         if (error) console.error('Feed sync error:', error);
       });

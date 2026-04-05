@@ -311,7 +311,7 @@ export async function awardXP(
   }
 
   // Activity feed
-  const ts = new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+  const ts = new Date().toISOString();
   S.feed = S.feed || [];
   S.feed.unshift({ who: S.me!, action: feedAction, ts });
   if (S.feed.length > 50) S.feed.length = 50;
@@ -385,7 +385,7 @@ export function awardInsightBonus(questId: number, insight: string, questTitle: 
     who:    S.me!,
     action: `reflekterade över "${questTitle}"`,
     xp:     15,
-    ts:     new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
+    ts:     new Date().toISOString(),
   });
   save();
 }

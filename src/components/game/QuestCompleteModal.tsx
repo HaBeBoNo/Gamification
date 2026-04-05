@@ -52,10 +52,7 @@ export default function QuestCompleteModal({
         who: S.me,
         action: `gav en high-five till ${highFiveTo} 🙌`,
         xp: 0,
-        ts: new Date().toLocaleTimeString('sv-SE', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+        ts: new Date().toISOString(),
       });
       save();
     }
