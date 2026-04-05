@@ -31,6 +31,29 @@ function formatFeedTime(ts: string | number | undefined): string {
   return d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 }
 
+function getFeedTimestampValue(item: any): number {
+  const raw = item?.created_at ?? item?.ts ?? item?.time ?? item?.t;
+  if (!raw) return 0;
+  if (typeof raw === 'number') return raw;
+  const parsed = Date.parse(String(raw));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function formatRelativeActivity(ts: number): string {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const mins = Math.max(1, Math.floor(diff / 60000));
+  if (mins < 60) return `${mins}m sedan`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h sedan`;
+  const days = Math.floor(hours / 24);
+  return `${days}d sedan`;
+}
+
+function isRecentActivity(ts: number, maxAgeMs = 24 * 60 * 60 * 1000): boolean {
+  return Boolean(ts) && Date.now() - ts <= maxAgeMs;
+}
+
 function getMemberName(memberKey?: string): string {
   if (!memberKey) return 'Någon';
   return (MEMBERS as Record<string, { name?: string }>)[memberKey]?.name || memberKey;
@@ -185,6 +208,10 @@ function isCommentReady(rawDraft: string, replyTarget?: ReplyTarget | null): boo
   if (replyPrefix && trimmed === replyPrefix) return false;
 
   return true;
+}
+
+function sortFeedItemsByTimeAsc(items: any[]): any[] {
+  return [...items].sort((a, b) => getFeedTimestampValue(a) - getFeedTimestampValue(b));
 }
 
 // ── Komponent ─────────────────────────────────────────────────────
@@ -695,7 +722,10 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     if (displayAction.endsWith(',')) displayAction = displayAction.slice(0, -1).trim();
     const xp = activeThreadItem.xp || extractXPFromText(actionText) || 0;
     const ts = formatFeedTime(activeThreadItem.ts ?? activeThreadItem.time ?? activeThreadItem.t ?? activeThreadItem.created_at);
-    const threadComments = presentation.commentsByItemId.get(itemId) || [];
+    const threadComments = sortFeedItemsByTimeAsc(presentation.commentsByItemId.get(itemId) || []);
+    const lastThreadActivityTs = threadComments.length > 0
+      ? getFeedTimestampValue(threadComments[threadComments.length - 1])
+      : getFeedTimestampValue(activeThreadItem);
     const itemReactions: Record<string, string[]> = activeThreadItem.reactions ?? {};
     const witnessNames = (activeThreadItem.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
 
@@ -858,6 +888,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                 letterSpacing: '0.08em',
               }}>
                 {threadComments.length} svar i tråden
+                {lastThreadActivityTs > 0 && ` · senast aktiv ${formatRelativeActivity(lastThreadActivityTs)}`}
               </div>
               <button
                 onClick={() => openCommentComposer(activeThreadItem)}
@@ -952,6 +983,17 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             const visibleInlineComments = areCommentsExpanded
               ? inlineComments
               : inlineComments.slice(0, INLINE_COMMENT_PREVIEW_COUNT);
+            const latestComment = inlineComments[0];
+            const latestCommentTs = latestComment ? getFeedTimestampValue(latestComment) : 0;
+            const latestCommenterName = latestComment ? getMemberName(latestComment.who) : '';
+            const hasRecentExternalThreadActivity = inlineComments.some((commentItem: any) =>
+              commentItem.who &&
+              commentItem.who !== S.me &&
+              isRecentActivity(getFeedTimestampValue(commentItem))
+            );
+            const threadSignalLabel = hasRecentExternalThreadActivity
+              ? (item.who === S.me ? 'Nytt svar' : 'Nytt i tråden')
+              : '';
             const hideStandaloneComment = parsedComment && presentation.hiddenCommentIds.has(itemId);
 
             if (hideStandaloneComment) {
@@ -1170,6 +1212,62 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                           flexDirection: 'column',
                           gap: 6,
                         }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 'var(--space-sm)',
+                            flexWrap: 'wrap',
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 'var(--space-xs)',
+                              flexWrap: 'wrap',
+                            }}>
+                              <span style={{
+                                fontSize: 'var(--text-micro)',
+                                color: 'var(--color-text-muted)',
+                                fontFamily: 'var(--font-mono)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                              }}>
+                                {inlineComments.length} svar
+                              </span>
+                              {latestCommentTs > 0 && (
+                                <span style={{
+                                  fontSize: 'var(--text-micro)',
+                                  color: 'var(--color-text-muted)',
+                                }}>
+                                  Senast aktiv {formatRelativeActivity(latestCommentTs)}
+                                </span>
+                              )}
+                              {latestCommenterName && (
+                                <span style={{
+                                  fontSize: 'var(--text-micro)',
+                                  color: 'var(--color-text-muted)',
+                                }}>
+                                  {latestCommenterName}
+                                </span>
+                              )}
+                            </div>
+                            {threadSignalLabel && (
+                              <span style={{
+                                fontSize: 'var(--text-micro)',
+                                color: 'var(--color-primary)',
+                                background: 'var(--color-primary-muted)',
+                                border: '1px solid var(--color-primary)',
+                                borderRadius: 'var(--radius-pill)',
+                                padding: '2px 8px',
+                                fontFamily: 'var(--font-mono)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                              }}>
+                                {threadSignalLabel}
+                              </span>
+                            )}
+                          </div>
+
                           {visibleInlineComments.map((commentItem: any) => renderCommentCard(commentItem, item))}
 
                           {(inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT || areCommentsExpanded) && (
@@ -1279,11 +1377,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                         gap: 4,
                         padding: '2px 8px',
                         borderRadius: 'var(--radius-pill)',
-                        border: '1px solid var(--color-border)',
-                        background: 'var(--color-surface-elevated)',
+                        border: `1px solid ${hasRecentExternalThreadActivity ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        background: hasRecentExternalThreadActivity ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
                         cursor: 'pointer',
                         fontSize: 'var(--text-caption)',
-                        color: 'var(--color-text-muted)',
+                        color: hasRecentExternalThreadActivity ? 'var(--color-primary)' : 'var(--color-text-muted)',
                       }}
                     >
                       🧵 Tråd {inlineComments.length > 0 && <span>{inlineComments.length}</span>}
