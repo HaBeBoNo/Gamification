@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import ActivityFeed from './ActivityFeed';
@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
+import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -263,6 +264,19 @@ function BandStatusRow() {
   );
 }
 
+function getMemberName(memberKey?: string): string {
+  if (!memberKey) return 'Någon';
+  return (MEMBERS as Record<string, any>)[memberKey]?.name || memberKey;
+}
+
+type AttentionSignal = {
+  id: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  target: 'activity' | 'quests';
+};
+
 function DailyCoachCard({
   onNavigate,
   onOpenCoach,
@@ -419,6 +433,234 @@ function DailyCoachCard({
   );
 }
 
+function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+  const me = S.me;
+  const unreadCount = useGameStore(s => s.notifications.filter(n => !n.read).length);
+  const [signals, setSignals] = useState<AttentionSignal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!me) return;
+    let cancelled = false;
+
+    async function loadSignals() {
+      setLoading(true);
+
+      const nextSignals: AttentionSignal[] = [];
+      const delegated = (S.quests || []).filter(
+        (q: any) => q.delegatedTo === me && !q.delegationHandled
+      );
+
+      if (delegated.length > 0) {
+        nextSignals.push({
+          id: 'delegation',
+          icon: '📥',
+          title: `${delegated.length} uppdrag väntar på ditt svar`,
+          subtitle: delegated[0]?.title || 'Någon skickade något till dig',
+          target: 'quests',
+        });
+      }
+
+      try {
+        const collabs = await fetchMyCollaborativeQuests();
+        const collabWaiting = collabs.filter((q: any) =>
+          q.participants?.includes(me) &&
+          !(q.completed_by ?? []).includes(me) &&
+          (q.completed_by ?? []).length > 0
+        );
+
+        if (collabWaiting.length > 0) {
+          const first = collabWaiting[0];
+          nextSignals.push({
+            id: 'collaborative',
+            icon: '🤝',
+            title: `${collabWaiting.length} samarbetsuppdrag rör sig utan dig`,
+            subtitle: first.quest_data?.title || 'Din del väntar fortfarande',
+            target: 'quests',
+          });
+        }
+      } catch {}
+
+      try {
+        const { data } = await supabase
+          .from('activity_feed')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(40);
+
+        const myName = getMemberName(me).toLowerCase();
+        const directComments = (data || []).filter((item: any) =>
+          item.who !== me &&
+          typeof item.action === 'string' &&
+          item.action.toLowerCase().includes(`kommenterade ${myName}`)
+        );
+
+        if (directComments.length > 0) {
+          nextSignals.push({
+            id: 'comments',
+            icon: '💬',
+            title: `${directComments.length} kommentar${directComments.length > 1 ? 'er' : ''} till dig`,
+            subtitle: `${getMemberName(directComments[0].who)} svarade på din aktivitet`,
+            target: 'activity',
+          });
+        }
+
+        const feedbackItems = (data || []).filter((item: any) => {
+          if (item.who !== me) return false;
+
+          const reactionMembers = Object.values(item.reactions ?? {}).flat() as string[];
+          const hasExternalReaction = reactionMembers.some(memberId => memberId && memberId !== me);
+          const hasExternalWitness = (item.witnesses ?? []).some((memberId: string) => memberId && memberId !== me);
+
+          return hasExternalReaction || hasExternalWitness;
+        });
+
+        if (feedbackItems.length > 0) {
+          nextSignals.push({
+            id: 'feedback',
+            icon: '👏',
+            title: `Respons på ${feedbackItems.length} av dina aktiviteter`,
+            subtitle: 'Öppna feeden och svara medan det är levande',
+            target: 'activity',
+          });
+        }
+      } catch {}
+
+      if (unreadCount > 0) {
+        nextSignals.push({
+          id: 'notifications',
+          icon: '🔔',
+          title: `${unreadCount} olästa notis${unreadCount > 1 ? 'er' : ''}`,
+          subtitle: 'Något har hänt sedan sist',
+          target: 'activity',
+        });
+      }
+
+      if (!cancelled) {
+        setSignals(nextSignals.slice(0, 3));
+        setLoading(false);
+      }
+    }
+
+    void loadSignals();
+
+    if (!supabase) return () => { cancelled = true; };
+
+    const channel = supabase
+      .channel('home-attention-signals')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'activity_feed',
+      }, () => { void loadSignals(); })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'collaborative_quests',
+      }, () => { void loadSignals(); })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [me, unreadCount]);
+
+  if (!me || (!loading && signals.length === 0)) return null;
+
+  return (
+    <div style={{ padding: '0 var(--space-md)' }}>
+      <p style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        margin: '0 0 var(--space-sm)',
+      }}>
+        Väntar på dig
+      </p>
+      <div style={{
+        background: 'var(--color-surface-elevated)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
+      }}>
+        {loading ? (
+          <div style={{
+            padding: 'var(--space-lg)',
+            color: 'var(--color-text-muted)',
+            fontSize: 'var(--text-caption)',
+          }}>
+            Läser av gruppens puls...
+          </div>
+        ) : (
+          signals.map((signal, index) => (
+            <button
+              key={signal.id}
+              onClick={() => onNavigate?.(signal.target)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-md)',
+                padding: 'var(--space-md) var(--space-lg)',
+                background: 'transparent',
+                border: 'none',
+                borderTop: index === 0 ? 'none' : '1px solid var(--color-border)',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--color-surface)',
+                flexShrink: 0,
+                fontSize: 18,
+              }}>
+                {signal.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 'var(--text-caption)',
+                  color: 'var(--color-text)',
+                  fontWeight: 600,
+                  marginBottom: 2,
+                }}>
+                  {signal.title}
+                </div>
+                <div style={{
+                  fontSize: 'var(--text-micro)',
+                  color: 'var(--color-text-muted)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {signal.subtitle}
+                </div>
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}>
+                Öppna
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── FeaturedQuest ───────────────────────────────────────────────────
 function FeaturedQuest({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const memberKey = S.me;
@@ -512,6 +754,7 @@ export function HomeScreen({ onNavigate, onOpenCoach }: HomeScreenProps) {
       <HeroCard />
       <BandStatusRow />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
+      <WaitingOnYouCard onNavigate={onNavigate} />
       <FeaturedQuest onNavigate={onNavigate} />
       <div style={{ padding: '0 var(--space-md)' }}>
         <p style={{
