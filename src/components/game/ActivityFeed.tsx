@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -110,18 +110,24 @@ const itemVariants = {
 function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const hasLoaded = useRef(false);
 
-  // Hämta feed + prenumerera — väntar på att S.me är satt (auth klar)
+  // Hämta feed + prenumerera — körs en gång när S.me är känt, aldrig om igen
   useEffect(() => {
-    if (!S.me) return;
+    if (!S.me || hasLoaded.current) return;
+    hasLoaded.current = true;
 
     async function loadFeed() {
-      const { data } = await supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
+      console.log('[ActivityFeed] data:', data?.length, 'error:', error);
       if (data) setFeedItems(data);
+      setLoading(false);
     }
 
     loadFeed();
@@ -202,8 +208,12 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         </div>
       )}
 
-      {/* ── Tom state ──────────────────────────────────────────── */}
-      {feedItems.length === 0 ? (
+      {/* ── Tom state / loading ────────────────────────────────── */}
+      {loading ? (
+        <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
+          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>Laddar...</span>
+        </div>
+      ) : feedItems.length === 0 ? (
         <div className="empty-state" style={{ padding: 'var(--space-xl) var(--space-lg)' }}>
           <Activity size={48} strokeWidth={1} />
           <div className="empty-text">Ingen aktivitet ännu. Första steget är ditt.</div>
