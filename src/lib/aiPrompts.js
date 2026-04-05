@@ -237,6 +237,36 @@ Om reason är 'timing' — föreslå samma typ av uppdrag igen om 2–3 veckor.`
   return `${personality}\n${contextNoteSection}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}\n${deletionContext}\n${focusContext}`;
 }
 
+export function buildDailyCoachPrompt(memberKey) {
+  const coachContext = buildCoachPrompt(memberKey);
+  const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
+  const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
+  const latestFeed = (S.feed || []).find(item => item.who && item.who !== memberKey);
+  const char = S.chars[memberKey] || {};
+
+  const todayContext = [
+    `Aktiva uppdrag just nu: ${activeQuests.length}.`,
+    nextQuest ? `Närmast relevanta uppdrag: "${nextQuest.title}" (${nextQuest.cat}, ${nextQuest.xp} XP).` : 'Inget tydligt aktivt uppdrag just nu.',
+    latestFeed ? `Senaste sociala signal i gruppen: ${latestFeed.who} ${latestFeed.action}.` : 'Ingen tydlig social signal i feeden just nu.',
+    char.streak ? `Nuvarande streak: ${char.streak}.` : '',
+  ].filter(Boolean).join('\n');
+
+  return `${coachContext}
+
+Situation idag:
+${todayContext}
+
+Uppgift:
+Skriv ett kort proaktivt dagsmeddelande till ${memberKey} på svenska.
+
+Krav:
+- Max 2 meningar
+- Ingen hälsningsfras
+- Första meningen ska skapa riktning eller känsla av momentum
+- Andra meningen ska peka mot nästa konkreta steg, helst kopplat till ett aktivt uppdrag eller social signal
+- Tonen ska kännas personlig och lätt att agera på idag`;
+}
+
 export function buildGhostPrompt(m, c, daysSince) {
   return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — truminspelning juli 2026.
 

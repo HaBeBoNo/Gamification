@@ -6,6 +6,7 @@ import ActivityFeed from './ActivityFeed';
 import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
+import { getDailyCoachMessage } from '@/hooks/useAI';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -262,6 +263,162 @@ function BandStatusRow() {
   );
 }
 
+function DailyCoachCard({
+  onNavigate,
+  onOpenCoach,
+}: {
+  onNavigate?: (tab: string) => void;
+  onOpenCoach?: (initialMessage?: string) => void;
+}) {
+  const me = S.me;
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!me) return;
+    setLoading(true);
+    getDailyCoachMessage(me)
+      .then((msg) => setMessage(msg))
+      .finally(() => setLoading(false));
+  }, [me]);
+
+  if (!me) return null;
+
+  const coachName = (S.chars[me] as any)?.coachName || 'Coach';
+  const activeQuestCount = (S.quests || []).filter((q: any) => q.owner === me && !isQuestDoneNow(q)).length;
+  const latestSocial = (S.feed || []).find((item: any) => item.who && item.who !== me);
+
+  return (
+    <div style={{ padding: '0 var(--space-md)' }}>
+      <p style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        margin: '0 0 var(--space-sm)',
+      }}>
+        Dagens riktning
+      </p>
+      <div
+        onClick={() => onOpenCoach?.(message)}
+        style={{
+          background: 'linear-gradient(145deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
+          borderRadius: 'var(--radius-md)',
+          padding: 'var(--space-lg)',
+          border: '1px solid var(--color-border)',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-sm)',
+          marginBottom: 'var(--space-md)',
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-primary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              marginBottom: 4,
+            }}>
+              {coachName}
+            </div>
+            <div style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text-muted)',
+            }}>
+              {activeQuestCount > 0 ? `${activeQuestCount} aktiva uppdrag just nu` : 'Dags att välja nästa steg'}
+            </div>
+          </div>
+          <div style={{
+            minWidth: 40,
+            height: 40,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--color-primary-muted)',
+            color: 'var(--color-primary)',
+            fontSize: 18,
+          }}>
+            ✦
+          </div>
+        </div>
+
+        <div style={{
+          fontSize: 'var(--text-body)',
+          color: 'var(--color-text)',
+          lineHeight: 1.55,
+          marginBottom: 'var(--space-md)',
+          minHeight: 44,
+        }}>
+          {loading ? 'Coach kalibrerar dagens riktning...' : message}
+        </div>
+
+        {latestSocial && (
+          <div style={{
+            fontSize: 'var(--text-micro)',
+            color: 'var(--color-text-muted)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Senaste puls: {(MEMBERS as Record<string, any>)[latestSocial.who]?.name || latestSocial.who} {latestSocial.action}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenCoach?.(message);
+            }}
+            style={{
+              flex: 1,
+              background: 'var(--color-primary)',
+              color: 'var(--color-surface)',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-sm) var(--space-md)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-caption)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+            }}
+          >
+            Öppna coach
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate?.('quests');
+            }}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              color: 'var(--color-text)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-sm) var(--space-md)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-caption)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+            }}
+          >
+            Gå till uppdrag
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── FeaturedQuest ───────────────────────────────────────────────────
 function FeaturedQuest({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const memberKey = S.me;
@@ -341,9 +498,10 @@ interface HomeScreenProps {
   rerender: () => void;
   onMetricClick?: () => void;
   onNavigate?: (tab: string) => void;
+  onOpenCoach?: (initialMessage?: string) => void;
 }
 
-export function HomeScreen({ onNavigate }: HomeScreenProps) {
+export function HomeScreen({ onNavigate, onOpenCoach }: HomeScreenProps) {
   return (
     <div style={{
       display: 'flex',
@@ -353,6 +511,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     }}>
       <HeroCard />
       <BandStatusRow />
+      <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
       <FeaturedQuest onNavigate={onNavigate} />
       <div style={{ padding: '0 var(--space-md)' }}>
         <p style={{

@@ -15,10 +15,12 @@ import {
   buildValidatePrompt,
   buildQuestGenPrompt,
   buildCoachPrompt,
+  buildDailyCoachPrompt,
   buildGhostPrompt,
   buildSidequestPrompt,
 } from '../lib/aiPrompts';
 import type { Quest } from '../types/game';
+import { isQuestDoneNow } from '../lib/questUtils';
 
 // Re-export constants that components already import from this file
 export { DEFAULT_COACH_NAMES, WELCOME_MESSAGES, buildCoachPrompt } from '../lib/aiPrompts';
@@ -179,6 +181,52 @@ export async function refreshCoach(): Promise<string> {
   } catch {
     return 'Håll ut. Det du bygger nu syns inte ännu — men det spelar roll.';
   }
+}
+
+function buildDailyCoachFallback(memberKey: string): string {
+  const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
+  const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
+  const latestFeed = (S.feed || []).find(item => item.who && item.who !== memberKey);
+
+  if (nextQuest && latestFeed) {
+    return `Det rör sig i gruppen nu. Börja med "${nextQuest.title}" och använd momentumet medan det fortfarande känns levande.`;
+  }
+  if (nextQuest) {
+    return `Idag räcker det med ett tydligt steg. Börja med "${nextQuest.title}" och gör det innan dagen splittras.`;
+  }
+  if (latestFeed) {
+    return `Något rör sig redan i bandet. Gå in i coachen och välj ett nästa steg som svarar på det momentumet.`;
+  }
+  return 'Ta ett litet steg som gör bandet mer levande idag. Öppna coachen och välj det som faktiskt går att göra nu.';
+}
+
+export async function getDailyCoachMessage(memberKey = S.me as string): Promise<string> {
+  if (!memberKey || !S.chars[memberKey]) return '';
+
+  const char = S.chars[memberKey] as any;
+  const today = new Date().toDateString();
+
+  if (char.dailyCoachMessage && char.dailyCoachDate === today) {
+    return char.dailyCoachMessage;
+  }
+
+  try {
+    const msg = (await callClaude(buildDailyCoachPrompt(memberKey) as string, 180)).trim();
+    if (msg) {
+      char.dailyCoachMessage = msg;
+      char.dailyCoachDate = today;
+      save();
+      return msg;
+    }
+  } catch {
+    // fallback below
+  }
+
+  const fallback = buildDailyCoachFallback(memberKey);
+  char.dailyCoachMessage = fallback;
+  char.dailyCoachDate = today;
+  save();
+  return fallback;
 }
 
 /**

@@ -5,7 +5,7 @@ import { getRoleHidden } from '@/data/quests';
 import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
-import { showSidequestNudge, generatePersonalQuests } from '@/hooks/useAI';
+import { showSidequestNudge, generatePersonalQuests, getDailyCoachMessage } from '@/hooks/useAI';
 import { Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -195,47 +195,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
   useEffect(() => {
     if (!me) return;
-    const cached = (S.chars[me] as any)?.dailyCoachMessage;
-    const cachedDate = (S.chars[me] as any)?.dailyCoachDate;
-    const today = new Date().toDateString();
-
-    if (cached && cachedDate === today) {
-      setCoachMessage(cached);
-      return;
-    }
-
-    const coachNameStr = (S.chars[me] as any)?.coachName || 'Coach';
-    const charData = S.chars[me] as any;
-    const promptText = [
-      'Du ar ' + coachNameStr + ', personlig AI-coach for ' + me + ' i bandet Sektionen.',
-      charData?.motivation ? 'Motivation: ' + charData.motivation : '',
-      charData?.roleEnjoy ? 'Trivs med: ' + charData.roleEnjoy : '',
-      'Niva ' + (charData?.level || 1) + ', ' + (charData?.totalXp || 0) + ' XP totalt.',
-    ].filter(Boolean).join('\n');
-
-    fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
-        messages: [{
-          role: 'user',
-          content: promptText + '\n\nSkriv ett kort proaktivt meddelande (max 2 meningar) till ' + me + ' for idag. Ingen halsningsfras. Direkt in i sak.',
-        }],
-      }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        const msg = data.content?.[0]?.text?.trim();
-        if (msg && me) {
-          (S.chars[me] as any).dailyCoachMessage = msg;
-          (S.chars[me] as any).dailyCoachDate = today;
-          save();
-          setCoachMessage(msg);
-        }
-      })
-      .catch(() => {});
+    getDailyCoachMessage(me).then(setCoachMessage).catch(() => {});
   }, [me]);
 
   const coachName = (S.chars[me!] as any)?.coachName || 'Coach';
