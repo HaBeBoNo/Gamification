@@ -105,7 +105,14 @@ export interface Quest {
   recur:         'none' | 'daily' | 'weekly';
   type:          string;
   done:          boolean;
-  aiVerdict?:    { text: string; cls: string } | null;
+  aiVerdict?:    {
+    text: string;
+    cls: string;
+    approved?: boolean;
+    message?: string;
+    score?: number;
+    verdict?: 'accepted' | 'partial' | 'rejected';
+  } | null;
   aiThinking?:   boolean;
   personal:      boolean;
   collaborative?: boolean;
@@ -115,6 +122,8 @@ export interface Quest {
   insight?:      string;
   retroactive?:  boolean;
   completedAt?:  number;
+  lastCompletedCycle?: string;
+  completionCount?: number;
   [key: string]: unknown;
 }
 
@@ -136,6 +145,8 @@ export interface FeedEntry {
   ts?:    string;   // HH:MM timestamp (most entries)
   time?:  string;   // alias used by some callers (insight bonus)
   xp?:    number;
+  syncId?: string;
+  type?:   string;
 }
 
 // ── Zustand store state ──────────────────────────────────────────

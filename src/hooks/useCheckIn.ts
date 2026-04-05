@@ -17,7 +17,10 @@ export function checkIn(eventId: string, eventTitle: string): void {
 
   // Kontrollera att member inte redan checkat in
   const already = S.checkIns.find(
-    (c: { eventId: string; member: string }) => c.eventId === eventId && c.member === S.me
+    (c: { eventId: string; member?: string; memberKey?: string; type?: string }) =>
+      c.eventId === eventId &&
+      c.type !== 'rsvp' &&
+      (c.member === S.me || c.memberKey === S.me)
   );
   if (already) return;
 
@@ -27,6 +30,7 @@ export function checkIn(eventId: string, eventTitle: string): void {
     eventId,
     eventTitle,
     member:     S.me,
+    memberKey:  S.me,
     ts:         Date.now(),
   });
 

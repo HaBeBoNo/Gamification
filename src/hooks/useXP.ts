@@ -16,10 +16,12 @@
 //   completeCollaborativeQuest
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save, notify } from '../state/store';
+import { S, save } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
-import { createLevelUpNotif, addNotifToAll } from '../state/notifications';
+import { createLevelUpNotif, createStreakNotif, addNotifToAll } from '../state/notifications';
 import { sendPush } from '../lib/sendPush';
+import { pushFeedEntry } from '../lib/feed';
+import { getQuestCycleKey } from '../lib/questUtils';
 import type { CharData, Quest } from '../types/game';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -42,7 +44,7 @@ interface RoleTypeDef {
 type StatKey = 'vit' | 'wis' | 'for' | 'cha';
 type PtsType = 'work' | 'spotify' | 'social' | 'bonus';
 
-interface AwardXPResult {
+export interface AwardXPResult {
   totalXP: number;
   milestone: number;
   workPts: number;
@@ -52,6 +54,7 @@ interface AwardXPResult {
   newXp: number;
   newXpToNext: number;
   leveled: boolean;
+  level: number;
   statInc: Partial<Record<StatKey, number>>;
   feedAction: string;
 }
@@ -199,6 +202,7 @@ export function calcAwardXP(
     newXp: xp,
     newXpToNext: xpToNext,
     leveled,
+    level,
     statInc,
     feedAction,
   };
@@ -210,7 +214,7 @@ export function calcAwardXP(
  * awardXP — Orchestrator: anropar calcAwardXP för ren beräkning,
  * applicerar resultatet på S, triggar notifikationer, sparar och notifierar.
  */
-export async function awardXP(
+export function awardXP(
   q: Quest,
   xpEarned: number,
   event: MouseEvent | null,
@@ -218,13 +222,27 @@ export async function awardXP(
   showRW?: (reward: unknown, tier?: string) => void,
   showXPPop?: (xp: number, event: MouseEvent | null) => void,
   rollReward?: (xp: number) => unknown | null,
-): Promise<void> {
+): AwardXPResult | null {
   const c = S.chars[S.me!];
   const m = (MEMBERS as Record<string, MemberDef>)[S.me!];
-  if (!c || !m) return;
+  if (!c || !m) return null;
+
+  const questIdx = S.quests.findIndex(sq => sq.id === q.id);
+  const liveQuest = questIdx !== -1 ? S.quests[questIdx] : q;
+  const cycleKey = getQuestCycleKey(liveQuest);
+
+  if (
+    liveQuest.recur !== 'none' &&
+    liveQuest.lastCompletedCycle &&
+    cycleKey &&
+    liveQuest.done &&
+    liveQuest.lastCompletedCycle === cycleKey
+  ) {
+    return null;
+  }
 
   // ── Ren beräkning (ingen mutation) ──────────────────────────────
-  const result = calcAwardXP(c, m, q, xpEarned, S.me!);
+  const result = calcAwardXP(c, m, liveQuest, xpEarned, S.me!);
   const {
     totalXP, milestone, workPts, milestoneWorkBonus,
     newStreak, newLevel, newXp, newXpToNext,
@@ -241,12 +259,8 @@ export async function awardXP(
   // Streak milestone notifikationer
   const streakMilestones = [5, 10, 14, 30];
   if (streakMilestones.includes(c.streak)) {
-    try {
-      const { createStreakNotif, addNotifToAll: addToAll } = await import('../state/notifications.js');
-      const { MEMBERS: MBR } = await import('../data/members.js');
-      const memberName = (MBR as Record<string, MemberDef>)[S.me!]?.name || S.me;
-      addToAll(createStreakNotif(S.me, memberName, c.streak));
-    } catch { /* silently fail */ }
+    const memberName = (MEMBERS as Record<string, MemberDef>)[S.me!]?.name || S.me;
+    addNotifToAll(createStreakNotif(S.me!, memberName as string, c.streak));
   }
 
   // XP och level
@@ -272,6 +286,11 @@ export async function awardXP(
   c.stats         = c.stats         || { vit: 10, wis: 10, for: 10, cha: 10 };
   c.categoryCount = c.categoryCount || {};
   c.categoryCount[q.cat] = (c.categoryCount[q.cat] || 0) + 1;
+  if (leveled) {
+    (['vit', 'wis', 'for', 'cha'] as StatKey[]).forEach((stat) => {
+      c.stats[stat] = Math.min(100, (c.stats[stat] || 10) + 1);
+    });
+  }
   (Object.entries(statInc) as [string, number][]).forEach(([stat, inc]) => {
     c.stats[stat] = Math.min(100, (c.stats[stat] || 10) + inc);
   });
@@ -286,12 +305,23 @@ export async function awardXP(
   c.form.push('W');
   if (c.form.length > 5) c.form.shift();
 
-  // Quest-status — markera done om recur:'none'
-  const questIdx = S.quests.findIndex(sq => sq.id === q.id);
-  if (questIdx !== -1 && S.quests[questIdx].recur === 'none') {
-    S.quests[questIdx].done = true;
+  // Quest-status
+  if (questIdx !== -1) {
+    const trackedQuest = S.quests[questIdx];
+    trackedQuest.completedAt = Date.now();
+    trackedQuest.completionCount = ((trackedQuest.completionCount as number) || 0) + 1;
+
+    if (!trackedQuest.collaborative) {
+      if (trackedQuest.recur === 'none') {
+        trackedQuest.done = true;
+      } else {
+        trackedQuest.done = true;
+        trackedQuest.lastCompletedCycle = getQuestCycleKey(trackedQuest, trackedQuest.completedAt) || undefined;
+      }
+    }
+
     /* ── temporalBehavior tracking ── */
-    const _tq = S.quests[questIdx];
+    const _tq = trackedQuest;
     if (_tq?.deadline) {
       const totalWindow = _tq.deadline - (_tq.createdAt || (_tq.deadline - 7 * 86400000));
       const remaining   = _tq.deadline - Date.now();
@@ -311,15 +341,21 @@ export async function awardXP(
   }
 
   // Activity feed
-  const ts = new Date().toISOString();
-  S.feed = S.feed || [];
-  S.feed.unshift({ who: S.me!, action: feedAction, ts });
-  if (S.feed.length > 50) S.feed.length = 50;
+  pushFeedEntry({ who: S.me!, action: feedAction, xp: totalXP });
+
+  if (leveled) {
+    pushFeedEntry({
+      who: S.me!,
+      action: `leveled up to Level ${c.level} ⚡`,
+      xp: 0,
+      type: 'level_up',
+    });
+  }
 
   // Push-notis: quest slutfört
   sendPush(
     `${m.name || S.me} slutförde ett uppdrag`,
-    `"${q.title}" — +${totalXP} XP`,
+    `"${liveQuest.title}" — +${totalXP} XP`,
     S.me!,
     '/'
   );
@@ -337,7 +373,7 @@ export async function awardXP(
   if (showXPPop) showXPPop(totalXP, event);
 
   save();
-  notify();
+  return result;
 }
 
 // ── Övriga exporterade funktioner ───────────────────────────────
@@ -361,13 +397,18 @@ export function awardMetricPts(
   if (typeof pts === 'number') {
     c.pts[type] = (c.pts[type] || 0) + pts;
   } else {
-    // Legacy: metric delta object — add total delta to bonus
-    const totalDelta = Object.values(pts).reduce((sum, v) => sum + Math.max(0, v), 0);
-    if (totalDelta > 0) c.pts.bonus += Math.round(totalDelta * 0.1);
+    const positive = Object.fromEntries(
+      Object.entries(pts).map(([key, value]) => [key, Math.max(0, value)])
+    ) as Record<string, number>;
+
+    c.pts.spotify += Math.round((positive.spf || 0) * 0.1);
+    c.pts.social += Math.round((positive.ig || 0) * 0.1);
+    c.pts.bonus += Math.round(positive.tix || 0);
+    c.pts.bonus += Math.round((positive.str || 0) * 0.01);
+    c.pts.bonus += Math.round((positive.x || 0) * 0.1);
   }
 
   save();
-  notify();
 }
 
 /**
@@ -381,11 +422,11 @@ export function awardInsightBonus(questId: number, insight: string, questTitle: 
   q.insight = insight;
   S.chars[S.me!].xp      = (S.chars[S.me!].xp      || 0) + 15;
   S.chars[S.me!].totalXp = (S.chars[S.me!].totalXp || 0) + 15;
-  S.feed.unshift({
+  pushFeedEntry({
     who:    S.me!,
     action: `reflekterade över "${questTitle}"`,
     xp:     15,
-    ts:     new Date().toISOString(),
+    type:   'quest_insight',
   });
   save();
 }
@@ -415,5 +456,4 @@ export async function completeCollaborativeQuest(
     }
   }
   save();
-  notify();
 }

@@ -3,6 +3,7 @@ import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isQuestDoneNow, isQuestRelevantToMember, wasQuestCompletedByMember } from '@/lib/questUtils';
 
 const CATEGORIES = [
   { id: 'wisdom', label: 'WISDOM', color: 'var(--cat-wisdom)' },
@@ -17,13 +18,13 @@ const TOTAL_NODES = 6; // 1 + 2 + 3
 
 function getCompletedCount(cat: string, memberId: string) {
   return (S.quests || []).filter(
-    (q: any) => q.done && q.cat === cat && (q.owner === memberId || q.completedBy === memberId)
+    (q: any) => wasQuestCompletedByMember(q, memberId) && q.cat === cat
   ).length;
 }
 
 function getCategoryQuests(cat: string, memberId: string) {
   return (S.quests || []).filter(
-    (q: any) => q.cat === cat && (q.owner === memberId || q.completedBy === memberId)
+    (q: any) => q.cat === cat && isQuestRelevantToMember(q, memberId)
   );
 }
 
@@ -188,9 +189,9 @@ export default function SkillNodes() {
                     </div>
                     <div className="sn-expanded-quests">
                       {quests.map((q: any) => (
-                        <div key={q.id} className={`sn-quest-row ${q.done ? 'done' : ''}`}>
-                          <span className="sn-quest-check" style={q.done ? { color: cat.color } : undefined}>
-                            {q.done ? <Check size={14} style={{ display: 'inline' }} /> : '○'}
+                        <div key={q.id} className={`sn-quest-row ${isQuestDoneNow(q) ? 'done' : ''}`}>
+                          <span className="sn-quest-check" style={isQuestDoneNow(q) ? { color: cat.color } : undefined}>
+                            {isQuestDoneNow(q) ? <Check size={14} style={{ display: 'inline' }} /> : '○'}
                           </span>
                           <span className="sn-quest-title">{q.title}</span>
                         </div>

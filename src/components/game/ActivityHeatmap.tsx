@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { S } from '@/state/store';
+import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
 interface ActivityHeatmapProps {
   memberId: string;
@@ -10,7 +11,7 @@ interface ActivityHeatmapProps {
 function getCompletionMap(memberId: string): Record<string, number> {
   const map: Record<string, number> = {};
   (S.quests || []).forEach((q: any) => {
-    if (q.done && (q.owner === memberId || q.completedBy === memberId)) {
+    if (wasQuestCompletedByMember(q, memberId)) {
       const d = q.completedAt ? new Date(q.completedAt) : null;
       if (d) {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

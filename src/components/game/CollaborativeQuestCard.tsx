@@ -24,7 +24,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
     if (!result) return
 
     // Ge XP till S.me
-    awardXP(q, q.xp || 50, null)
+    await awardXP(q, q.xp || 50, null)
 
     // Push-notis
     const memberName = (MEMBERS as any)[S.me]?.name || S.me

@@ -1,13 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { supabase } from '@/lib/supabase';
-import { getRoleHidden } from '@/data/quests';
-import { awardXP, calcQuestXP } from '@/hooks/useXP';
+import { awardXP } from '@/hooks/useXP';
 import { sendPush } from '@/lib/sendPush';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
-import { getQuestOrigin, ORIGIN_LABELS } from '@/lib/questUtils';
+import { getQuestOrigin, ORIGIN_LABELS, isQuestDoneNow } from '@/lib/questUtils';
+import { pushFeedEntry } from '@/lib/feed';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
@@ -51,15 +51,16 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const [delegationNote, setDelegationNote] = useState('');
 
   const me = S.me;
-  const isDone = quest.done;
+  const isDone = isQuestDoneNow(quest);
   const needsAI = quest.aiRequired;
   const isParticipant = quest.participants?.includes(S.me) || false;
+  const verdictApproved = Boolean(verdict?.approved || verdict?.cls === 'v-accepted' || verdict?.cls === 'v-partial');
+  const verdictText = verdict?.message || verdict?.text;
 
-  function handleComplete() {
+  async function handleComplete() {
     if (isDone || !me) return;
-    if (needsAI && !verdict?.approved) return;
+    if (needsAI && !verdictApproved) return;
 
-    const xpEarned = calcQuestXP(me, quest.xp || 30);
     const idx = S.quests.findIndex((q: any) => q.id === quest.id);
 
     // Kollaborativt quest med deltagare — per-deltagare completion
@@ -68,14 +69,16 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       const q = S.quests[idx];
       if (!q.completedBy) q.completedBy = [];
       const completedBy = q.completedBy as string[];
+      if (completedBy.includes(me)) return;
       if (!completedBy.includes(me)) completedBy.push(me);
 
       // XP till den som just slutförde
-      awardXP(quest, xpEarned, null,
+      const result = await awardXP(q, q.xp || 30, null,
         (level) => showLU?.(level),
         (reward, tier) => showRW?.(reward, tier),
       );
-      showXP?.(xpEarned);
+      if (!result) return;
+      showXP?.(result.totalXP);
 
       const everyoneDone = (q.participants as string[]).every(
         (id: string) => completedBy.includes(id)
@@ -107,63 +110,47 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       S.chars[me].completedQuests.push({
         id: quest.id,
         title: quest.title,
-        xp: xpEarned,
+        xp: result.totalXP,
         cat: quest.cat,
         reflection: '',
         completedAt: Date.now(),
       });
 
+      q.done = everyoneDone;
       save();
+      rerender?.();
 
-      if (everyoneDone) {
-        setTimeout(() => {
-          S.quests = S.quests.filter((sq: any) => sq.id !== quest.id);
-          save();
-          rerender?.();
-        }, 1500);
-      } else {
-        rerender?.();
-      }
-
-      setLastXP(xpEarned);
-      setCompletingQuest({ ...quest, done: everyoneDone, completedAt: Date.now() });
+      setLastXP(result.totalXP);
+      setCompletingQuest({ ...q, done: everyoneDone, completedAt: Date.now() });
       return;
     }
 
-    // Vanligt quest — befintlig logik oförändrad
-    const completedQuest = { ...quest, done: true, completedAt: Date.now() };
-    if (idx >= 0) S.quests[idx] = completedQuest;
-
-    showXP?.(xpEarned);
-
-    awardXP(quest, xpEarned, null,
+    const liveQuest = idx >= 0 ? S.quests[idx] : quest;
+    const result = await awardXP(liveQuest, liveQuest.xp || 30, null,
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
+    if (!result) return;
+
+    showXP?.(result.totalXP);
 
     // Spara i historik
     if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
     S.chars[me].completedQuests.push({
-      id: quest.id,
-      title: quest.title,
-      xp: xpEarned,
-      cat: quest.cat,
+      id: liveQuest.id,
+      title: liveQuest.title,
+      xp: result.totalXP,
+      cat: liveQuest.cat,
       reflection: '',
       completedAt: Date.now(),
     });
 
     save();
 
-    // Auto-ta bort quest efter 1.5 sekunder
-    setTimeout(() => {
-      S.quests = S.quests.filter((sq: any) => sq.id !== quest.id);
-      save();
-      rerender?.();
-    }, 1500);
-
     // Öppna utvärderingsmodal istället för direkt rerender
-    setLastXP(xpEarned);
-    setCompletingQuest(completedQuest);
+    const updatedQuest = idx >= 0 ? S.quests[idx] : { ...liveQuest, done: true, completedAt: Date.now() };
+    setLastXP(result.totalXP);
+    setCompletingQuest(updatedQuest);
   }
 
   function handleAIValidate() {
@@ -186,11 +173,11 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
     const noteValue = delegationNote.trim() || null;
     if (noteValue) quest.note = noteValue;
 
-    S.feed.unshift({
+    pushFeedEntry({
       who: S.me,
       action: `anslöt sig till "${quest.title}" 🤝`,
       xp: 0,
-      ts: new Date().toISOString(),
+      type: 'collaborative_join',
     });
 
     save();
@@ -426,7 +413,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
               placeholder="Beskriv hur du genomförde uppdraget..."
               value={aiDesc}
               onChange={e => setAiDesc(e.target.value)}
-              disabled={thinking || verdict?.approved}
+              disabled={thinking || verdictApproved}
             />
             {thinking && (
               <div className="quest-ai-thinking" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', padding: 'var(--space-sm) 0' }}>
@@ -436,8 +423,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
               </div>
             )}
             {verdict && (
-              <div className={`quest-ai-verdict ${verdict.approved ? 'approved' : 'rejected'}`}>
-                {verdict.approved ? <Check size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> : <X size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />} {verdict.message || verdict.text}
+              <div className={`quest-ai-verdict ${verdictApproved ? 'approved' : 'rejected'}`}>
+                {verdictApproved ? <Check size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> : <X size={14} style={{ display: 'inline', verticalAlign: '-2px' }} />} {verdictText}
               </div>
             )}
             {!verdict && !thinking && (
@@ -448,14 +435,6 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           </div>
         )}
 
-        {!isDone && needsAI && verdict?.approved && (
-          <button
-            className="complete-btn"
-            onClick={e => { e.stopPropagation(); handleComplete(); }}
-          >
-            SLUTFÖR
-          </button>
-        )}
       </motion.div>
 
       {showDeleg && (

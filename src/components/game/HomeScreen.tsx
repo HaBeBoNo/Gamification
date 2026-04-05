@@ -5,6 +5,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import ActivityFeed from './ActivityFeed';
 import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents } from '@/lib/googleCalendar';
+import { isQuestDoneNow } from '@/lib/questUtils';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -265,8 +266,8 @@ function BandStatusRow() {
 function FeaturedQuest({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   const memberKey = S.me;
   // Först: mina egna ej slutförda quests. Fallback: vilken som helst ej slutförd.
-  const myQuest = (S.quests ?? []).find((q: any) => !q.done && q.owner === memberKey);
-  const anyQuest = (S.quests ?? []).find((q: any) => !q.done);
+  const myQuest = (S.quests ?? []).find((q: any) => !isQuestDoneNow(q) && q.owner === memberKey);
+  const anyQuest = (S.quests ?? []).find((q: any) => !isQuestDoneNow(q));
   const quest: any = myQuest || anyQuest;
   if (!quest) return null;
 

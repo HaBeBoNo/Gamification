@@ -5,6 +5,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { ScrollText, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { sendPush } from '@/lib/sendPush';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -29,6 +30,11 @@ function formatFeedTime(ts: string | number | undefined): string {
   return d.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 }
 
+function getMemberName(memberKey?: string): string {
+  if (!memberKey) return 'Någon';
+  return (MEMBERS as Record<string, { name?: string }>)[memberKey]?.name || memberKey;
+}
+
 // ── EVENT_MAP: händelsetyp → ikon + label ─────────────────────────
 const EVENT_MAP: Record<string, { icon: string; label: string }> = {
   quest_completed:  { icon: '✅', label: 'slutförde' },
@@ -46,6 +52,7 @@ function getEventIcon(entry: any): string {
   if (a.includes('completed') || a.includes('slutförde')) return '✅';
   if (a.includes('checkade in'))                          return '📅';
   if (a.includes('nivå') || a.includes('level'))         return '⬆️';
+  if (a.includes('kommenterade'))                        return '💬';
   if (a.includes('high-five'))                            return '🙌';
   if (a.includes('anslöt'))                               return '🤝';
   if (a.includes('reflekterade'))                         return '💡';
@@ -59,47 +66,6 @@ function extractXPFromText(text: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
-// ── Reaktionsfunktion ─────────────────────────────────────────────
-async function toggleReaction(
-  feedId: string | undefined,
-  emoji: string,
-  currentReactions: Record<string, string[]>
-) {
-  if (!feedId || !supabase) return;
-  const me = S.me;
-  if (!me) return;
-
-  const existing = currentReactions[emoji] ?? [];
-  const hasReacted = existing.includes(me);
-  const updated = hasReacted
-    ? existing.filter((k: string) => k !== me)
-    : [...existing, me];
-
-  const newReactions = { ...currentReactions, [emoji]: updated };
-  if (newReactions[emoji].length === 0) delete newReactions[emoji];
-
-  await supabase
-    .from('activity_feed')
-    .update({ reactions: newReactions })
-    .eq('id', feedId);
-}
-
-// ── Witness-funktion ──────────────────────────────────────────────
-async function toggleWitness(feedId: string, currentWitnesses: string[]) {
-  const me = S.me;
-  if (!me || !supabase) return;
-
-  const hasWitnessed = currentWitnesses.includes(me);
-  const updated = hasWitnessed
-    ? currentWitnesses.filter(k => k !== me)
-    : [...currentWitnesses, me];
-
-  await supabase
-    .from('activity_feed')
-    .update({ witnesses: updated })
-    .eq('id', feedId);
-}
-
 // ── Framer Motion ─────────────────────────────────────────────────
 const itemVariants = {
   hidden:  { opacity: 0, x: -16 },
@@ -111,7 +77,149 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [openCommentId, setOpenCommentId] = useState<string | null>(null);
+  const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
   const hasLoaded = useRef(false);
+
+  function mergeIncomingFeedItem(prev: any[], incoming: any) {
+    const incomingCreatedAt = incoming?.created_at || incoming?.ts || incoming?.time;
+    return [
+      incoming,
+      ...prev.filter(item => {
+        const sameId = item.id && incoming.id && item.id === incoming.id;
+        const sameOptimisticComment =
+          String(item.id || '').startsWith('local-comment-') &&
+          item.who === incoming.who &&
+          item.action === incoming.action &&
+          (item.created_at || item.ts || item.time) === incomingCreatedAt;
+        return !sameId && !sameOptimisticComment;
+      }),
+    ].slice(0, 50);
+  }
+
+  function updateFeedItemLocal(itemId: string, updater: (item: any) => any) {
+    setFeedItems(prev => prev.map(item => item.id === itemId ? updater(item) : item));
+  }
+
+  async function handleToggleReaction(item: any, emoji: string) {
+    const me = S.me;
+    if (!me) return;
+
+    const currentReactions: Record<string, string[]> = item.reactions ?? {};
+    const existing = currentReactions[emoji] ?? [];
+    const hasReacted = existing.includes(me);
+    const updated = hasReacted
+      ? existing.filter((k: string) => k !== me)
+      : [...existing, me];
+
+    const newReactions = { ...currentReactions, [emoji]: updated };
+    if (newReactions[emoji].length === 0) delete newReactions[emoji];
+
+    updateFeedItemLocal(item.id, current => ({ ...current, reactions: newReactions }));
+
+    if (!item.id || String(item.id).startsWith('local-') || !supabase) return;
+
+    const { error } = await supabase
+      .from('activity_feed')
+      .update({ reactions: newReactions })
+      .eq('id', item.id);
+
+    if (error) {
+      console.warn('toggleReaction failed:', error.message);
+    }
+  }
+
+  async function handleToggleWitness(item: any) {
+    const me = S.me;
+    if (!me) return;
+
+    const currentWitnesses: string[] = item.witnesses ?? [];
+    const hasWitnessed = currentWitnesses.includes(me);
+    const updated = hasWitnessed
+      ? currentWitnesses.filter((k: string) => k !== me)
+      : [...currentWitnesses, me];
+
+    updateFeedItemLocal(item.id, current => ({ ...current, witnesses: updated }));
+
+    if (!item.id || String(item.id).startsWith('local-') || !supabase) return;
+
+    const { error } = await supabase
+      .from('activity_feed')
+      .update({ witnesses: updated })
+      .eq('id', item.id);
+
+    if (error) {
+      console.warn('toggleWitness failed:', error.message);
+    }
+  }
+
+  async function handleSubmitComment(item: any) {
+    const me = S.me;
+    if (!me) return;
+
+    const rawDraft = commentDrafts[item.id] ?? '';
+    const comment = rawDraft.trim();
+    if (!comment) return;
+
+    const targetName = getMemberName(item.who);
+    const itemLabel = (item.action || '').includes('"')
+      ? (item.action.match(/[""]([^""]+)[""]/)?.[1] || 'aktivitet')
+      : 'aktivitet';
+    const action = `kommenterade ${targetName}s ${itemLabel === 'aktivitet' ? 'aktivitet' : `"${itemLabel}"`}: "${comment}"`;
+    const createdAt = new Date().toISOString();
+    const optimisticId = `local-comment-${Date.now()}`;
+    const optimisticItem = {
+      id: optimisticId,
+      who: me,
+      action,
+      xp: 0,
+      created_at: createdAt,
+      ts: createdAt,
+    };
+
+    setSubmittingCommentId(item.id);
+    setOpenCommentId(null);
+    setCommentDrafts(prev => ({ ...prev, [item.id]: '' }));
+    setFeedItems(prev => mergeIncomingFeedItem(prev, optimisticItem));
+
+    if (item.who && item.who !== me) {
+      const commenterName = getMemberName(me);
+      void sendPush(
+        `${commenterName} kommenterade din aktivitet`,
+        comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
+        me,
+        '/'
+      );
+    }
+
+    if (!supabase) {
+      setSubmittingCommentId(null);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('activity_feed')
+      .insert({
+        who: me,
+        action,
+        xp: 0,
+        created_at: createdAt,
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      console.warn('create comment activity failed:', error.message);
+      setSubmittingCommentId(null);
+      return;
+    }
+
+    if (data) {
+      setFeedItems(prev => mergeIncomingFeedItem(prev, data));
+    }
+    setSubmittingCommentId(null);
+  }
 
   // Hämta feed + prenumerera — körs en gång när S.me är känt, aldrig om igen
   useEffect(() => {
@@ -139,7 +247,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         schema: 'public',
         table: 'activity_feed',
       }, payload => {
-        setFeedItems(prev => [payload.new as any, ...prev].slice(0, 50));
+        setFeedItems(prev => mergeIncomingFeedItem(prev, payload.new as any));
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -290,6 +398,9 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
             // Reaktioner för detta item
             const itemReactions: Record<string, string[]> = item.reactions ?? {};
+            const hasOpenComment = openCommentId === item.id;
+            const commentDraft = commentDrafts[item.id] ?? '';
+            const witnessNames = (item.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
 
             return (
               <motion.div
@@ -327,7 +438,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                       return (
                         <button
                           key={emoji}
-                          onClick={() => toggleReaction(item.id, emoji, itemReactions)}
+                          onClick={() => handleToggleReaction(item, emoji)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -345,13 +456,68 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                         </button>
                       );
                     })}
+                    <button
+                      onClick={() => setOpenCommentId(hasOpenComment ? null : item.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${hasOpenComment ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        background: hasOpenComment ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-caption)',
+                        color: hasOpenComment ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      }}
+                    >
+                      💬 Kommentera
+                    </button>
                   </div>
+
+                  {hasOpenComment && (
+                    <div style={{ display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-xs)' }}>
+                      <input
+                        type="text"
+                        maxLength={160}
+                        value={commentDraft}
+                        onChange={(e) => setCommentDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                        placeholder={`Svara ${getMemberName(item.who).split(' ')[0]}...`}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          background: 'var(--color-surface-elevated)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-pill)',
+                          padding: '8px 12px',
+                          color: 'var(--color-text)',
+                          fontSize: 'var(--text-caption)',
+                        }}
+                      />
+                      <button
+                        onClick={() => handleSubmitComment(item)}
+                        disabled={!commentDraft.trim() || submittingCommentId === item.id}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-pill)',
+                          border: 'none',
+                          background: commentDraft.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+                          color: commentDraft.trim() ? '#fff' : 'var(--color-text-muted)',
+                          cursor: commentDraft.trim() ? 'pointer' : 'not-allowed',
+                          fontSize: 'var(--text-caption)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {submittingCommentId === item.id ? '...' : 'Skicka'}
+                      </button>
+                    </div>
+                  )}
 
                   {/* ── Witness-rad (för item.xp >= 50) ────────────────── */}
                   {(item.xp ?? 0) >= 50 && (
                     <div style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                       <button
-                        onClick={() => toggleWitness(item.id, item.witnesses ?? [])}
+                        onClick={() => handleToggleWitness(item)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -369,7 +535,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                       </button>
                       {(item.witnesses ?? []).length > 0 && (
                         <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>
-                          {item.witnesses.join(', ')}
+                          {witnessNames.join(', ')}
                         </span>
                       )}
                     </div>

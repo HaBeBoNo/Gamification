@@ -4,8 +4,8 @@ import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
 } from '@/lib/googleCalendar'
 import { S, save } from '@/state/store'
-import { MEMBERS } from '@/data/members'
 import { sendPush } from '@/lib/sendPush'
+import { checkIn } from '@/hooks/useCheckIn'
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -29,7 +29,7 @@ export default function CalendarView() {
 
   function isCheckedIn(eventId: string): boolean {
     return (S.checkIns ?? []).some(
-      (c: any) => c.eventId === eventId && c.memberKey === S.me
+      (c: any) => c.eventId === eventId && c.type !== 'rsvp' && (c.memberKey === S.me || c.member === S.me)
     )
   }
 
@@ -39,33 +39,7 @@ export default function CalendarView() {
 
   function handleCheckIn(event: CalendarEvent) {
     if (isCheckedIn(event.id)) return
-    const checkIn = {
-      eventId: event.id,
-      eventTitle: event.title,
-      memberKey: S.me,
-      ts: Date.now(),
-    }
-    if (!S.checkIns) S.checkIns = []
-    S.checkIns.push(checkIn)
-
-    // XP
-    const xp = 40
-    const c = S.chars[S.me]
-    if (c) {
-      c.xp = ((c.xp as number) || 0) + xp
-      c.totalXp = ((c.totalXp as number) || 0) + xp
-    }
-
-    // Feed
-    const m = MEMBERS[S.me]
-    S.feed.unshift({
-      who: S.me,
-      action: `checkade in på ${event.title}`,
-      xp,
-      ts: new Date().toISOString(),
-    })
-
-    save()
+    checkIn(event.id, event.title)
   }
 
   // RSVP-state — lagras i S.checkIns med type: 'rsvp'

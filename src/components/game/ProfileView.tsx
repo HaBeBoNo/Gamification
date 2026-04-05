@@ -7,6 +7,7 @@ import TrophyRoom from './TrophyRoom';
 import ActivityHeatmap from './ActivityHeatmap';
 import { Star, Flame, Zap, Target, Calendar, TrendingUp, Award, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function getCategoryBreakdown(memberId: string) {
   const cats = ['wisdom', 'tech', 'social', 'money', 'health', 'global'];
   cats.forEach(c => { counts[c] = 0; });
   (S.quests || []).forEach((q: any) => {
-    if (q.done && (q.owner === memberId || q.completedBy === memberId) && cats.includes(q.cat)) {
+    if (wasQuestCompletedByMember(q, memberId) && cats.includes(q.cat)) {
       counts[q.cat]++;
     }
   });

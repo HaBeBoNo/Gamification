@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
+import { isQuestDoneNow } from '@/lib/questUtils';
 
 const REASONS = [
   { id: 'irrelevant', label: 'Inte relevant för min roll' },
@@ -30,7 +31,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
 
     // Räkna aktiva quests — om under 3, flagga för auto-generering
     const remaining = S.quests.filter(
-      (q: any) => q.owner === S.me && !q.done
+      (q: any) => q.owner === S.me && !isQuestDoneNow(q)
     ).length;
 
     if (remaining < 3) {

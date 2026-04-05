@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { S, save } from '@/state/store';
-import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '@/data/members';
-import { getRoleHidden, HIDDEN_BANK } from '@/data/quests';
+import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
+import { getRoleHidden } from '@/data/quests';
 import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
@@ -14,7 +14,7 @@ import { fetchMyCollaborativeQuests, subscribeCollaborativeQuests } from '@/lib/
 import { supabase } from '@/lib/supabase';
 import CollaborativeQuestCard from './CollaborativeQuestCard';
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
-import { getQuestOrigin } from '@/lib/questUtils';
+import { getQuestOrigin, isQuestDoneNow, refreshRecurringQuestStates } from '@/lib/questUtils';
 
 const TABS = [
   { id: 'personal', label: 'MINA' },
@@ -60,13 +60,14 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const me = S.me;
   const char = me ? S.chars[me] : null;
   const roleType = char?.roleType || MEMBERS[me!]?.roleType || 'amplifier';
+  const cycleRefreshKey = new Date().toDateString();
 
   function getVisibleQuests() {
     const quests = S.quests || [];
     if (tab === 'all') return quests;
     if (tab === 'personal') {
       const allPersonalActive = quests
-        .filter((q: any) => (q.owner === me || q.personal) && !q.done && !q.collaborative)
+        .filter((q: any) => (q.owner === me || q.personal) && !isQuestDoneNow(q) && !q.collaborative)
         .sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
 
       return allPersonalActive.slice(0, 5);
@@ -89,8 +90,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
   const baseVisible = getVisibleQuests();
   const visible = applyFilter(baseVisible);
-  const active = visible.filter((q: any) => !q.done);
-  const completed = visible.filter((q: any) => q.done);
+  const active = visible.filter((q: any) => !isQuestDoneNow(q));
+  const completed = visible.filter((q: any) => isQuestDoneNow(q));
   const allDone = visible.length > 0 && active.length === 0;
 
   const showGrouped = filter === 'alla' && tab === 'all';
@@ -138,6 +139,14 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
   // Hämta och prenumerera på collaborative quests
   useEffect(() => {
+    const quests = S.quests || [];
+    if (refreshRecurringQuestStates(quests)) {
+      save();
+      rerender();
+    }
+  }, [cycleRefreshKey, me, rerender]);
+
+  useEffect(() => {
     fetchMyCollaborativeQuests().then(setCollabQuests)
 
     const sub = subscribeCollaborativeQuests((updatedQuest) => {
@@ -146,7 +155,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         if (idx >= 0) {
           const next = [...prev]
           next[idx] = updatedQuest
-          return next.filter(q => !q.done)
+          return next.filter(q => !isQuestDoneNow(q))
         }
         return [...prev, updatedQuest]
       })
@@ -172,7 +181,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   }, [S.me])
 
   const activePersonalCount = (S.quests || []).filter(
-    (q: any) => q.owner === me && !q.done
+    (q: any) => q.owner === me && !isQuestDoneNow(q)
   ).length;
 
   useEffect(() => {

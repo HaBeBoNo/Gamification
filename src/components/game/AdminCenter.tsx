@@ -6,6 +6,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download } from 'lucide-react';
 import { awardMetricPts } from '@/hooks/useXP';
+import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
 interface AdminCenterProps {
   onClose: () => void;
@@ -219,7 +220,7 @@ function MembersTab({ rerender }: { rerender: () => void }) {
   }
 
   const detail = detailId ? { member: MEMBERS[detailId], char: S.chars[detailId] } : null;
-  const completedCount = detailId ? (S.quests || []).filter((q: any) => q.done && (q.owner === detailId || q.completedBy === detailId)).length : 0;
+  const completedCount = detailId ? (S.quests || []).filter((q: any) => wasQuestCompletedByMember(q, detailId)).length : 0;
   const totalCount = detailId ? (S.quests || []).filter((q: any) => q.owner === detailId).length : 0;
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { awardXP, calcQuestXP } from '@/hooks/useXP';
+import { awardXP } from '@/hooks/useXP';
+import { isQuestDoneNow } from '@/lib/questUtils';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { ChevronLeft, RefreshCw, Zap, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,52 +25,46 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
   const [reflection, setReflection] = useState('');
   const [completing, setCompleting] = useState(false);
   const me = S.me;
-  const isDone = quest.done;
+  const isDone = isQuestDoneNow(quest);
   const isStrategic = quest.type === 'strategic';
   const canComplete = !isStrategic || reflection.trim().length > 0;
   const catColor = CAT_COLORS[quest.cat] || 'var(--color-primary)';
   const delegator = quest.delegatedBy ? MEMBERS[quest.delegatedBy] : null;
 
-  function handleComplete() {
+  async function handleComplete() {
     if (isDone || !me || completing) return;
     if (isStrategic && !reflection.trim()) return;
     setCompleting(true);
 
-    const xpEarned = calcQuestXP(me, quest.xp || 30);
     const idx = S.quests.findIndex((q: any) => q.id === quest.id);
-    if (idx >= 0) {
-      S.quests[idx] = {
-        ...quest,
-        done: true,
-        completedAt: Date.now(),
-        reflection: reflection || undefined,
-      };
-    }
+    const liveQuest = idx >= 0 ? S.quests[idx] : quest;
+    if (reflection.trim()) liveQuest.reflection = reflection.trim();
 
-    showXP?.(xpEarned);
-
-    awardXP(quest, xpEarned, null,
+    const result = await awardXP(liveQuest, liveQuest.xp || 30, null,
       (level) => showLU?.(level),
       (reward, tier) => showRW?.(reward, tier),
     );
+    if (!result) {
+      setCompleting(false);
+      return;
+    }
+
+    showXP?.(result.totalXP);
 
     // Spara i historik
     if (!S.chars[me!].completedQuests) S.chars[me!].completedQuests = [];
     S.chars[me!].completedQuests.push({
-      id: quest.id,
-      title: quest.title,
-      xp: xpEarned,
-      cat: quest.cat,
+      id: liveQuest.id,
+      title: liveQuest.title,
+      xp: result.totalXP,
+      cat: liveQuest.cat,
       reflection: reflection || '',
       completedAt: Date.now(),
     });
 
     save();
 
-    // Auto-ta bort quest från S.quests efter 1.5 sekunder
     setTimeout(() => {
-      S.quests = S.quests.filter((q: any) => q.id !== quest.id);
-      save();
       rerender?.();
       onClose();
     }, 1500);

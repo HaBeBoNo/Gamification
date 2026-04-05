@@ -63,7 +63,7 @@ export async function aiValidate(
   try {
     const txt      = await callClaude(buildValidatePrompt(m, c, q, desc) as string, 150);
     const score    = parseInt(txt.match(/SCORE:(\d+)/)?.[1]  || '50', 10);
-    const verdict  = txt.match(/VERDICT:(accepted|partial|rejected)/)?.[1] || 'partial';
+    const verdict  = (txt.match(/VERDICT:(accepted|partial|rejected)/)?.[1] || 'partial') as 'accepted' | 'partial' | 'rejected';
     const feedback = txt.match(/FEEDBACK:(.+)/)?.[1]?.trim() || 'Noterat.';
     const xpEarned = Math.round(q.xp * (score / 100));
 
@@ -73,7 +73,14 @@ export async function aiValidate(
 
     if (questIdx !== -1) {
       S.quests[questIdx].aiThinking = false;
-      S.quests[questIdx].aiVerdict  = { text: `${feedback} — ${score}/100 → ${xpEarned} XP`, cls };
+      S.quests[questIdx].aiVerdict  = {
+        text: `${feedback} — ${score}/100 → ${xpEarned} XP`,
+        message: feedback,
+        cls,
+        score,
+        verdict,
+        approved: verdict !== 'rejected',
+      };
     }
     notify();
 
@@ -83,7 +90,14 @@ export async function aiValidate(
   } catch {
     if (questIdx !== -1) {
       S.quests[questIdx].aiThinking = false;
-      S.quests[questIdx].aiVerdict  = { text: 'AI ej tillgänglig — halvt XP tilldelat', cls: 'v-partial' };
+      S.quests[questIdx].aiVerdict  = {
+        text: 'AI ej tillgänglig — halvt XP tilldelat',
+        message: 'AI ej tillgänglig — halvt XP tilldelat',
+        cls: 'v-partial',
+        score: 50,
+        verdict: 'partial',
+        approved: true,
+      };
     }
     notify();
     setTimeout(() => awardXP(q, Math.round(q.xp * 0.5), event, showLU, showRW, showXPPop, rollReward), 800);

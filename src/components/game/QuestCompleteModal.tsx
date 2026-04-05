@@ -4,6 +4,7 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { awardInsightBonus } from '@/hooks/useXP';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { pushFeedEntry } from '@/lib/feed';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -48,11 +49,11 @@ export default function QuestCompleteModal({
 
   function submitHighFive() {
     if (highFiveTo) {
-      S.feed.unshift({
+      const targetName = (MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo;
+      pushFeedEntry({
         who: S.me,
-        action: `gav en high-five till ${highFiveTo} 🙌`,
+        action: `gav en high-five till ${targetName} 🙌`,
         xp: 0,
-        ts: new Date().toISOString(),
       });
       save();
     }
@@ -351,7 +352,7 @@ export default function QuestCompleteModal({
                 touchAction: 'manipulation',
               }}
             >
-              {highFiveTo ? `🙌 HIGH-FIVE TILL ${highFiveTo.toUpperCase()}` : 'KLAR'}
+              {highFiveTo ? `🙌 HIGH-FIVE TILL ${((MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo).toUpperCase()}` : 'KLAR'}
             </button>
           </>
         )}

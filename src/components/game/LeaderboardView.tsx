@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ActivityHeatmap from './ActivityHeatmap';
 import MemberStatusDot from './MemberStatusDot';
 import { supabase } from '@/lib/supabase';
+import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
 type SortKey = 'xp' | 'week' | 'streak';
 
@@ -15,19 +16,19 @@ const cardSpring = { type: 'spring' as const, stiffness: 300, damping: 35 };
 function getWeekCompletions(memberId: string): number {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   return (S.quests || []).filter(
-    (q: any) => q.done && (q.owner === memberId || q.completedBy === memberId) && (q.completedAt || 0) > weekAgo
+    (q: any) => wasQuestCompletedByMember(q, memberId) && (q.completedAt || 0) > weekAgo
   ).length;
 }
 
 function getSynergyCount(memberId: string): number {
   return (S.quests || []).filter(
-    (q: any) => q.done && q.synergyTrigger && (q.owner === memberId || q.completedBy === memberId)
+    (q: any) => wasQuestCompletedByMember(q, memberId) && q.synergyTrigger
   ).length;
 }
 
 function getFormDots(memberId: string): boolean[] {
   const completed = (S.quests || [])
-    .filter((q: any) => q.done && (q.owner === memberId || q.completedBy === memberId))
+    .filter((q: any) => wasQuestCompletedByMember(q, memberId))
     .slice(-5);
   const dots: boolean[] = [];
   for (let i = 0; i < 5; i++) {
@@ -38,7 +39,7 @@ function getFormDots(memberId: string): boolean[] {
 
 function getRecentCompletions(memberId: string): string[] {
   return (S.quests || [])
-    .filter((q: any) => q.done && (q.owner === memberId || q.completedBy === memberId))
+    .filter((q: any) => wasQuestCompletedByMember(q, memberId))
     .slice(-3)
     .map((q: any) => q.title);
 }
@@ -261,11 +262,11 @@ function LeaderboardView() {
             const streak = S.chars[row.id]?.streak || 0;
             const longestStreak = char?.longestStreak || streak;
             const weeklyQuests = (S.quests || []).filter(
-              (q: any) => q.owner === row.id && q.done &&
+              (q: any) => wasQuestCompletedByMember(q, row.id) &&
               q.completedAt && Date.now() - q.completedAt < 7 * 24 * 60 * 60 * 1000
             ).length;
             const hasActivity = (S.quests || []).some(
-              (q: any) => q.done && (q.owner === row.id || q.completedBy === row.id)
+              (q: any) => wasQuestCompletedByMember(q, row.id)
             );
 
             return (

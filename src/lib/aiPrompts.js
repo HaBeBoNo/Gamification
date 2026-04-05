@@ -5,6 +5,7 @@
 
 import { S } from '../state/store';
 import { ROLE_TYPES } from '../data/members';
+import { isQuestDoneNow } from './questUtils';
 
 // ── Coach-identiteter ──────────────────────────────────────────────
 
@@ -67,15 +68,17 @@ FEEDBACK:[en mening svenska, max 110 tecken, personlig, direkt]`;
 export function buildQuestGenPrompt(m, c, refreshMode) {
   const rtLabel = ROLE_TYPES[m.roleType]?.label || 'Amplifier';
   const rtDesc  = ROLE_TYPES[m.roleType]?.desc  || '';
+  const completedQuests = S.quests
+    .filter(q => q.owner === S.me && (q.completedAt || q.completionCount))
+    .sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
 
-  const recentReflections = S.quests
-    .filter(q => q.owner === S.me && q.done && q.lastReflection)
+  const recentReflections = completedQuests
+    .filter(q => q.lastReflection)
     .slice(-5)
     .map(q => `"${q.title}": ${q.lastReflection}`)
     .join('\n');
 
-  const recentCompleted = S.quests
-    .filter(q => q.owner === S.me && q.done)
+  const recentCompleted = completedQuests
     .slice(-5)
     .map(q => q.title)
     .join(', ');
@@ -228,7 +231,7 @@ ${deletedQuests.map(d => `- "${d.title}" (${d.cat}): ${
 Undvik att generera liknande uppdrag inom samma kategori om reason är 'irrelevant'.
 Om reason är 'timing' — föreslå samma typ av uppdrag igen om 2–3 veckor.` : '';
 
-  const activeCount  = (S.quests || []).filter(q => q.owner === memberKey && !q.done).length;
+  const activeCount  = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q)).length;
   const focusContext = activeCount <= 3 ? `\n${memberKey} har just ${activeCount} aktiva uppdrag. Det är ett medvetet val — hyperfokus.\nUppmuntra det. Generera inte fler uppdrag om inte member explicit ber om det.` : '';
 
   return `${personality}\n${contextNoteSection}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}\n${deletionContext}\n${focusContext}`;
