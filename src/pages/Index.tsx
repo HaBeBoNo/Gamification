@@ -189,6 +189,7 @@ export default function Index() {
     }
     if (id === 'admin') { setShowAdmin(true); return; }
     if (id === 'history') { setShowHistory(true); return; }
+    if (id === 'home') { setActiveView('home'); return; }
     setActiveView('tab');
     setMobileTab(id);
     setActiveTab(id);
@@ -205,7 +206,7 @@ export default function Index() {
 
   function renderContent(tab: string) {
     if (activeView === 'home') {
-      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} />;
+      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} onNavigate={handleTabTap} />;
     }
 
     switch (tab) {
@@ -330,6 +331,7 @@ export default function Index() {
       {/* Bottom tab bar */}
       <BottomNav
         activeTab={mobileTab}
+        activeView={activeView}
         onTabChange={handleTabTap}
         showMore={showMore}
         onMoreTap={() => setShowMore(true)}

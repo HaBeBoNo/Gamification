@@ -8,45 +8,68 @@ export function BandPulse() {
   const [activeToday, setActiveToday] = useState(0);
   const [xp48h, setXp48h] = useState(0);
   const [pulse, setPulse] = useState<PulseLevel>('Vilande');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    let retries = 0;
+
+    async function loadWithRetry() {
       const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-      const sinceToday = new Date();
-      sinceToday.setHours(0, 0, 0, 0);
 
       const { data } = await supabase
         .from('activity_feed')
         .select('who, xp, created_at')
         .gte('created_at', since48h);
 
-      if (!data) return;
+      if (!data && retries < 3) {
+        retries++;
+        setTimeout(loadWithRetry, 2000);
+        return;
+      }
 
-      const todayStr = new Date().toDateString();
-      const activeMemberKeys = new Set(
-        data
-          .filter(item => new Date(item.created_at).toDateString() === todayStr)
-          .map(item => item.who)
-      );
-      const totalXP = data.reduce((sum, item) => sum + (item.xp ?? 0), 0);
+      if (data) {
+        const todayStr = new Date().toDateString();
+        const activeMemberKeys = new Set(
+          data
+            .filter(item => new Date(item.created_at).toDateString() === todayStr)
+            .map(item => item.who)
+        );
+        const totalXP = data.reduce((sum, item) => sum + (item.xp ?? 0), 0);
 
-      setActiveToday(activeMemberKeys.size);
-      setXp48h(totalXP);
+        setActiveToday(activeMemberKeys.size);
+        setXp48h(totalXP);
 
-      if (activeMemberKeys.size >= 5 || totalXP > 500) setPulse('I eld');
-      else if (activeMemberKeys.size >= 2 || totalXP > 100) setPulse('Aktiv');
-      else setPulse('Vilande');
+        if (activeMemberKeys.size >= 5 || totalXP > 500) setPulse('I eld');
+        else if (activeMemberKeys.size >= 2 || totalXP > 100) setPulse('Aktiv');
+        else setPulse('Vilande');
+      }
+
+      setLoading(false);
     }
 
-    load();
+    loadWithRetry();
 
     const channel = supabase
       .channel('band-pulse')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, () => load())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, () => {
+        retries = 0;
+        loadWithRetry();
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  if (loading) return (
+    <div style={{
+      margin: '0 var(--space-md) var(--space-md)',
+      background: 'var(--color-surface-elevated)',
+      borderRadius: 'var(--radius-md)',
+      padding: 'var(--space-md) var(--space-lg)',
+      height: 72,
+      animation: 'pulse 1.5s ease-in-out infinite',
+    }} />
+  );
 
   const pulseColor =
     pulse === 'I eld' ? 'var(--color-accent)' :

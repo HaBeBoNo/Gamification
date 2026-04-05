@@ -96,7 +96,7 @@ const itemVariants = {
 };
 
 // ── Komponent ─────────────────────────────────────────────────────
-function ActivityFeed() {
+function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
 
@@ -162,12 +162,14 @@ function ActivityFeed() {
   // ── Render ─────────────────────────────────────────────────────
   return (
     <div className="panel">
-      <div className="panel-header">
-        <div className="panel-title">
-          <ScrollText size={14} strokeWidth={2} />
-          AKTIVITET
+      {!hideHeader && (
+        <div className="panel-header">
+          <div className="panel-title">
+            <ScrollText size={14} strokeWidth={2} />
+            AKTIVITET
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Bandstatus-rad ─────────────────────────────────────── */}
       {feedItems.length > 0 && (
