@@ -246,6 +246,9 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             }
 
             // ── Standard feed-rad ─────────────────────────────────
+            const KNOWN_MEMBERS = ['hannes','ludvig','martin','nisse','simon','johannes','carl','niklas'];
+            const memberKey = (item.who ?? '').toLowerCase();
+            const hasIcon = KNOWN_MEMBERS.includes(memberKey);
             const member   = (MEMBERS as any)[item.who] || null;
             const icon     = getEventIcon(item);
             // BUG-FIX: texten ligger i item.action, INTE item.text
@@ -285,7 +288,10 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                   className="feed-avatar"
                   style={{ background: member?.xpColor || 'var(--color-surface-elevated)' }}
                 >
-                  <MemberIcon id={item.who} size={28} />
+                  {hasIcon
+                    ? <MemberIcon id={memberKey} size={28} />
+                    : <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>?</div>
+                  }
                 </div>
 
                 {/* Mitten: text */}
