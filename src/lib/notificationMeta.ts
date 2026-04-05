@@ -116,6 +116,9 @@ export function getNotificationFeedIntent(notification: Notification): Omit<Feed
         mode: 'reply',
         ownerKey: notification.memberKey,
         contextLabel: notification.payload?.contextLabel as string | undefined,
+        draft: memberNameFromPayload(notification)
+          ? `@${memberNameFromPayload(notification).split(' ')[0]} `
+          : undefined,
       };
     case 'feed_reaction':
     case 'feed_witness':

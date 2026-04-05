@@ -165,6 +165,27 @@ const itemVariants = {
   visible: { opacity: 1, x: 0 },
 };
 
+type ReplyTarget = {
+  memberKey?: string;
+  memberName: string;
+  commentId?: string;
+};
+
+function getReplyPrefix(replyTarget?: ReplyTarget | null): string {
+  if (!replyTarget?.memberName) return '';
+  return `@${replyTarget.memberName.split(' ')[0]} `;
+}
+
+function isCommentReady(rawDraft: string, replyTarget?: ReplyTarget | null): boolean {
+  const trimmed = rawDraft.trim();
+  if (!trimmed) return false;
+
+  const replyPrefix = getReplyPrefix(replyTarget).trim();
+  if (replyPrefix && trimmed === replyPrefix) return false;
+
+  return true;
+}
+
 // ── Komponent ─────────────────────────────────────────────────────
 function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
@@ -174,9 +195,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const [replyTargets, setReplyTargets] = useState<Record<string, ReplyTarget | undefined>>({});
   const [intentVersion, setIntentVersion] = useState(0);
   const hasLoaded = useRef(false);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const lastHandledIntentId = useRef<string | null>(null);
   const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
 
@@ -198,6 +221,37 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
   function updateFeedItemLocal(itemId: string, updater: (item: any) => any) {
     setFeedItems(prev => prev.map(item => item.id === itemId ? updater(item) : item));
+  }
+
+  function clearReplyTarget(itemId: string) {
+    setReplyTargets(prev => {
+      if (!prev[itemId]) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+
+  function openCommentComposer(item: any, replyTarget?: ReplyTarget) {
+    const itemId = String(item.id || '');
+    if (!itemId) return;
+
+    setOpenCommentId(itemId);
+
+    if (replyTarget) {
+      setReplyTargets(prev => ({ ...prev, [itemId]: replyTarget }));
+      setCommentDrafts(prev => {
+        const existing = prev[itemId]?.trim();
+        if (existing) return prev;
+        return { ...prev, [itemId]: getReplyPrefix(replyTarget) };
+      });
+    } else {
+      clearReplyTarget(itemId);
+    }
+
+    window.setTimeout(() => {
+      commentInputRefs.current[itemId]?.focus();
+    }, 40);
   }
 
   async function handleToggleReaction(item: any, emoji: string) {
@@ -256,9 +310,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     const me = S.me;
     if (!me) return;
 
-    const rawDraft = commentDrafts[item.id] ?? '';
+    const itemId = String(item.id || '');
+    const replyTarget = replyTargets[itemId];
+    const rawDraft = commentDrafts[itemId] ?? '';
     const comment = rawDraft.trim();
-    if (!comment) return;
+    if (!isCommentReady(rawDraft, replyTarget)) return;
 
     const targetName = getMemberName(item.who);
     const itemLabel = (item.action || '').includes('"')
@@ -276,9 +332,10 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       ts: createdAt,
     };
 
-    setSubmittingCommentId(item.id);
+    setSubmittingCommentId(itemId);
     setOpenCommentId(null);
-    setCommentDrafts(prev => ({ ...prev, [item.id]: '' }));
+    clearReplyTarget(itemId);
+    setCommentDrafts(prev => ({ ...prev, [itemId]: '' }));
     setFeedItems(prev => mergeIncomingFeedItem(prev, optimisticItem));
 
     if (item.who && item.who !== me) {
@@ -381,6 +438,14 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (intent.mode === 'reply') {
       setOpenCommentId(targetId);
+      if (intent.draft) {
+        setReplyTargets(prev => ({
+          ...prev,
+          [targetId]: {
+            memberName: intent.draft.trim().replace(/^@/, ''),
+          },
+        }));
+      }
       if (intent.draft) {
         setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || intent.draft || '' }));
       }
@@ -600,6 +665,8 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             const itemReactions: Record<string, string[]> = item.reactions ?? {};
             const hasOpenComment = openCommentId === item.id;
             const commentDraft = commentDrafts[item.id] ?? '';
+            const replyTarget = replyTargets[item.id];
+            const canSubmitComment = isCommentReady(commentDraft, replyTarget);
             const witnessNames = (item.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
             const feedbackReactionLabels = Object.entries(itemReactions)
               .flatMap(([emoji, memberIds]) =>
@@ -713,9 +780,30 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                                   fontSize: 'var(--text-caption)',
                                   color: 'var(--color-text)',
                                   lineHeight: 1.5,
+                                  marginBottom: 6,
                                 }}>
                                   {commentItem.parsedComment?.comment || ''}
                                 </div>
+                                <button
+                                  onClick={() => openCommentComposer(item, {
+                                    memberKey: commentItem.who,
+                                    memberName: commenter?.name || commentItem.who || 'Någon',
+                                    commentId: String(commentItem.id || ''),
+                                  })}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--color-primary)',
+                                    padding: 0,
+                                    fontSize: 'var(--text-micro)',
+                                    fontFamily: 'var(--font-mono)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Svara
+                                </button>
                               </div>
                             );
                           })}
@@ -751,7 +839,13 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                       );
                     })}
                     <button
-                      onClick={() => setOpenCommentId(hasOpenComment ? null : item.id)}
+                      onClick={() => {
+                        if (hasOpenComment && !replyTarget) {
+                          setOpenCommentId(null);
+                          return;
+                        }
+                        openCommentComposer(item);
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -770,40 +864,91 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                   </div>
 
                   {hasOpenComment && (
-                    <div style={{ display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-xs)' }}>
-                      <input
-                        type="text"
-                        maxLength={160}
-                        value={commentDraft}
-                        onChange={(e) => setCommentDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        placeholder={`Svara ${getMemberName(item.who).split(' ')[0]}...`}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          background: 'var(--color-surface-elevated)',
-                          border: '1px solid var(--color-border)',
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-xs)',
+                      marginTop: 'var(--space-xs)',
+                    }}>
+                      {replyTarget && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 'var(--space-sm)',
+                          background: 'var(--color-primary-muted)',
+                          border: '1px solid var(--color-primary)',
                           borderRadius: 'var(--radius-pill)',
-                          padding: '8px 12px',
-                          color: 'var(--color-text)',
-                          fontSize: 'var(--text-caption)',
-                        }}
-                      />
-                      <button
-                        onClick={() => handleSubmitComment(item)}
-                        disabled={!commentDraft.trim() || submittingCommentId === item.id}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: 'var(--radius-pill)',
-                          border: 'none',
-                          background: commentDraft.trim() ? 'var(--color-primary)' : 'var(--color-border)',
-                          color: commentDraft.trim() ? '#fff' : 'var(--color-text-muted)',
-                          cursor: commentDraft.trim() ? 'pointer' : 'not-allowed',
-                          fontSize: 'var(--text-caption)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {submittingCommentId === item.id ? '...' : 'Skicka'}
-                      </button>
+                          padding: '4px 10px',
+                        }}>
+                          <span style={{
+                            fontSize: 'var(--text-micro)',
+                            color: 'var(--color-primary)',
+                            fontFamily: 'var(--font-mono)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                          }}>
+                            Svarar till {replyTarget.memberName}
+                          </span>
+                          <button
+                            onClick={() => clearReplyTarget(String(item.id || ''))}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-primary)',
+                              padding: 0,
+                              cursor: 'pointer',
+                              fontSize: 'var(--text-micro)',
+                              fontFamily: 'var(--font-mono)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.08em',
+                            }}
+                          >
+                            Rensa
+                          </button>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                        <input
+                          ref={(node) => {
+                            commentInputRefs.current[String(item.id || '')] = node;
+                          }}
+                          type="text"
+                          maxLength={160}
+                          value={commentDraft}
+                          onChange={(e) => setCommentDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          placeholder={replyTarget
+                            ? `Svara ${replyTarget.memberName.split(' ')[0]}...`
+                            : `Svara ${getMemberName(item.who).split(' ')[0]}...`}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            background: 'var(--color-surface-elevated)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-pill)',
+                            padding: '8px 12px',
+                            color: 'var(--color-text)',
+                            fontSize: 'var(--text-caption)',
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSubmitComment(item)}
+                          disabled={!canSubmitComment || submittingCommentId === item.id}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: 'none',
+                            background: canSubmitComment ? 'var(--color-primary)' : 'var(--color-border)',
+                            color: canSubmitComment ? '#fff' : 'var(--color-text-muted)',
+                            cursor: canSubmitComment ? 'pointer' : 'not-allowed',
+                            fontSize: 'var(--text-caption)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {submittingCommentId === item.id ? '...' : 'Skicka'}
+                        </button>
+                      </div>
                     </div>
                   )}
 
