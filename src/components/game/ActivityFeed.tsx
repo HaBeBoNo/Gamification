@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import { ScrollText, Activity } from 'lucide-react';
+import { ScrollText, Activity, MessageCircle, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
@@ -164,6 +164,7 @@ const itemVariants = {
   hidden:  { opacity: 0, x: -16 },
   visible: { opacity: 1, x: 0 },
 };
+const INLINE_COMMENT_PREVIEW_COUNT = 3;
 
 type ReplyTarget = {
   memberKey?: string;
@@ -196,12 +197,18 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [replyTargets, setReplyTargets] = useState<Record<string, ReplyTarget | undefined>>({});
+  const [expandedCommentGroups, setExpandedCommentGroups] = useState<Record<string, boolean>>({});
+  const [threadItemId, setThreadItemId] = useState<string | null>(null);
   const [intentVersion, setIntentVersion] = useState(0);
   const hasLoaded = useRef(false);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const lastHandledIntentId = useRef<string | null>(null);
   const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
+  const activeThreadItem = useMemo(
+    () => feedItems.find((item) => String(item.id || '') === threadItemId) || null,
+    [feedItems, threadItemId]
+  );
 
   function mergeIncomingFeedItem(prev: any[], incoming: any) {
     const incomingCreatedAt = incoming?.created_at || incoming?.ts || incoming?.time;
@@ -230,6 +237,24 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       delete next[itemId];
       return next;
     });
+  }
+
+  function toggleCommentExpansion(itemId: string) {
+    setExpandedCommentGroups(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+  }
+
+  function openThread(item: any, replyTarget?: ReplyTarget) {
+    const itemId = String(item.id || '');
+    if (!itemId) return;
+
+    setThreadItemId(itemId);
+    if (replyTarget) {
+      openCommentComposer(item, replyTarget);
+    }
+  }
+
+  function closeThread() {
+    setThreadItemId(null);
   }
 
   function openCommentComposer(item: any, replyTarget?: ReplyTarget) {
@@ -435,6 +460,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     const targetId = String(targetItem.id);
     lastHandledIntentId.current = intent.id;
     setHighlightedItemId(targetId);
+    setThreadItemId(targetId);
 
     if (intent.mode === 'reply') {
       setOpenCommentId(targetId);
@@ -492,8 +518,397 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     return null;
   }
 
+  function renderCommentCard(commentItem: any, parentItem: any) {
+    const commenter = (MEMBERS as any)[commentItem.who] || null;
+    const commentTs = formatFeedTime(commentItem.ts ?? commentItem.time ?? commentItem.created_at);
+
+    return (
+      <div
+        key={commentItem.id}
+        style={{
+          background: 'var(--color-surface-elevated)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '8px 10px',
+        }}
+      >
+        <div style={{
+          fontSize: 'var(--text-micro)',
+          color: 'var(--color-text-muted)',
+          marginBottom: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{commenter?.name || commentItem.who}</span>
+            <span>sa:</span>
+          </div>
+          {commentTs && <span>{commentTs}</span>}
+        </div>
+        <div style={{
+          fontSize: 'var(--text-caption)',
+          color: 'var(--color-text)',
+          lineHeight: 1.5,
+          marginBottom: 6,
+        }}>
+          {commentItem.parsedComment?.comment || ''}
+        </div>
+        <button
+          onClick={() => openThread(parentItem, {
+            memberKey: commentItem.who,
+            memberName: commenter?.name || commentItem.who || 'Någon',
+            commentId: String(commentItem.id || ''),
+          })}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--color-primary)',
+            padding: 0,
+            fontSize: 'var(--text-micro)',
+            fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+          }}
+        >
+          Svara
+        </button>
+      </div>
+    );
+  }
+
+  function renderCommentComposer(item: any, forceOpen = false) {
+    const itemId = String(item.id || '');
+    const hasOpenComment = forceOpen || openCommentId === itemId;
+    if (!hasOpenComment) return null;
+
+    const commentDraft = commentDrafts[itemId] ?? '';
+    const replyTarget = replyTargets[itemId];
+    const canSubmitComment = isCommentReady(commentDraft, replyTarget);
+
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-xs)',
+        marginTop: 'var(--space-xs)',
+      }}>
+        {replyTarget && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-sm)',
+            background: 'var(--color-primary-muted)',
+            border: '1px solid var(--color-primary)',
+            borderRadius: 'var(--radius-pill)',
+            padding: '4px 10px',
+          }}>
+            <span style={{
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-primary)',
+              fontFamily: 'var(--font-mono)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              Svarar till {replyTarget.memberName}
+            </span>
+            <button
+              onClick={() => clearReplyTarget(itemId)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-primary)',
+                padding: 0,
+                cursor: 'pointer',
+                fontSize: 'var(--text-micro)',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}
+            >
+              Rensa
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+          <input
+            ref={(node) => {
+              commentInputRefs.current[itemId] = node;
+            }}
+            type="text"
+            maxLength={160}
+            value={commentDraft}
+            onChange={(e) => setCommentDrafts(prev => ({ ...prev, [itemId]: e.target.value }))}
+            placeholder={replyTarget
+              ? `Svara ${replyTarget.memberName.split(' ')[0]}...`
+              : `Svara ${getMemberName(item.who).split(' ')[0]}...`}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-pill)',
+              padding: '8px 12px',
+              color: 'var(--color-text)',
+              fontSize: 'var(--text-caption)',
+            }}
+          />
+          <button
+            onClick={() => handleSubmitComment(item)}
+            disabled={!canSubmitComment || submittingCommentId === itemId}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-pill)',
+              border: 'none',
+              background: canSubmitComment ? 'var(--color-primary)' : 'var(--color-border)',
+              color: canSubmitComment ? '#fff' : 'var(--color-text-muted)',
+              cursor: canSubmitComment ? 'pointer' : 'not-allowed',
+              fontSize: 'var(--text-caption)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {submittingCommentId === itemId ? '...' : 'Skicka'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderThreadOverlay() {
+    if (!activeThreadItem) return null;
+
+    const itemId = String(activeThreadItem.id || '');
+    const member = (MEMBERS as any)[activeThreadItem.who] || null;
+    const actionText = activeThreadItem.action || '';
+    const questMatch = actionText.match(/[""]([^""]+)[""]/);
+    const questTitle = questMatch ? questMatch[1] : null;
+    let displayAction = actionText
+      .replace(/[""][^""]+[""]/, '')
+      .replace(/\(\+\d+\s*XP[^)]*\)/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (displayAction.endsWith(',')) displayAction = displayAction.slice(0, -1).trim();
+    const xp = activeThreadItem.xp || extractXPFromText(actionText) || 0;
+    const ts = formatFeedTime(activeThreadItem.ts ?? activeThreadItem.time ?? activeThreadItem.t ?? activeThreadItem.created_at);
+    const threadComments = presentation.commentsByItemId.get(itemId) || [];
+    const itemReactions: Record<string, string[]> = activeThreadItem.reactions ?? {};
+    const witnessNames = (activeThreadItem.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
+
+    return (
+      <div className="overlay-backdrop" onClick={closeThread}>
+        <div
+          className="overlay-card"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            maxWidth: 720,
+            width: 'min(720px, calc(100vw - 24px))',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px',
+            borderBottom: '1px solid var(--color-border)',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-sm)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              <MessageCircle size={14} />
+              Aktivitetstråd
+            </div>
+            <button
+              onClick={closeThread}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+                padding: 4,
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div style={{
+            padding: 'var(--space-lg)',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-md)',
+          }}>
+            <div style={{
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-md)',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--space-md)',
+              }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    background: member?.xpColor || 'var(--color-surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <MemberIcon id={String(activeThreadItem.who || '').toLowerCase()} size={24} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 'var(--space-sm)',
+                    alignItems: 'center',
+                    marginBottom: 6,
+                    flexWrap: 'wrap',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span className="feed-name">{member?.name || activeThreadItem.who || '?'}</span>
+                      {ts && (
+                        <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>
+                          {ts}
+                        </span>
+                      )}
+                    </div>
+                    {xp > 0 && <span className="feed-xp">+{xp} XP</span>}
+                  </div>
+                  <div style={{
+                    fontSize: 'var(--text-caption)',
+                    color: 'var(--color-text)',
+                    lineHeight: 1.6,
+                  }}>
+                    <span>{displayAction}</span>
+                    {questTitle && <span className="feed-quest"> "{questTitle}"</span>}
+                  </div>
+                  {Object.keys(itemReactions).length > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      marginTop: 'var(--space-xs)',
+                    }}>
+                      {Object.entries(itemReactions).map(([emoji, memberIds]) => (
+                        <span
+                          key={emoji}
+                          style={{
+                            fontSize: 'var(--text-micro)',
+                            color: 'var(--color-text-muted)',
+                            background: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-pill)',
+                            padding: '2px 8px',
+                          }}
+                        >
+                          {emoji} {(memberIds as string[]).map((memberId) => getMemberName(memberId)).join(', ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {witnessNames.length > 0 && (
+                    <div style={{
+                      fontSize: 'var(--text-micro)',
+                      color: 'var(--color-text-muted)',
+                      marginTop: 'var(--space-xs)',
+                    }}>
+                      Var där: {witnessNames.join(', ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 'var(--space-sm)',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}>
+                {threadComments.length} svar i tråden
+              </div>
+              <button
+                onClick={() => openCommentComposer(activeThreadItem)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-primary)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: 'var(--text-micro)',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}
+              >
+                Svara i tråd
+              </button>
+            </div>
+
+            {threadComments.length === 0 ? (
+              <div style={{
+                background: 'var(--color-surface-elevated)',
+                border: '1px dashed var(--color-border)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-lg)',
+                color: 'var(--color-text-muted)',
+                fontSize: 'var(--text-caption)',
+                textAlign: 'center',
+              }}>
+                Inga svar ännu. Första kommentaren kan vara din.
+              </div>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-sm)',
+              }}>
+                {threadComments.map((commentItem: any) => renderCommentCard(commentItem, activeThreadItem))}
+              </div>
+            )}
+
+            {renderCommentComposer(activeThreadItem, true)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────────
   return (
+    <>
     <div className="panel">
       {!hideHeader && (
         <div className="panel-header">
@@ -533,6 +948,10 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             const itemId = String(item.id || '');
             const parsedComment = parseCommentAction(item.action);
             const inlineComments = presentation.commentsByItemId.get(itemId) || [];
+            const areCommentsExpanded = expandedCommentGroups[itemId] || false;
+            const visibleInlineComments = areCommentsExpanded
+              ? inlineComments
+              : inlineComments.slice(0, INLINE_COMMENT_PREVIEW_COUNT);
             const hideStandaloneComment = parsedComment && presentation.hiddenCommentIds.has(itemId);
 
             if (hideStandaloneComment) {
@@ -664,9 +1083,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             // Reaktioner för detta item
             const itemReactions: Record<string, string[]> = item.reactions ?? {};
             const hasOpenComment = openCommentId === item.id;
-            const commentDraft = commentDrafts[item.id] ?? '';
             const replyTarget = replyTargets[item.id];
-            const canSubmitComment = isCommentReady(commentDraft, replyTarget);
             const witnessNames = (item.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
             const feedbackReactionLabels = Object.entries(itemReactions)
               .flatMap(([emoji, memberIds]) =>
@@ -753,43 +1170,18 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                           flexDirection: 'column',
                           gap: 6,
                         }}>
-                          {inlineComments.slice(0, 3).map((commentItem: any) => {
-                            const commenter = (MEMBERS as any)[commentItem.who] || null;
-                            return (
-                              <div
-                                key={commentItem.id}
-                                style={{
-                                  background: 'var(--color-surface-elevated)',
-                                  border: '1px solid var(--color-border)',
-                                  borderRadius: 'var(--radius-md)',
-                                  padding: '8px 10px',
-                                }}
-                              >
-                                <div style={{
-                                  fontSize: 'var(--text-micro)',
-                                  color: 'var(--color-text-muted)',
-                                  marginBottom: 4,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                }}>
-                                  <span>{commenter?.name || commentItem.who}</span>
-                                  <span>sa:</span>
-                                </div>
-                                <div style={{
-                                  fontSize: 'var(--text-caption)',
-                                  color: 'var(--color-text)',
-                                  lineHeight: 1.5,
-                                  marginBottom: 6,
-                                }}>
-                                  {commentItem.parsedComment?.comment || ''}
-                                </div>
+                          {visibleInlineComments.map((commentItem: any) => renderCommentCard(commentItem, item))}
+
+                          {(inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT || areCommentsExpanded) && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 'var(--space-md)',
+                              flexWrap: 'wrap',
+                            }}>
+                              {inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT && (
                                 <button
-                                  onClick={() => openCommentComposer(item, {
-                                    memberKey: commentItem.who,
-                                    memberName: commenter?.name || commentItem.who || 'Någon',
-                                    commentId: String(commentItem.id || ''),
-                                  })}
+                                  onClick={() => toggleCommentExpansion(itemId)}
                                   style={{
                                     background: 'transparent',
                                     border: 'none',
@@ -802,11 +1194,29 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  Svara
+                                  {areCommentsExpanded
+                                    ? 'Dölj svar'
+                                    : `Visa ${inlineComments.length - INLINE_COMMENT_PREVIEW_COUNT} till`}
                                 </button>
-                              </div>
-                            );
-                          })}
+                              )}
+                              <button
+                                onClick={() => openThread(item)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--color-text-muted)',
+                                  padding: 0,
+                                  fontSize: 'var(--text-micro)',
+                                  fontFamily: 'var(--font-mono)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.08em',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Öppna tråd
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -861,96 +1271,26 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                     >
                       💬 Kommentera
                     </button>
+                    <button
+                      onClick={() => openThread(item)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-pill)',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface-elevated)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-caption)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
+                      🧵 Tråd {inlineComments.length > 0 && <span>{inlineComments.length}</span>}
+                    </button>
                   </div>
 
-                  {hasOpenComment && (
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 'var(--space-xs)',
-                      marginTop: 'var(--space-xs)',
-                    }}>
-                      {replyTarget && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 'var(--space-sm)',
-                          background: 'var(--color-primary-muted)',
-                          border: '1px solid var(--color-primary)',
-                          borderRadius: 'var(--radius-pill)',
-                          padding: '4px 10px',
-                        }}>
-                          <span style={{
-                            fontSize: 'var(--text-micro)',
-                            color: 'var(--color-primary)',
-                            fontFamily: 'var(--font-mono)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                          }}>
-                            Svarar till {replyTarget.memberName}
-                          </span>
-                          <button
-                            onClick={() => clearReplyTarget(String(item.id || ''))}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--color-primary)',
-                              padding: 0,
-                              cursor: 'pointer',
-                              fontSize: 'var(--text-micro)',
-                              fontFamily: 'var(--font-mono)',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.08em',
-                            }}
-                          >
-                            Rensa
-                          </button>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                        <input
-                          ref={(node) => {
-                            commentInputRefs.current[String(item.id || '')] = node;
-                          }}
-                          type="text"
-                          maxLength={160}
-                          value={commentDraft}
-                          onChange={(e) => setCommentDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
-                          placeholder={replyTarget
-                            ? `Svara ${replyTarget.memberName.split(' ')[0]}...`
-                            : `Svara ${getMemberName(item.who).split(' ')[0]}...`}
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            background: 'var(--color-surface-elevated)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--radius-pill)',
-                            padding: '8px 12px',
-                            color: 'var(--color-text)',
-                            fontSize: 'var(--text-caption)',
-                          }}
-                        />
-                        <button
-                          onClick={() => handleSubmitComment(item)}
-                          disabled={!canSubmitComment || submittingCommentId === item.id}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: 'var(--radius-pill)',
-                            border: 'none',
-                            background: canSubmitComment ? 'var(--color-primary)' : 'var(--color-border)',
-                            color: canSubmitComment ? '#fff' : 'var(--color-text-muted)',
-                            cursor: canSubmitComment ? 'pointer' : 'not-allowed',
-                            fontSize: 'var(--text-caption)',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {submittingCommentId === item.id ? '...' : 'Skicka'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {renderCommentComposer(item)}
 
                   {/* ── Witness-rad (för item.xp >= 50) ────────────────── */}
                   {(item.xp ?? 0) >= 50 && (
@@ -992,6 +1332,8 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         </div>
       )}
     </div>
+    {renderThreadOverlay()}
+    </>
   );
 }
 
