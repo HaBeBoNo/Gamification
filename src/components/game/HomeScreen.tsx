@@ -8,6 +8,8 @@ import { getUpcomingEvents } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
 import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
+import { markRead, type Notification } from '@/state/notifications';
+import { getNotificationActionLabel, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -274,7 +276,9 @@ type AttentionSignal = {
   icon: string;
   title: string;
   subtitle: string;
-  target: 'activity' | 'quests';
+  target: NotificationTarget;
+  cta: string;
+  notificationId?: number;
 };
 
 function DailyCoachCard({
@@ -433,8 +437,34 @@ function DailyCoachCard({
   );
 }
 
-function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }) {
+function getSignalIcon(notification: Notification): string {
+  switch (notification.type) {
+    case 'feed_comment':
+      return '💬';
+    case 'feed_reaction':
+      return '👏';
+    case 'feed_witness':
+      return '👀';
+    case 'delegation_received':
+      return '📥';
+    case 'collaborative_complete':
+      return '🤝';
+    default:
+      return '🔔';
+  }
+}
+
+function WaitingOnYouCard({
+  onNavigate,
+  onOpenNotifications,
+  onOpenCoach,
+}: {
+  onNavigate?: (tab: string) => void;
+  onOpenNotifications?: () => void;
+  onOpenCoach?: (initialMessage?: string) => void;
+}) {
   const me = S.me;
+  const notifications = useGameStore(s => s.notifications);
   const unreadCount = useGameStore(s => s.notifications.filter(n => !n.read).length);
   const [signals, setSignals] = useState<AttentionSignal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -447,17 +477,40 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
       setLoading(true);
 
       const nextSignals: AttentionSignal[] = [];
+      const unreadActionable = notifications
+        .filter((notification) => !notification.read)
+        .filter((notification) => getNotificationTarget(notification) !== 'notifications')
+        .sort((a, b) => (
+          getNotificationPriority(b) - getNotificationPriority(a) ||
+          b.ts - a.ts
+        ))
+        .slice(0, 2);
+
+      unreadActionable.forEach((notification) => {
+        const { title, subtitle } = getNotificationText(notification);
+        nextSignals.push({
+          id: `notification-${notification.id}`,
+          icon: getSignalIcon(notification),
+          title,
+          subtitle: subtitle || 'Något väntar på din respons',
+          target: getNotificationTarget(notification),
+          cta: getNotificationActionLabel(notification),
+          notificationId: notification.id,
+        });
+      });
+
       const delegated = (S.quests || []).filter(
         (q: any) => q.delegatedTo === me && !q.delegationHandled
       );
 
-      if (delegated.length > 0) {
+      if (delegated.length > 0 && nextSignals.length < 3) {
         nextSignals.push({
           id: 'delegation',
           icon: '📥',
           title: `${delegated.length} uppdrag väntar på ditt svar`,
           subtitle: delegated[0]?.title || 'Någon skickade något till dig',
           target: 'quests',
+          cta: 'Öppna uppdrag',
         });
       }
 
@@ -469,7 +522,7 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
           (q.completed_by ?? []).length > 0
         );
 
-        if (collabWaiting.length > 0) {
+        if (collabWaiting.length > 0 && nextSignals.length < 3) {
           const first = collabWaiting[0];
           nextSignals.push({
             id: 'collaborative',
@@ -477,6 +530,7 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
             title: `${collabWaiting.length} samarbetsuppdrag rör sig utan dig`,
             subtitle: first.quest_data?.title || 'Din del väntar fortfarande',
             target: 'quests',
+            cta: 'Hoppa in',
           });
         }
       } catch {}
@@ -495,13 +549,14 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
           item.action.toLowerCase().includes(`kommenterade ${myName}`)
         );
 
-        if (directComments.length > 0) {
+        if (directComments.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
             id: 'comments',
             icon: '💬',
             title: `${directComments.length} kommentar${directComments.length > 1 ? 'er' : ''} till dig`,
             subtitle: `${getMemberName(directComments[0].who)} svarade på din aktivitet`,
             target: 'activity',
+            cta: 'Svara',
           });
         }
 
@@ -515,24 +570,26 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
           return hasExternalReaction || hasExternalWitness;
         });
 
-        if (feedbackItems.length > 0) {
+        if (feedbackItems.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
             id: 'feedback',
             icon: '👏',
             title: `Respons på ${feedbackItems.length} av dina aktiviteter`,
             subtitle: 'Öppna feeden och svara medan det är levande',
             target: 'activity',
+            cta: 'Se aktivitet',
           });
         }
       } catch {}
 
-      if (unreadCount > 0) {
+      if (unreadCount > 0 && nextSignals.length < 3) {
         nextSignals.push({
           id: 'notifications',
           icon: '🔔',
           title: `${unreadCount} olästa notis${unreadCount > 1 ? 'er' : ''}`,
           subtitle: 'Något har hänt sedan sist',
-          target: 'activity',
+          target: 'notifications',
+          cta: 'Visa alla',
         });
       }
 
@@ -564,7 +621,7 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [me, unreadCount]);
+  }, [me, notifications, unreadCount]);
 
   if (!me || (!loading && signals.length === 0)) return null;
 
@@ -598,7 +655,21 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
           signals.map((signal, index) => (
             <button
               key={signal.id}
-              onClick={() => onNavigate?.(signal.target)}
+              onClick={() => {
+                if (signal.notificationId) markRead(signal.notificationId);
+
+                if (signal.target === 'notifications') {
+                  onOpenNotifications?.();
+                  return;
+                }
+
+                if (signal.target === 'coach') {
+                  onOpenCoach?.();
+                  return;
+                }
+
+                onNavigate?.(signal.target);
+              }}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -651,7 +722,7 @@ function WaitingOnYouCard({ onNavigate }: { onNavigate?: (tab: string) => void }
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
               }}>
-                Öppna
+                {signal.cta}
               </div>
             </button>
           ))
@@ -741,9 +812,10 @@ interface HomeScreenProps {
   onMetricClick?: () => void;
   onNavigate?: (tab: string) => void;
   onOpenCoach?: (initialMessage?: string) => void;
+  onOpenNotifications?: () => void;
 }
 
-export function HomeScreen({ onNavigate, onOpenCoach }: HomeScreenProps) {
+export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: HomeScreenProps) {
   return (
     <div style={{
       display: 'flex',
@@ -754,7 +826,11 @@ export function HomeScreen({ onNavigate, onOpenCoach }: HomeScreenProps) {
       <HeroCard />
       <BandStatusRow />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
-      <WaitingOnYouCard onNavigate={onNavigate} />
+      <WaitingOnYouCard
+        onNavigate={onNavigate}
+        onOpenNotifications={onOpenNotifications}
+        onOpenCoach={onOpenCoach}
+      />
       <FeaturedQuest onNavigate={onNavigate} />
       <div style={{ padding: '0 var(--space-md)' }}>
         <p style={{

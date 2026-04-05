@@ -2,8 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
-import { MEMBERS } from '@/data/members';
 import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye } from 'lucide-react';
+import { getNotificationActionLabel, getNotificationTarget, getNotificationText } from '@/lib/notificationMeta';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -39,45 +39,6 @@ const TYPE_COLORS: Record<string, string> = {
   feed_witness: 'var(--color-green)',
 };
 
-function getNotificationText(n: Notification): { title: string; subtitle: string } {
-  const p = n.payload || {};
-  const memberId = p.memberId as string | undefined;
-  const memberName = memberId ? (MEMBERS as Record<string, { name?: string }>)[memberId]?.name || memberId : '';
-  const str = (v: unknown): string => (v as string) || '';
-  switch (n.type) {
-    case 'delegation_received':
-      return { title: `${memberName} skickade dig ett uppdrag`, subtitle: str(p.questTitle) };
-    case 'delegation_accepted':
-      return { title: `${memberName} accepterade ditt uppdrag`, subtitle: str(p.questTitle) };
-    case 'delegation_declined':
-      return { title: `${memberName} tackade nej till ditt uppdrag`, subtitle: str(p.questTitle) };
-    case 'synergy_triggered':
-      return { title: 'Synergi aktiverad', subtitle: `${str(p.questTitle)} upplåst` };
-    case 'badge_unlocked':
-      return { title: `Nytt märke: ${str(p.badgeName)}`, subtitle: str(p.desc) };
-    case 'goal_milestone':
-      return { title: `Bandet passerade ${str(p.milestoneName)}!`, subtitle: '' };
-    case 'quest_completed':
-      return { title: `${memberName} klarade ${str(p.questTitle)}`, subtitle: '' };
-    case 'level_up':
-      return { title: n.title || 'Level up!', subtitle: n.body || '' };
-    case 'high_five':
-      return { title: n.title || 'High five!', subtitle: n.body || '' };
-    case 'collaborative_complete':
-      return { title: n.title || 'Kollaborativt uppdrag klart', subtitle: n.body || '' };
-    case 'quest_complete':
-      return { title: n.title || 'Uppdrag slutfört', subtitle: n.body || '' };
-    case 'feed_comment':
-      return { title: n.title || 'Ny kommentar', subtitle: n.body || '' };
-    case 'feed_reaction':
-      return { title: n.title || 'Ny reaktion', subtitle: n.body || '' };
-    case 'feed_witness':
-      return { title: n.title || 'Någon såg din aktivitet', subtitle: n.body || '' };
-    default:
-      return { title: n.title || 'Notifikation', subtitle: n.body || '' };
-  }
-}
-
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
@@ -91,11 +52,29 @@ function timeAgo(ts: number): string {
 
 interface NotificationPanelProps {
   onClose: () => void;
+  onNavigate?: (tab: string) => void;
+  onOpenCoach?: (initialMessage?: string) => void;
 }
 
-export default function NotificationPanel({ onClose }: NotificationPanelProps) {
+export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: NotificationPanelProps) {
   // Reactive: re-renders whenever the notifications slice changes in Zustand
   const notifications = useGameStore(s => s.notifications);
+
+  function handleNotificationPress(notification: Notification) {
+    markRead(notification.id);
+
+    const target = getNotificationTarget(notification);
+    if (target === 'coach') {
+      onOpenCoach?.(notification.body || notification.title);
+      onClose();
+      return;
+    }
+
+    if (target !== 'notifications') {
+      onNavigate?.(target);
+      onClose();
+    }
+  }
 
   return (
     <div className="notif-panel">
@@ -145,6 +124,7 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
               const Icon = TYPE_ICONS[n.type] || Bell;
               const color = TYPE_COLORS[n.type] || 'var(--color-text-muted)';
               const { title, subtitle } = getNotificationText(n);
+              const actionLabel = getNotificationActionLabel(n);
               return (
                 <motion.div
                   key={n.id}
@@ -153,7 +133,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  onClick={() => markRead(n.id)}
+                  onClick={() => handleNotificationPress(n)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="notif-row-icon" style={{ color }}>
                     <Icon size={20} strokeWidth={2} />
@@ -162,7 +143,25 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                     <span className="notif-row-title">{title}</span>
                     {subtitle && <span className="notif-row-subtitle">{subtitle}</span>}
                   </div>
-                  <span className="notif-row-ts">{timeAgo(n.ts)}</span>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: 4,
+                    marginLeft: 'var(--space-sm)',
+                    flexShrink: 0,
+                  }}>
+                    <span className="notif-row-ts">{timeAgo(n.ts)}</span>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-micro)',
+                      color: 'var(--color-primary)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                    }}>
+                      {actionLabel}
+                    </span>
+                  </div>
                 </motion.div>
               );
             })

@@ -55,6 +55,8 @@ interface OverlayLayerProps {
 
   // Shared
   rerender: () => void;
+  onNavigateToTab?: (tab: string) => void;
+  onOpenCoach?: (initialMessage?: string) => void;
 }
 
 export default function OverlayLayer(props: OverlayLayerProps) {
@@ -75,6 +77,8 @@ export default function OverlayLayer(props: OverlayLayerProps) {
     showShortcutsOverlay, setShowShortcutsOverlay,
     coachInsight, setCoachInsight,
     rerender,
+    onNavigateToTab,
+    onOpenCoach,
   } = props;
 
   return (
@@ -150,7 +154,11 @@ export default function OverlayLayer(props: OverlayLayerProps) {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <NotificationPanel onClose={() => setShowNotifications(false)} />
+            <NotificationPanel
+              onClose={() => setShowNotifications(false)}
+              onNavigate={onNavigateToTab}
+              onOpenCoach={onOpenCoach}
+            />
           </div>
         </div>
       )}

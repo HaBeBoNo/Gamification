@@ -210,7 +210,15 @@ export default function Index() {
 
   function renderContent(tab: string) {
     if (activeView === 'home') {
-      return <HomeScreen rerender={rerender} onMetricClick={() => setShowMetrics(true)} onNavigate={handleTabTap} onOpenCoach={handleOpenCoach} />;
+      return (
+        <HomeScreen
+          rerender={rerender}
+          onMetricClick={() => setShowMetrics(true)}
+          onNavigate={handleTabTap}
+          onOpenCoach={handleOpenCoach}
+          onOpenNotifications={openNotifications}
+        />
+      );
     }
 
     switch (tab) {
@@ -411,6 +419,8 @@ export default function Index() {
         showShortcutsOverlay={showShortcutsOverlay} setShowShortcutsOverlay={setShowShortcutsOverlay}
         coachInsight={coachInsight} setCoachInsight={setCoachInsight}
         rerender={rerender}
+        onNavigateToTab={handleTabTap}
+        onOpenCoach={handleOpenCoach}
       />
     </div>
   );
