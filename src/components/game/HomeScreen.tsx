@@ -11,6 +11,7 @@ import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { markRead, type Notification } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
+import { RUNTIME_ISSUE_CLEAR_EVENT, RUNTIME_ISSUE_EVENT, getRuntimeIssues, type RuntimeIssue } from '@/lib/runtimeHealth';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -855,6 +856,122 @@ function FeaturedQuest({ onNavigate }: { onNavigate?: (tab: string) => void }) {
   );
 }
 
+function getRuntimeIssueMeta(issue: RuntimeIssue): { icon: string; title: string; subtitle: string } {
+  switch (issue.service) {
+    case 'ai':
+      return {
+        icon: 'AI',
+        title: 'Coachen kor i reservlage',
+        subtitle: issue.message,
+      };
+    case 'push':
+      return {
+        icon: '!',
+        title: 'Push-signaler ar begransade',
+        subtitle: issue.message,
+      };
+    case 'sync':
+      return {
+        icon: '~',
+        title: 'Serverkopplingen ar ojämn',
+        subtitle: issue.message,
+      };
+    default:
+      return {
+        icon: '?',
+        title: 'Systemstatus',
+        subtitle: issue.message,
+      };
+  }
+}
+
+function RuntimeStatusCard() {
+  const [issues, setIssues] = useState<RuntimeIssue[]>(() => getRuntimeIssues());
+
+  useEffect(() => {
+    const refresh = () => setIssues(getRuntimeIssues());
+    window.addEventListener(RUNTIME_ISSUE_EVENT, refresh);
+    window.addEventListener(RUNTIME_ISSUE_CLEAR_EVENT, refresh);
+    return () => {
+      window.removeEventListener(RUNTIME_ISSUE_EVENT, refresh);
+      window.removeEventListener(RUNTIME_ISSUE_CLEAR_EVENT, refresh);
+    };
+  }, []);
+
+  if (issues.length === 0) return null;
+
+  return (
+    <div style={{ padding: '0 var(--space-md)' }}>
+      <p style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        margin: '0 0 var(--space-sm)',
+      }}>
+        Systempuls
+      </p>
+      <div style={{
+        background: 'var(--color-surface-elevated)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
+      }}>
+        {issues.map((issue, index) => {
+          const meta = getRuntimeIssueMeta(issue);
+          return (
+            <div
+              key={`${issue.service}-${issue.ts}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-md)',
+                padding: 'var(--space-md) var(--space-lg)',
+                borderTop: index === 0 ? 'none' : '1px solid var(--color-border)',
+              }}
+            >
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--color-primary-muted)',
+                color: 'var(--color-primary)',
+                flexShrink: 0,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                fontWeight: 700,
+              }}>
+                {meta.icon}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontSize: 'var(--text-caption)',
+                  color: 'var(--color-text)',
+                  fontWeight: 600,
+                  marginBottom: 2,
+                }}>
+                  {meta.title}
+                </div>
+                <div style={{
+                  fontSize: 'var(--text-micro)',
+                  color: 'var(--color-text-muted)',
+                  lineHeight: 1.4,
+                }}>
+                  {meta.subtitle}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── HomeScreen ──────────────────────────────────────────────────────
 interface HomeScreenProps {
   rerender: () => void;
@@ -874,6 +991,7 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
     }}>
       <HeroCard />
       <BandStatusRow />
+      <RuntimeStatusCard />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
       <WaitingOnYouCard
         onNavigate={onNavigate}

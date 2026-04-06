@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { S, save, useGameStore } from '@/state/store';
+import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -30,8 +31,11 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     });
 
   if (error) {
+    setRuntimeIssue('sync', 'HQ kunde inte spara till servern just nu. Dina andringar finns kvar lokalt.', 'warn');
     throw error;
   }
+
+  clearRuntimeIssue('sync');
 }
 
 // Minimala fält som behövs för leaderboard
@@ -129,7 +133,9 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
 
   // Spara explicit till localStorage via save()
   save();
+  clearRuntimeIssue('sync');
   } catch (err) {
+    setRuntimeIssue('sync', 'HQ kunde inte lasa serverdata just nu. Lokal data visas tills vidare.', 'warn');
     console.error('[Sync] Error or abort:', err)
   } finally {
     clearTimeout(abortTimer)

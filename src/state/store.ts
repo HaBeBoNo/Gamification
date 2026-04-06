@@ -57,6 +57,7 @@ import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
 import { STORAGE_KEY, SEASON_DEFAULTS, SYNC_CONFIG, DEFAULT_METRICS } from '../lib/config';
+import { clearRuntimeIssue, setRuntimeIssue } from '../lib/runtimeHealth';
 import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification } from '../types/game';
 
 // ── Zustand store ────────────────────────────────────────────────
@@ -87,7 +88,10 @@ function supabaseSync(memberKey: string): void {
   if (_supabaseSyncTimer) clearTimeout(_supabaseSyncTimer);
   _supabaseSyncTimer = setTimeout(() => {
     syncToSupabase(memberKey)
-      .then(() => { _supabaseSyncRetryCount = 0; })
+      .then(() => {
+        _supabaseSyncRetryCount = 0;
+        clearRuntimeIssue('sync');
+      })
       .catch((err) => {
         console.error('[Sync] Supabase sync failed:', err);
         _supabaseSyncRetryCount++;
@@ -98,6 +102,7 @@ function supabaseSync(memberKey: string): void {
         } else {
           console.error('[Sync] Max retries reached — data may not be saved');
           _supabaseSyncRetryCount = 0;
+          setRuntimeIssue('sync', 'Serverkopplingen ar ojämn just nu. Dina andringar fortsatter sparas lokalt.', 'warn');
           // Dispatch custom event so NetworkToast can pick it up
           window.dispatchEvent(new CustomEvent('sek:sync-error', {
             detail: { message: 'Kunde inte synka till servern. Dina ändringar finns sparade lokalt.' },

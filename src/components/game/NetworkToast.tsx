@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { WifiOff } from 'lucide-react';
+import { RUNTIME_ISSUE_EVENT } from '@/lib/runtimeHealth';
 
 interface ToastItem {
   id: number;
@@ -57,6 +58,16 @@ export default function NetworkToast() {
     };
     window.addEventListener('sek:sync-error', handler);
     return () => window.removeEventListener('sek:sync-error', handler);
+  }, [addToast]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.toast) return;
+      addToast(detail?.issue?.message || 'En funktion kor i reservlage');
+    };
+    window.addEventListener(RUNTIME_ISSUE_EVENT, handler);
+    return () => window.removeEventListener(RUNTIME_ISSUE_EVENT, handler);
   }, [addToast]);
 
   if (toasts.length === 0) return null;

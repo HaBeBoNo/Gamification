@@ -21,6 +21,7 @@ import {
 } from '../lib/aiPrompts';
 import type { Quest } from '../types/game';
 import { isQuestDoneNow } from '../lib/questUtils';
+import { setRuntimeIssue } from '../lib/runtimeHealth';
 
 // Re-export constants that components already import from this file
 export { DEFAULT_COACH_NAMES, WELCOME_MESSAGES, buildCoachPrompt } from '../lib/aiPrompts';
@@ -179,6 +180,7 @@ export async function refreshCoach(): Promise<string> {
   try {
     return await callClaude(buildCoachPrompt(S.me) as string, 200);
   } catch {
+    setRuntimeIssue('ai', 'Coachen svarar inte just nu. Ett reservmeddelande visas i stallet.', 'warn', { toast: true });
     return 'Håll ut. Det du bygger nu syns inte ännu — men det spelar roll.';
   }
 }

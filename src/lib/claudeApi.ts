@@ -5,6 +5,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { AI_MODEL } from './config';
+import { clearRuntimeIssue, setRuntimeIssue } from './runtimeHealth';
 
 const API_URL = '/api/claude';
 const MODEL   = AI_MODEL;
@@ -15,18 +16,36 @@ const MODEL   = AI_MODEL;
  * Kastar ett Error om anropet misslyckas.
  */
 export async function callClaude(prompt: string, maxTokens = 400): Promise<string> {
-  const res = await fetch(API_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model:      MODEL,
-      max_tokens: maxTokens,
-      messages:   [{ role: 'user', content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  const data = await res.json();
-  return (data.content?.[0]?.text as string) || '';
+  try {
+    const res = await fetch(API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      MODEL,
+        max_tokens: maxTokens,
+        messages:   [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    const raw = await res.text();
+    let data: any = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      setRuntimeIssue('ai', 'Coachen svarar inte just nu. Appen fortsatter i reservlage.', 'warn');
+      throw new Error(`API ${res.status}`);
+    }
+
+    clearRuntimeIssue('ai');
+    return (data.content?.[0]?.text as string) || '';
+  } catch (error) {
+    setRuntimeIssue('ai', 'Coachen svarar inte just nu. Appen fortsatter i reservlage.', 'warn');
+    throw error;
+  }
 }
 
 /**
