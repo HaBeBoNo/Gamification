@@ -103,6 +103,20 @@ export default function Index() {
 
   const { handleTouchStart, handleTouchEnd } = useSwipeNavigation(mobileTab, handleTabTap);
 
+  const handleMobileTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    handlePullStart(e);
+    if (activeView !== 'home') {
+      handleTouchStart(e);
+    }
+  }, [activeView, handlePullStart, handleTouchStart]);
+
+  const handleMobileTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    handlePullEnd();
+    if (activeView !== 'home') {
+      handleTouchEnd(e);
+    }
+  }, [activeView, handlePullEnd, handleTouchEnd]);
+
   function openNotifications() {
     setShowNotifications(true);
     markAllRead();
@@ -317,9 +331,9 @@ export default function Index() {
           <div
             className="mobile-content"
             style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}
-            onTouchStart={(e) => { handlePullStart(e); handleTouchStart(e); }}
+            onTouchStart={handleMobileTouchStart}
             onTouchMove={handlePullMove}
-            onTouchEnd={(e) => { handlePullEnd(); handleTouchEnd(e); }}
+            onTouchEnd={handleMobileTouchEnd}
           >
             <AnimatePresence mode="wait">
               <motion.div

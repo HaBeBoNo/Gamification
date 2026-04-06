@@ -901,19 +901,19 @@ function getRuntimeIssueMeta(issue: RuntimeIssue): { icon: string; title: string
     case 'ai':
       return {
         icon: '✦',
-        title: 'Coachen är tillfälligt begränsad',
+        title: 'Coachen svarar inte just nu',
         subtitle: issue.message,
       };
     case 'push':
       return {
         icon: '•',
-        title: 'Pushsignaler är begränsade',
+        title: 'Pushsignaler når inte fram just nu',
         subtitle: issue.message,
       };
     case 'sync':
       return {
         icon: '↺',
-        title: 'Synken går i reservläge',
+        title: 'Synken svarar ojämnt just nu',
         subtitle: issue.message,
       };
     default:
@@ -950,7 +950,7 @@ function RuntimeStatusCard() {
         letterSpacing: '0.08em',
         margin: '0 0 var(--space-sm)',
       }}>
-        Systemstatus
+        Just nu
       </p>
       <div style={{
         background: 'var(--color-surface-elevated)',

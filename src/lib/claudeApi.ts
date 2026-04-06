@@ -36,14 +36,14 @@ export async function callClaude(prompt: string, maxTokens = 400): Promise<strin
     }
 
     if (!res.ok) {
-      setRuntimeIssue('ai', 'Coachen svarar inte just nu. Du kan fortsätta i appen under tiden.', 'warn');
+      setRuntimeIssue('ai', 'Försök igen om en liten stund. Resten av appen fungerar som vanligt.', 'warn');
       throw new Error(`API ${res.status}`);
     }
 
     clearRuntimeIssue('ai');
     return (data.content?.[0]?.text as string) || '';
   } catch (error) {
-    setRuntimeIssue('ai', 'Coachen svarar inte just nu. Du kan fortsätta i appen under tiden.', 'warn');
+    setRuntimeIssue('ai', 'Försök igen om en liten stund. Resten av appen fungerar som vanligt.', 'warn');
     throw error;
   }
 }
