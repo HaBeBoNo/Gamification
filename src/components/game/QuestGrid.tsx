@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import CollaborativeQuestCard from './CollaborativeQuestCard';
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { getQuestOrigin, isQuestDoneNow, refreshRecurringQuestStates } from '@/lib/questUtils';
+import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
 const TABS = [
   { id: 'personal', label: 'MINA' },
@@ -93,6 +94,9 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const active = visible.filter((q: any) => !isQuestDoneNow(q));
   const completed = visible.filter((q: any) => isQuestDoneNow(q));
   const allDone = visible.length > 0 && active.length === 0;
+  const relevantQuests = getRelevantActiveQuests(active, me || undefined, 2);
+  const focusQuest = relevantQuests[0];
+  const followUpQuest = relevantQuests[1];
 
   const showGrouped = filter === 'alla' && tab === 'all';
 
@@ -210,7 +214,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-card)',
-            padding: '16px',
+            padding: '18px 16px',
             marginBottom: 16,
             cursor: 'pointer',
             touchAction: 'manipulation',
@@ -230,36 +234,83 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             fontSize: 14,
             color: 'var(--color-text)',
             lineHeight: 1.5,
+            marginBottom: focusQuest ? 'var(--space-md)' : 0,
           }}>
             {coachMessage || '...'}
           </div>
-          <div style={{
-            position: 'absolute',
-            top: 16, right: 16,
-            fontSize: 11,
-            color: 'var(--color-text-muted)',
-            fontFamily: 'var(--font-ui)',
-          }}>
-            OPPNA →
-          </div>
+
+          {focusQuest && (
+            <div style={{
+              marginTop: 'var(--space-md)',
+              padding: 'var(--space-md)',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                marginBottom: 6,
+              }}>
+                Fokus nu
+              </div>
+              <div style={{
+                fontSize: 'var(--text-body)',
+                color: 'var(--color-text)',
+                fontWeight: 600,
+                marginBottom: 4,
+              }}>
+                {focusQuest.title}
+              </div>
+              <div style={{
+                fontSize: 'var(--text-caption)',
+                color: 'var(--color-text-muted)',
+                lineHeight: 1.45,
+              }}>
+                {getQuestFocusReason(focusQuest, me || undefined)}
+              </div>
+              {followUpQuest && (
+                <div style={{
+                  marginTop: 'var(--space-sm)',
+                  fontSize: 'var(--text-micro)',
+                  color: 'var(--color-text-muted)',
+                }}>
+                  Efter det: {followUpQuest.title}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Minimal header */}
-      <div className="qv-header">
-        <span className="qv-header-op">{S.operationName || 'Operation POST II'}</span>
-        <span className="qv-header-week">Vecka {S.weekNum || getWeekNumber()}</span>
-      </div>
+      <div style={{
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-card)',
+        padding: 'var(--space-md)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-md)',
+      }}>
+        {/* Minimal header */}
+        <div className="qv-header" style={{ padding: 0 }}>
+          <span className="qv-header-op">{S.operationName || 'Operation POST II'}</span>
+          <span className="qv-header-week">Vecka {S.weekNum || getWeekNumber()}</span>
+        </div>
 
-      {/* Filter pills */}
-      <div className="qf-pills stagger-1">
-        {FILTERS.map(f => (
-          <button
-            key={f.id}
-            className={'qf-pill ' + (filter === f.id ? 'active' : '')}
-            onClick={() => setFilter(f.id)}
-          >{f.label}</button>
-        ))}
+        {/* Filter pills */}
+        <div className="qf-pills stagger-1">
+          {FILTERS.map(f => (
+            <button
+              key={f.id}
+              className={'qf-pill ' + (filter === f.id ? 'active' : '')}
+              onClick={() => setFilter(f.id)}
+            >{f.label}</button>
+          ))}
+        </div>
       </div>
 
       <DelegationInbox rerender={rerender} />
@@ -326,6 +377,33 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         </div>
       ) : (
         <>
+          {focusQuest && !showGrouped && (
+            <div style={{
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-md) var(--space-lg)',
+            }}>
+              <div className="qf-section-header" style={{ padding: 0, marginBottom: 6 }}>
+                Börja här
+              </div>
+              <div style={{
+                fontSize: 'var(--text-body)',
+                color: 'var(--color-text)',
+                fontWeight: 600,
+                marginBottom: 4,
+              }}>
+                {focusQuest.title}
+              </div>
+              <div style={{
+                fontSize: 'var(--text-caption)',
+                color: 'var(--color-text-muted)',
+                lineHeight: 1.45,
+              }}>
+                {getQuestFocusReason(focusQuest, me || undefined)}
+              </div>
+            </div>
+          )}
           {collabQuests.length > 0 && (
             <div style={{ marginBottom: 'var(--space-md)' }}>
               {collabQuests.map(q => (

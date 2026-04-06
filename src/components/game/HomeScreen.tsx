@@ -14,6 +14,7 @@ import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationP
 import { RUNTIME_ISSUE_CLEAR_EVENT, RUNTIME_ISSUE_EVENT, getRuntimeIssues, type RuntimeIssue } from '@/lib/runtimeHealth';
 import { fetchPresenceSnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
+import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -375,6 +376,9 @@ function DailyCoachCard({
   if (!me) return null;
 
   const coachName = (S.chars[me] as any)?.coachName || 'Coach';
+  const relevantQuests = getRelevantActiveQuests(S.quests || [], me, 2);
+  const focusQuest = relevantQuests[0];
+  const followUpQuest = relevantQuests[1];
   const activeQuestCount = (S.quests || []).filter((q: any) => q.owner === me && !isQuestDoneNow(q)).length;
   const latestSocial = (S.feed || []).find((item: any) => item.who && item.who !== me);
 
@@ -444,11 +448,56 @@ function DailyCoachCard({
           fontSize: 'var(--text-body)',
           color: 'var(--color-text)',
           lineHeight: 1.55,
-          marginBottom: 'var(--space-md)',
-          minHeight: 44,
+          marginBottom: 'var(--space-lg)',
+          minHeight: 52,
         }}>
           {loading ? 'Coach kalibrerar dagens riktning...' : message}
         </div>
+
+        {focusQuest && (
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-md)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            <div style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-primary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              marginBottom: 6,
+            }}>
+              Nästa steg
+            </div>
+            <div style={{
+              fontSize: 'var(--text-body)',
+              color: 'var(--color-text)',
+              fontWeight: 600,
+              marginBottom: 4,
+            }}>
+              {focusQuest.title}
+            </div>
+            <div style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.45,
+            }}>
+              {getQuestFocusReason(focusQuest, me)}
+            </div>
+            {followUpQuest && (
+              <div style={{
+                marginTop: 'var(--space-sm)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-text-muted)',
+              }}>
+                Efter det: {followUpQuest.title}
+              </div>
+            )}
+          </div>
+        )}
 
         {latestSocial && (
           <div style={{
@@ -464,7 +513,7 @@ function DailyCoachCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onOpenCoach?.(message);
+              onNavigate?.('quests');
             }}
             style={{
               flex: 1,
@@ -480,12 +529,12 @@ function DailyCoachCard({
               cursor: 'pointer',
             }}
           >
-            Öppna coach
+            Fortsätt nu
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onNavigate?.('quests');
+              onOpenCoach?.(message);
             }}
             style={{
               flex: 1,
@@ -501,7 +550,7 @@ function DailyCoachCard({
               cursor: 'pointer',
             }}
           >
-            Gå till uppdrag
+            Öppna coach
           </button>
         </div>
       </div>
@@ -808,80 +857,6 @@ function WaitingOnYouCard({
   );
 }
 
-// ── FeaturedQuest ───────────────────────────────────────────────────
-function FeaturedQuest({ onNavigate }: { onNavigate?: (tab: string) => void }) {
-  const memberKey = S.me;
-  // Först: mina egna ej slutförda quests. Fallback: vilken som helst ej slutförd.
-  const myQuest = (S.quests ?? []).find((q: any) => !isQuestDoneNow(q) && q.owner === memberKey);
-  const anyQuest = (S.quests ?? []).find((q: any) => !isQuestDoneNow(q));
-  const quest: any = myQuest || anyQuest;
-  if (!quest) return null;
-
-  const questXp = quest.xp ?? quest.reward?.xp ?? '?';
-
-  return (
-    <div style={{ padding: '0 var(--space-md)' }}>
-      <p style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 'var(--text-micro)',
-        color: 'var(--color-text-muted)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        margin: '0 0 var(--space-sm)',
-      }}>
-        Nästa uppdrag
-      </p>
-      <div style={{
-        background: 'var(--color-surface-elevated)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-lg)',
-        border: '1px solid var(--color-border)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-sm)' }}>
-          <h3 style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)', margin: 0, fontWeight: 600 }}>
-            {quest.title}
-          </h3>
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-micro)',
-            color: 'var(--color-primary)',
-            background: 'var(--color-primary-muted)',
-            borderRadius: 'var(--radius-pill)',
-            padding: '2px 8px',
-            whiteSpace: 'nowrap',
-            marginLeft: 'var(--space-sm)',
-          }}>
-            {questXp} XP
-          </span>
-        </div>
-        {(quest.desc || quest.description) && (
-          <p style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-md)' }}>
-            {quest.desc || quest.description}
-          </p>
-        )}
-        <button
-          onClick={() => onNavigate?.('quests')}
-          style={{
-            width: '100%',
-            background: 'var(--color-primary)',
-            color: 'var(--color-surface)',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-sm) var(--space-md)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-caption)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            cursor: 'pointer',
-          }}
-        >
-          Påbörja →
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function getRuntimeIssueMeta(issue: RuntimeIssue): { icon: string; title: string; subtitle: string } {
   switch (issue.service) {
     case 'ai':
@@ -1016,15 +991,13 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
       paddingBottom: 'calc(var(--nav-height, 80px) + var(--space-xl))',
     }}>
       <HeroCard />
-      <BandStatusRow />
-      <RuntimeStatusCard />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
       <WaitingOnYouCard
         onNavigate={onNavigate}
         onOpenNotifications={onOpenNotifications}
         onOpenCoach={onOpenCoach}
       />
-      <FeaturedQuest onNavigate={onNavigate} />
+      <RuntimeStatusCard />
       <div style={{ padding: '0 var(--space-md)' }}>
         <p style={{
           fontFamily: 'var(--font-mono)',
@@ -1034,10 +1007,11 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
           letterSpacing: '0.08em',
           margin: '0 0 var(--space-sm)',
         }}>
-          Aktivitet
+          Bandets eko
         </p>
         <ActivityFeed hideHeader={true} />
       </div>
+      <BandStatusRow />
     </div>
   );
 }

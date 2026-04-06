@@ -5,6 +5,7 @@ import { MEMBERS } from '@/data/members';
 import { awardInsightBonus } from '@/hooks/useXP';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { pushFeedEntry } from '@/lib/feed';
+import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -25,12 +26,21 @@ export default function QuestCompleteModal({
   rerender,
 }: QuestCompleteModalProps) {
   const [phase, setPhase] = useState(1);
-  const [what, setWhat] = useState('');
-  const [unexpected, setUnexpected] = useState('');
+  const [reflection, setReflection] = useState('');
+  const me = S.me;
+  const nextQuest = getRelevantActiveQuests(
+    (S.quests || []).filter((item: any) => item.id !== quest.id),
+    me || undefined,
+    1
+  )[0] || null;
+  const [nextStep, setNextStep] = useState(nextQuest?.title || '');
   const [highFiveTo, setHighFiveTo] = useState<string | null>(null);
 
-  const otherMembers = Object.entries(MEMBERS).filter(([id]) => id !== S.me);
+  const otherMembers = Object.entries(MEMBERS).filter(([id]) => id !== me);
   const trapRef = useFocusTrap<HTMLDivElement>(true);
+  const coachName = me ? ((S.chars[me] as any)?.coachName || 'Coach') : 'Coach';
+  const nextDirection = buildCoachNextDirection(quest, nextQuest);
+  const totalXp = xpGained + (reflection.trim() ? 15 : 0);
 
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
@@ -43,25 +53,28 @@ export default function QuestCompleteModal({
   }, [onClose]);
 
   function submitPhase1() {
-    if (!what.trim()) return;
-    // Spara genomförande på quest
-    const q = S.quests.find((q: any) => q.id === quest.id);
-    if (q) q.completionNote = what;
-    save();
     setPhase(2);
   }
 
   function submitPhase2() {
-    // Insikt + bonus XP hanteras av awardInsightBonus i useXP
-    awardInsightBonus(quest.id, unexpected, quest.title);
+    const q = S.quests.find((item: any) => item.id === quest.id);
+    if (q) {
+      q.completionNote = reflection.trim();
+      q.nextStep = nextStep.trim();
+    }
+    if (reflection.trim()) {
+      awardInsightBonus(quest.id, reflection, quest.title);
+    } else {
+      save();
+    }
     setPhase(3);
   }
 
   function submitHighFive() {
-    if (highFiveTo && S.me) {
+    if (highFiveTo && me) {
       const targetName = (MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo;
       pushFeedEntry({
-        who: S.me,
+        who: me,
         action: `gav en high-five till ${targetName} 🙌`,
         xp: 0,
       });
@@ -81,7 +94,7 @@ export default function QuestCompleteModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: 'max(16px, env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
@@ -96,7 +109,9 @@ export default function QuestCompleteModal({
           border: '1px solid var(--color-border)',
           padding: '28px 24px',
           width: '100%',
-          maxWidth: '420px',
+          maxWidth: '460px',
+          maxHeight: 'min(88vh, 760px)',
+          overflowY: 'auto',
           position: 'relative',
         }}
       >
@@ -140,7 +155,7 @@ export default function QuestCompleteModal({
           ))}
         </div>
 
-        {/* ── Fas 1: Genomförande ── */}
+        {/* ── Fas 1: Riktning ── */}
         {phase === 1 && (
           <>
             <div style={{
@@ -150,71 +165,149 @@ export default function QuestCompleteModal({
               marginBottom: 8,
               fontFamily: 'var(--font-ui)',
             }}>
-              UPPDRAG SLUTFÖRT
+              UPPDRAG LANDAT
+            </div>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{
+                fontSize: 32,
+                marginBottom: 8,
+              }}>
+                ⚡
+              </div>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: 'var(--color-primary)',
+                marginBottom: 4,
+              }}>
+                +{xpGained} XP
+              </div>
+              <div style={{
+                fontSize: 13,
+                color: 'var(--color-text-muted)',
+              }}>
+                {quest.title}
+              </div>
             </div>
             <div style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: 'var(--color-text)',
-              marginBottom: 20,
-              lineHeight: 1.3,
+              padding: 'var(--space-md)',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: 16,
             }}>
-              {quest.title}
+              <div style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                marginBottom: 6,
+              }}>
+                {coachName}
+              </div>
+              <div style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: 'var(--color-text)',
+                marginBottom: 8,
+                lineHeight: 1.4,
+              }}>
+                {nextDirection}
+              </div>
+              {nextQuest && (
+                <div style={{
+                  fontSize: 'var(--text-caption)',
+                  color: 'var(--color-text-muted)',
+                  lineHeight: 1.45,
+                }}>
+                  {getQuestFocusReason(nextQuest, me || undefined)}
+                </div>
+              )}
             </div>
+            {nextQuest && (
+              <div style={{
+                padding: 'var(--space-md)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-bg)',
+                marginBottom: 16,
+              }}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-micro)',
+                  color: 'var(--color-text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: 6,
+                }}>
+                  Fokus härnäst
+                </div>
+                <div style={{
+                  fontSize: 'var(--text-body)',
+                  color: 'var(--color-text)',
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}>
+                  {nextQuest.title}
+                </div>
+                <div style={{
+                  fontSize: 'var(--text-caption)',
+                  color: 'var(--color-text-muted)',
+                }}>
+                  {nextQuest.xp ?? '?'} XP
+                </div>
+              </div>
+            )}
             <div style={{
               fontSize: 14,
               color: 'var(--color-text-muted)',
               marginBottom: 12,
             }}>
-              Vad gjorde du — och hur gick det?
+              Ta 20 sekunder och landa det här innan du går vidare.
             </div>
-            <textarea
-              autoFocus
-              rows={4}
-              value={what}
-              onChange={(e) => setWhat(e.target.value)}
-              placeholder="Skriv fritt..."
-              style={{
-                width: '100%',
-                background: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--color-text)',
-                padding: '12px',
-                fontSize: 14,
-                resize: 'none',
-                fontFamily: 'var(--font-body)',
-                boxSizing: 'border-box',
-              }}
-            />
-            <button
-              onClick={submitPhase1}
-              disabled={!what.trim()}
-              style={{
-                marginTop: 16,
-                width: '100%',
-                background: what.trim()
-                  ? 'var(--color-primary)'
-                  : 'var(--color-border)',
-                color: what.trim()
-                  ? '#fff'
-                  : 'var(--color-text-muted)',
-                border: 'none',
-                borderRadius: 'var(--radius-pill)',
-                padding: '12px',
-                fontSize: 13,
-                fontFamily: 'var(--font-ui)',
-                letterSpacing: '0.08em',
-                cursor: what.trim() ? 'pointer' : 'not-allowed',
-                touchAction: 'manipulation',
-              }}
-            >
-              FORTSÄTT
-            </button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button
+                onClick={submitPhase1}
+                style={{
+                  flex: 1,
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '12px',
+                  fontSize: 13,
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '0.08em',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                }}
+              >
+                REFLEKTERA KORT
+              </button>
+              <button
+                onClick={onClose}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  color: 'var(--color-text-muted)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '12px',
+                  fontSize: 13,
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '0.08em',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                }}
+              >
+                STÄNG HÄR
+              </button>
+            </div>
           </>
         )}
 
-        {/* ── Fas 2: Lärande ── */}
+        {/* ── Fas 2: Reflektion ── */}
         {phase === 2 && (
           <>
             <div style={{
@@ -230,17 +323,17 @@ export default function QuestCompleteModal({
               fontSize: 16,
               fontWeight: 600,
               color: 'var(--color-text)',
-              marginBottom: 20,
+              marginBottom: 10,
               lineHeight: 1.4,
             }}>
-              Vad var det mest oväntade?
+              Vad vill du ta med dig från det här?
             </div>
             <textarea
               autoFocus
               rows={4}
-              value={unexpected}
-              onChange={(e) => setUnexpected(e.target.value)}
-              placeholder="Valfritt — ger +15 XP om du svarar..."
+              value={reflection}
+              onChange={(e) => setReflection(e.target.value)}
+              placeholder="Kort reflektion. Vad lärde du dig, eller vad kändes viktigt?"
               style={{
                 width: '100%',
                 background: 'var(--color-bg)',
@@ -250,6 +343,30 @@ export default function QuestCompleteModal({
                 padding: '12px',
                 fontSize: 14,
                 resize: 'none',
+                fontFamily: 'var(--font-body)',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{
+              fontSize: 14,
+              color: 'var(--color-text-muted)',
+              marginTop: 16,
+              marginBottom: 10,
+            }}>
+              Vad är ditt nästa lilla steg?
+            </div>
+            <input
+              value={nextStep}
+              onChange={(e) => setNextStep(e.target.value)}
+              placeholder="Skriv nästa steg medan känslan är färsk..."
+              style={{
+                width: '100%',
+                background: 'var(--color-bg)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--color-text)',
+                padding: '12px',
+                fontSize: 14,
                 fontFamily: 'var(--font-body)',
                 boxSizing: 'border-box',
               }}
@@ -271,34 +388,39 @@ export default function QuestCompleteModal({
                 touchAction: 'manipulation',
               }}
             >
-              {unexpected.trim() ? 'SPARA INSIKT (+15 XP)' : 'HOPPA ÖVER'}
+              {reflection.trim() ? 'SPARA REFLEKTION (+15 XP)' : 'SPARA OCH GÅ VIDARE'}
             </button>
           </>
         )}
 
-        {/* ── Fas 3: Bekräftelse + High-five ── */}
+        {/* ── Fas 3: Landning + High-five ── */}
         {phase === 3 && (
           <>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ marginBottom: 24 }}>
               <div style={{
-                fontSize: 32,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-text-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
                 marginBottom: 8,
               }}>
-                ⚡
+                Riktning sparad
               </div>
               <div style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: 'var(--color-primary)',
-                marginBottom: 4,
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'var(--color-text)',
+                marginBottom: 6,
+                lineHeight: 1.35,
               }}>
-                +{xpGained + (unexpected.trim() ? 15 : 0)} XP
+                {nextStep.trim() || nextDirection}
               </div>
               <div style={{
                 fontSize: 13,
                 color: 'var(--color-text-muted)',
               }}>
-                {quest.title}
+                Totalt för det här steget: +{totalXp} XP
               </div>
             </div>
 
@@ -309,7 +431,7 @@ export default function QuestCompleteModal({
               fontFamily: 'var(--font-ui)',
               letterSpacing: '0.08em',
             }}>
-              GE EN HIGH-FIVE
+              DELA EN SNABB SIGNAL
             </div>
             <div style={{
               display: 'flex',
