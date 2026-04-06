@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    1. DESIGN TOKEN SYSTEM
    ══════════════════════════════════════ */
@@ -109,9 +106,6 @@
   }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    2. BASE STYLES
    ══════════════════════════════════════ */
@@ -143,9 +137,6 @@ button, input, textarea {
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    3. LAYOUT — MOBILE FIRST
@@ -223,9 +214,6 @@ button, input, textarea {
   .sidebar-r { display: none; }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    4. PANEL — shared surface
    ══════════════════════════════════════ */
@@ -250,9 +238,6 @@ button, input, textarea {
   align-items: center;
   gap: var(--space-sm);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    5. TOPBAR — frosted glass, sticky
@@ -428,9 +413,6 @@ button, input, textarea {
   border-color: hsla(0, 84%, 60%, 0.2);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    6. BOTTOM TAB BAR — mobile only
    ══════════════════════════════════════ */
@@ -492,9 +474,6 @@ button, input, textarea {
   .app-shell { padding-bottom: calc(60px + var(--safe-bottom)); }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    7. METRICS BAR (HUD Strip)
    ══════════════════════════════════════ */
@@ -550,9 +529,6 @@ button, input, textarea {
   to { opacity: 1; transform: translateY(0); }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    8. QUEST CENTER
    ══════════════════════════════════════ */
@@ -604,9 +580,6 @@ button, input, textarea {
     gap: var(--space-md);
   }
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    9. QUEST CARD — shadow-based, no border
@@ -810,9 +783,6 @@ button, input, textarea {
 .complete-btn:active { transform: translateY(0); }
 .complete-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    10. LEADERBOARD
    ══════════════════════════════════════ */
@@ -901,9 +871,6 @@ button, input, textarea {
   border: 1px solid;
   white-space: nowrap;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    11. SCOREBOARD — league table
@@ -1221,9 +1188,6 @@ button, input, textarea {
   white-space: nowrap;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    LEADERBOARD VIEW (full-screen)
    ══════════════════════════════════════ */
@@ -1507,9 +1471,6 @@ button, input, textarea {
   letter-spacing: 0.02em;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    12. ACTIVITY FEED
    ══════════════════════════════════════ */
@@ -1733,9 +1694,6 @@ button, input, textarea {
   padding-left: var(--space-md);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    13. AI COACH
    ══════════════════════════════════════ */
@@ -1786,9 +1744,6 @@ button, input, textarea {
   background: var(--color-hover);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    14. WEEKLY CHECKOUT
    ══════════════════════════════════════ */
@@ -1824,9 +1779,6 @@ button, input, textarea {
   cursor: default;
   border-color: hsla(142, 71%, 45%, 0.05);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    15. ONBOARDING
@@ -1980,9 +1932,6 @@ button, input, textarea {
   letter-spacing: 0.02em;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    16. OVERLAYS
    ══════════════════════════════════════ */
@@ -2007,7 +1956,7 @@ button, input, textarea {
   background: var(--color-surface);
   border-radius: 14px;
   padding: var(--space-2xl);
-  max-width: 448px;
+  max-width: min(448px, calc(100vw - 32px));
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -2019,6 +1968,10 @@ button, input, textarea {
 @keyframes viewSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 .overlay-close {
   position: absolute;
@@ -2213,9 +2166,6 @@ button, input, textarea {
   color: var(--color-text-primary);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    17. ADMIN PANEL
    ══════════════════════════════════════ */
@@ -2261,9 +2211,6 @@ button, input, textarea {
   margin-bottom: 2px;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    18. EMPTY STATES
    ══════════════════════════════════════ */
@@ -2282,9 +2229,6 @@ button, input, textarea {
 }
 .empty-icon { font-size: 1.75rem; opacity: 0.25; }
 .empty-text { font-size: var(--text-body); line-height: 1.5; color: var(--color-text-secondary); max-width: 240px; }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    19. XP ANIMATION
@@ -2326,9 +2270,6 @@ button, input, textarea {
   color: hsla(142, 71%, 45%, 0.6);
   box-shadow: var(--shadow-card);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    20. VIEW TRANSITIONS
@@ -2379,9 +2320,6 @@ button, input, textarea {
 .stagger-5 { animation: viewSlideIn 200ms var(--ease-out) 200ms both; }
 .stagger-6 { animation: viewSlideIn 200ms var(--ease-out) 250ms both; }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    21. UTILITY & ANIMATIONS
    ══════════════════════════════════════ */
@@ -2417,9 +2355,6 @@ button, input, textarea {
   30% { opacity: 1; transform: scale(1); }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    22. SCROLLBAR & SELECTION
    ══════════════════════════════════════ */
@@ -2433,9 +2368,6 @@ button, input, textarea {
   color: var(--color-text-primary);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    23. FOCUS VISIBLE
    ══════════════════════════════════════ */
@@ -2443,9 +2375,6 @@ button, input, textarea {
   outline: none;
   box-shadow: 0 0 0 2px var(--color-base), 0 0 0 4px hsla(38, 66%, 47%, 0.35);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    24. RESPONSIVE — league table + metrics
@@ -2464,9 +2393,6 @@ button, input, textarea {
   .topbar { padding: 0 var(--space-lg); }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    25. SKELETON LOADERS
    ══════════════════════════════════════ */
@@ -2481,9 +2407,6 @@ button, input, textarea {
 .skeleton-card {
   pointer-events: none;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    26. INSTALL PROMPT BANNER
@@ -2540,9 +2463,6 @@ button, input, textarea {
   .install-banner { display: none; }
 } */
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    27. OFFLINE BANNER & NETWORK TOAST
    ══════════════════════════════════════ */
@@ -2592,9 +2512,6 @@ button, input, textarea {
   color: var(--color-warning);
   flex-shrink: 0;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    28. COACH CHAT — messaging view
@@ -2769,9 +2686,6 @@ button, input, textarea {
 .cc-send:disabled { cursor: not-allowed; opacity: 0.5; }
 .cc-send:not(:disabled):hover { transform: scale(1.05); }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    29. XP OVERLAY — count-up animation
    ══════════════════════════════════════ */
@@ -2841,9 +2755,6 @@ button, input, textarea {
   text-transform: uppercase;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    30. IDEAS VIEW — Carl's contemplative flow
    ══════════════════════════════════════ */
@@ -2912,9 +2823,6 @@ button, input, textarea {
 .idea-board-btn:focus-visible {
   color: var(--color-text-primary);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    31. DELEGATION UI
@@ -3195,9 +3103,6 @@ button, input, textarea {
 }
 .inbox-decline:hover { color: var(--color-text-secondary); }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    COMMAND PALETTE
    ══════════════════════════════════════ */
@@ -3311,9 +3216,6 @@ button, input, textarea {
   color: var(--color-text-muted);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    33. ACTIVITY HEATMAP
    ══════════════════════════════════════ */
@@ -3417,9 +3319,6 @@ button, input, textarea {
   margin-top: var(--space-sm);
 }
 .sb-expanded-heatmap::-webkit-scrollbar { display: none; }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    34. ADMIN CENTER
@@ -3822,9 +3721,6 @@ button, input, textarea {
   color: var(--color-text-primary);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    35. QUEST FILTER PILLS
    ══════════════════════════════════════ */
@@ -3895,9 +3791,6 @@ button, input, textarea {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.2); }
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    36. ONBOARDING — cinematic redesign
@@ -4104,9 +3997,6 @@ button, input, textarea {
   color: var(--color-text-secondary);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    37. SKILL NODES
    ══════════════════════════════════════ */
@@ -4285,9 +4175,6 @@ button, input, textarea {
   padding: var(--space-lg);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    38. COMMUNITY GOAL
    ══════════════════════════════════════ */
@@ -4450,9 +4337,6 @@ button, input, textarea {
   color: var(--color-text-primary);
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    39. DAILY CHALLENGE
    ══════════════════════════════════════ */
@@ -4522,9 +4406,6 @@ button, input, textarea {
   font-weight: 700;
   color: var(--color-accent);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    40. TROPHY ROOM
@@ -4614,9 +4495,6 @@ button, input, textarea {
   color: var(--color-text-muted);
   line-height: 1.3;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    41. NOTIFICATION SYSTEM
@@ -4772,9 +4650,6 @@ button, input, textarea {
   font-size: var(--text-body);
   color: var(--color-text-secondary);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    42. QUEST DETAIL VIEW
@@ -4947,9 +4822,6 @@ button, input, textarea {
   text-align: center;
   padding: var(--space-lg);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    43. SEASON VIEW
@@ -5147,9 +5019,6 @@ button, input, textarea {
   font-weight: 700;
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    44. SHORTCUTS OVERLAY
    ══════════════════════════════════════ */
@@ -5202,9 +5071,6 @@ button, input, textarea {
   font-size: var(--text-body);
   color: var(--color-text-secondary);
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    DRAG & DROP — Quest reordering
@@ -5317,9 +5183,6 @@ button, input, textarea {
   100% { opacity: 0; }
 }
 
---gold: #f0c040;
-  --red: #e05040;
-
   /* ══════════════════════════════════════
    45. MEMBER STATUS DOT
    ══════════════════════════════════════ */
@@ -5327,9 +5190,6 @@ button, input, textarea {
   position: relative;
   display: inline-flex;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    50. BAND HUB
@@ -5685,9 +5545,6 @@ button, input, textarea {
   cursor: pointer;
   align-self: flex-start;
 }
-
---gold: #f0c040;
-  --red: #e05040;
 
   /* ══════════════════════════════════════
    51. CALENDAR STRIP (Quest view)

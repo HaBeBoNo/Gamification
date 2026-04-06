@@ -24,7 +24,7 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   background: 'none',
   border: 'none',
   color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-  fontSize: '11px',
+  fontSize: '12px',
   fontFamily: 'var(--font-ui, var(--font-mono))',
   letterSpacing: '0.05em',
   padding: '8px 4px',

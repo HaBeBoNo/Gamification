@@ -21,21 +21,24 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
     S.quests = S.quests.filter((q: any) => q.id !== quest.id);
 
     // Spara anledning i member-profil för coach-kalibrering
-    if (!S.chars[S.me].deletedQuests) S.chars[S.me].deletedQuests = [];
-    S.chars[S.me].deletedQuests.push({
-      title: quest.title,
-      cat: quest.cat,
-      reason: reasonId,
-      ts: Date.now(),
-    });
+    if (S.me && S.chars[S.me]) {
+      const charData = S.chars[S.me];
+      if (!charData.deletedQuests) charData.deletedQuests = [];
+      charData.deletedQuests.push({
+        title: quest.title,
+        cat: quest.cat,
+        reason: reasonId,
+        ts: Date.now(),
+      });
 
-    // Räkna aktiva quests — om under 3, flagga för auto-generering
-    const remaining = S.quests.filter(
-      (q: any) => q.owner === S.me && !isQuestDoneNow(q)
-    ).length;
+      // Räkna aktiva quests — om under 3, flagga för auto-generering
+      const remaining = S.quests.filter(
+        (q: any) => q.owner === S.me && !isQuestDoneNow(q)
+      ).length;
 
-    if (remaining < 3) {
-      S.chars[S.me].needsQuestRefill = true;
+      if (remaining < 3) {
+        charData.needsQuestRefill = true;
+      }
     }
 
     save();

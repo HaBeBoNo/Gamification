@@ -11,7 +11,7 @@
  *   'generated'     — AI-coach-genererat: personal === true och type !== 'personal'
  *                     (AI-genererade quests sätts med personal: true men typ
  *                      'standard'/'strategic'/etc. — aldrig 'personal')
- *   'personal'      — bas-quests från quests.js ELLER
+ *   'personal'      — bas-quests från quests.ts ELLER
  *                     användarskapade via CreateQuestModal (type: 'personal')
  *
  * Notera: `id >= 900` används INTE — AI-genererade quests får dynamiska ID:n
@@ -24,7 +24,7 @@ export function getQuestOrigin(quest: any): 'generated' | 'collaborative' | 'per
   // Egenskapade — användarskapade soloquest via CreateQuestModal (type: 'personal', ej collaborative)
   if (quest.type === 'personal' && !quest.collaborative) return 'personal';
 
-  // Allt annat: bas-quests från quests.js + AI-genererade quests → 'generated'
+  // Allt annat: bas-quests från quests.ts + AI-genererade quests → 'generated'
   return 'generated';
 }
 

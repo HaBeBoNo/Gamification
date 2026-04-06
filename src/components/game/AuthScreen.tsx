@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthScreen() {
@@ -6,6 +6,17 @@ export default function AuthScreen() {
   const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
+
+  useEffect(() => {
+    function handleAuthError(event: Event) {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.message) {
+        setError(customEvent.detail.message);
+      }
+    }
+    window.addEventListener('sek:auth-error', handleAuthError);
+    return () => window.removeEventListener('sek:auth-error', handleAuthError);
+  }, []);
 
   async function handleGoogleLogin() {
     if (!supabase) return;

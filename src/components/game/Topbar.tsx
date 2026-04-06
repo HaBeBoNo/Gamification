@@ -1,15 +1,10 @@
 import React from 'react';
 import { S } from '@/state/store';
-import { MEMBERS } from '@/data/members';
 import { Bell } from 'lucide-react';
-import NotificationBell from './NotificationBell';
 
 interface TopbarProps {
-  rerender: () => void;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   onAdmin: () => void;
-  logoRef?: (node: any) => void;
+  logoRef?: (node: HTMLButtonElement | null) => void;
   onNotifications?: () => void;
   onLogoClick?: () => void;
 }
@@ -29,6 +24,7 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
       zIndex: 100,
       background: 'var(--color-surface)',
       borderBottom: '1px solid var(--color-border)',
+      paddingTop: 'max(8px, env(safe-area-inset-top))',
     }}>
       {/* Huvudrad */}
       <div style={{
@@ -58,15 +54,17 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           {/* Streak */}
           {streak > 0 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: 'var(--color-surface-elevated)',
-              borderRadius: 'var(--radius-pill)',
-              padding: '3px 8px',
-              fontSize: 'var(--text-micro)',
-              color: 'var(--color-text-muted)',
-              fontFamily: 'var(--font-mono)',
-            }}>
+            <div
+              title="Aktiv varje dag — missa inte din streak!"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: 'var(--color-surface-elevated)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '3px 8px',
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-mono)',
+              }}>
               🔥 {streak}
             </div>
           )}

@@ -1,26 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MEMBERS } from '@/data/members';
+import { EMAIL_TO_MEMBER } from '@/data/members';
 import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
 import { registerPush } from '@/lib/webPush';
-
-const EMAIL_TO_MEMBER: Record<string, string> = {
-  'hannes.norrby@gmail.com':  'hannes',
-  'mschulzprivate@gmail.com': 'martin',
-  'luddeslinser@gmail.com':   'ludvig',
-  'johanneslincke@gmail.com': 'johannes',
-  'simonfalk90@gmail.com':    'simon',
-  'nilsmedskils@gmail.com':   'nisse',
-  'niklas.arkhede@gmail.com': 'niklas',
-  'callegh9351@gmail.com':    'carl',
-}
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [memberKey, setMemberKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [synced, setSynced] = useState(false);
+
+  const handleUser = useCallback(async (supabaseUser: any) => {
+    const email = String(supabaseUser?.email || '').trim().toLowerCase();
+    const resolvedMemberKey = EMAIL_TO_MEMBER[email];
+
+    if (!resolvedMemberKey) {
+      setUser(null);
+      setMemberKey(null);
+      S.me = null;
+      save();
+      window.dispatchEvent(new CustomEvent('sek:auth-error', {
+        detail: { message: `Okänd e-postadress: ${email || 'saknas'}. Kontakta Hannes.` },
+      }));
+      setLoading(false);
+      setSynced(true);
+      if (supabase) void supabase.auth.signOut();
+      return;
+    }
+
+    setUser(supabaseUser);
+    setMemberKey(resolvedMemberKey);
+    S.me = resolvedMemberKey;
+    save();
+
+    setLoading(false);
+    setSynced(true);
+
+    void syncFromSupabase(resolvedMemberKey).catch((error) => {
+      console.warn('[Auth] Background sync failed:', error);
+    });
+
+    void registerPush(resolvedMemberKey).catch((error) => {
+      console.error('[Push] Failed:', error);
+    });
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -39,13 +63,13 @@ export function useAuth() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event, session?.user?.email);
+      async (_event, session) => {
         if (session?.user) {
           await handleUser(session.user);
         } else {
           setUser(null);
           setMemberKey(null);
+          S.me = null;
           setLoading(false);
           setSynced(true);
         }
@@ -55,53 +79,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
-
-  async function handleUser(supabaseUser: any) {
-    console.log('handleUser called for:', supabaseUser.email);
-    try {
-      setUser(supabaseUser);
-
-      // Backup — garanterar att appen aldrig fastnar oavsett sync-status
-      const backupTimer = setTimeout(() => {
-        console.warn('[Auth] Backup timer fired — forcing synced=true')
-        setLoading(false)
-        setSynced(true)
-      }, 10000)
-
-      const memberKey = EMAIL_TO_MEMBER[supabaseUser.email ?? '']
-      if (!memberKey) {
-        console.warn('No member match for email:', supabaseUser.email)
-        clearTimeout(backupTimer)
-        setLoading(false)
-        setSynced(true)
-        return
-      }
-      console.log('[Auth] Matched member:', memberKey)
-
-      setMemberKey(memberKey);
-      S.me = memberKey;
-
-      // Visa appen direkt med lokal data — synka Supabase i bakgrunden
-      clearTimeout(backupTimer)
-      setLoading(false)
-      setSynced(true)
-
-      syncFromSupabase(memberKey).catch(e =>
-        console.warn('[Auth] Background sync failed:', e)
-      );
-
-      console.log('After memberKey resolve:', 'S.onboarded=', S.onboarded, 'S.me=', S.me);
-      S.me = memberKey;
-      save();
-
-      // Register for push notifications (non-blocking)
-      console.log('[Auth] Calling registerPush for:', memberKey)
-      registerPush(memberKey).catch(e => console.error('[Push] Failed:', e));
-    } catch (e) {
-      console.error('handleUser error:', e)
-    }
-  }
+  }, [handleUser]);
 
   return { user, memberKey, loading, synced };
 }

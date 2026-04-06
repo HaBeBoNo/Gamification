@@ -4,8 +4,10 @@
 // oberoende av spellogik.
 // ═══════════════════════════════════════════════════════════════
 
+import { AI_MODEL } from './config';
+
 const API_URL = '/api/claude';
-const MODEL   = 'claude-sonnet-4-20250514';
+const MODEL   = AI_MODEL;
 
 /**
  * callClaude(prompt, maxTokens)

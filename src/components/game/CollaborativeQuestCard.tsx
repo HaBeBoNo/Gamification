@@ -15,7 +15,7 @@ interface Props {
 
 export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
   const { quest_data: q, completed_by, participants, initiator } = quest
-  const hasCompleted = completed_by.includes(S.me)
+  const hasCompleted = S.me ? completed_by.includes(S.me) : false
   const initiatorMember = (MEMBERS as any)[initiator]
 
   async function handleComplete() {
@@ -27,7 +27,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
     await awardXP(q, q.xp || 50, null)
 
     // Push-notis
-    const memberName = (MEMBERS as any)[S.me]?.name || S.me
+    const memberName = (S.me && (MEMBERS as any)[S.me]?.name) || S.me || 'Unknown'
     if (result.allDone) {
       sendPush(
         `${memberName} slutförde ert gemensamma uppdrag`,

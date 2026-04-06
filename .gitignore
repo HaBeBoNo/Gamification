@@ -6,3 +6,4 @@ dist
 FETCH_HEAD
 .claude/
 .vercel
+.DS_Store

@@ -181,7 +181,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
               />
               <button
                 onClick={() => {
-                  if (!statusUpdate.trim()) return;
+                  if (!statusUpdate.trim() || !S.me) return;
                   const ownerName = (MEMBERS as any)[S.me]?.name || S.me;
                   addNotifToAll({
                     id: Date.now() + Math.random(),

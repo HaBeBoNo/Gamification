@@ -169,8 +169,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         table: 'collaborative_quests',
       }, async () => {
         await fetchMyCollaborativeQuests()
-        const updated = S.quests.filter((q: any) => q.collaborative)
-        setCollabQuests(updated)
+        // Note: fetchMyCollaborativeQuests updates collabQuests state directly
+        // This callback is for side effects only
       })
       .subscribe()
 

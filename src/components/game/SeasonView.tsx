@@ -129,7 +129,7 @@ export default function SeasonView() {
                 color: 'hsl(45, 80%, 55%)',
               }}
               labelFormatter={(w) => `Vecka ${w}`}
-              formatter={(val: number) => [`${val} XP`, 'Total']}
+              formatter={(val) => [`${val} XP`, 'Total']}
             />
             <Area
               type="monotone"

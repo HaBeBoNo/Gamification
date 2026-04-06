@@ -30,7 +30,7 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     });
 
   if (error) {
-    console.warn('Supabase sync failed:', error.message);
+    throw error;
   }
 }
 
@@ -42,7 +42,6 @@ let syncTimeout: ReturnType<typeof setTimeout> | null = null
 
 export async function syncFromSupabase(memberKey: string, onComplete?: () => void): Promise<void> {
   if (isSyncing) {
-    console.log('[Sync] Already syncing, skipping duplicate call')
     onComplete?.()
     return
   }
@@ -81,8 +80,6 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
     .select('member_key, data')
     .neq('member_key', memberKey)
     .abortSignal(controller.signal);
-
-  console.log('[Sync] othersData:', othersData?.length, 'othersError:', othersError);
 
   // Applicera full data för inloggad member
   const remote = myRow.data as any;

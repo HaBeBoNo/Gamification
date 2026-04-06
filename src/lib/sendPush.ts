@@ -12,6 +12,8 @@ export async function sendPush(
   optionsOrExcludeMember?: string | SendPushOptions,
   url: string = '/'
 ): Promise<void> {
+  if (!supabase) return
+
   const options: SendPushOptions = typeof optionsOrExcludeMember === 'string'
     ? { excludeMember: optionsOrExcludeMember, url }
     : { ...(optionsOrExcludeMember || {}), url: optionsOrExcludeMember?.url || url }
@@ -22,7 +24,7 @@ export async function sendPush(
   if (options.targetMemberKeys && targetMemberKeys.length === 0) return
 
   try {
-    await supabase.functions.invoke('send-push', {
+    const { error } = await supabase.functions.invoke('send-push', {
       body: {
         title,
         body,
@@ -31,6 +33,7 @@ export async function sendPush(
         target_member_keys: targetMemberKeys.length > 0 ? targetMemberKeys : undefined,
       },
     })
+    if (error) throw error
   } catch (err) {
     console.error('sendPush failed:', err)
   }

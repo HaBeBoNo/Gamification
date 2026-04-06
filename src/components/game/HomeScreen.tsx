@@ -17,6 +17,48 @@ function HeroCard() {
   const memberKey = S.me!;
   const member = (MEMBERS as Record<string, any>)[memberKey];
   const char = (S.chars as Record<string, any>)?.[memberKey];
+
+  // Show skeleton while loading
+  if (!char) {
+    return (
+      <div style={{
+        background: 'linear-gradient(160deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
+        borderBottom: '1px solid var(--color-border)',
+        padding: 'var(--space-xl) var(--space-lg) var(--space-lg)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-lg)',
+        animation: 'pulse 2s ease-in-out infinite',
+      }}>
+        <div style={{
+          width: 96, height: 96, borderRadius: '50%',
+          background: 'var(--color-border)', flexShrink: 0,
+        }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            height: 20, borderRadius: 4,
+            background: 'var(--color-border)', marginBottom: 'var(--space-sm)',
+            width: '60%',
+          }} />
+          <div style={{
+            height: 16, borderRadius: 4,
+            background: 'var(--color-border)', marginBottom: 'var(--space-sm)',
+            width: '40%',
+          }} />
+          <div style={{
+            height: 3, borderRadius: 2,
+            background: 'var(--color-border)', marginBottom: 'var(--space-sm)',
+          }} />
+          <div style={{
+            height: 12, borderRadius: 3,
+            background: 'var(--color-border)',
+            width: '50%',
+          }} />
+        </div>
+      </div>
+    );
+  }
+
   const xp = char?.xp ?? 0;
   const xpToNext = char?.xpToNext ?? 100;
   const level = char?.level ?? 1;
@@ -545,7 +587,7 @@ function WaitingOnYouCard({
           .order('created_at', { ascending: false })
           .limit(40);
 
-        const myName = getMemberName(me).toLowerCase();
+        const myName = getMemberName(me || undefined).toLowerCase();
         const directComments = (data || []).filter((item: any) =>
           item.who !== me &&
           typeof item.action === 'string' &&

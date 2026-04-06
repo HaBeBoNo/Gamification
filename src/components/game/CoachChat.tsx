@@ -29,7 +29,7 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
       return [{ role: 'assistant', content: initialMessage }];
     }
     // Återställ från coachLog om det finns
-    const log = S.chars[S.me]?.coachLog;
+    const log = S.me && S.chars[S.me]?.coachLog;
     if (Array.isArray(log) && log.length > 0) {
       const restored: { role: string; content: string }[] = [];
       for (const entry of log.slice(-10)) {
@@ -46,7 +46,7 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
     if (initialMessage) {
       return [{ type: 'ai', text: initialMessage, ts: now() }];
     }
-    const log = S.chars[S.me]?.coachLog;
+    const log = S.me && S.chars[S.me]?.coachLog;
     if (Array.isArray(log) && log.length > 0) {
       const restored: Message[] = [];
       for (const entry of log.slice(-10)) {
@@ -63,14 +63,13 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
   const taRef = useRef<HTMLTextAreaElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const coachName = ((S.chars[S.me]?.coachName as string | undefined) ||
-    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
-       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' } as Record<string, string>)[S.me!] || 'Coach') as string;
+  const coachName = ((S.me && S.chars[S.me]?.coachName as string | undefined) ||
+    (S.me && DEFAULT_COACH_NAMES[S.me]) || 'Coach') as string;
 
   const handlePressStart = () => {
     pressTimer.current = setTimeout(() => {
       const newName = window.prompt('Byt namn på din coach:', coachName);
-      if (newName?.trim()) {
+      if (newName?.trim() && S.me) {
         S.chars[S.me].coachName = newName.trim();
         save();
         rerender();
@@ -106,7 +105,7 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
     setLoading(true);
 
     try {
-      const systemPrompt = buildCoachPrompt(S.me);
+      const systemPrompt = S.me ? buildCoachPrompt(S.me) : 'Du är en coach.';
 
       const response = await fetch('/api/claude', {
         method: 'POST',
@@ -129,20 +128,23 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
       setMessages(p => [...p, { type: 'ai', text: reply, ts: now() }]);
 
       // Spara i coachLog för persistens
-      if (!S.chars[S.me].coachLog) S.chars[S.me].coachLog = [];
-      S.chars[S.me].coachLog.push({
-        user: userMessage,
-        coach: reply,
-        ts: Date.now(),
-      });
-      // Behåll max 20 log-entries
-      if (S.chars[S.me].coachLog.length > 20) {
-        S.chars[S.me].coachLog = S.chars[S.me].coachLog.slice(-20);
-      }
-      save();
+      if (S.me && S.chars[S.me]) {
+        const charData = S.chars[S.me];
+        if (!charData.coachLog) charData.coachLog = [];
+        charData.coachLog.push({
+          user: userMessage,
+          coach: reply,
+          ts: Date.now(),
+        });
+        // Behåll max 20 log-entries
+        if (charData.coachLog.length > 20) {
+          charData.coachLog = charData.coachLog.slice(-20);
+        }
+        save();
 
-      // Trigga re-kalibrering i bakgrunden efter att coach-svaret sparats
-      maybeRecalibrateCoach(S.me).catch(() => {});
+        // Trigga re-kalibrering i bakgrunden efter att coach-svaret sparats
+        maybeRecalibrateCoach(S.me).catch(() => {});
+      }
     } catch {
       setHistory(prev => [...prev, { role: 'assistant', content: 'Kunde inte nå coachen just nu.' }]);
       setMessages(p => [...p, { type: 'ai', text: 'Kunde inte nå coachen just nu.', ts: now() }]);

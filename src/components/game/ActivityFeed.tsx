@@ -449,7 +449,6 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-      console.log('[ActivityFeed] data:', data?.length, 'error:', error);
       if (data) setFeedItems(data);
       setLoading(false);
     }
@@ -500,16 +499,17 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (intent.mode === 'reply') {
       setOpenCommentId(targetId);
-      if (intent.draft) {
+      const draft = intent.draft || '';
+      if (draft) {
         setReplyTargets(prev => ({
           ...prev,
           [targetId]: {
-            memberName: intent.draft.trim().replace(/^@/, ''),
+            memberName: draft.trim().replace(/^@/, ''),
           },
         }));
       }
-      if (intent.draft) {
-        setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || intent.draft || '' }));
+      if (draft) {
+        setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || draft }));
       }
     }
 
@@ -974,8 +974,36 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
       {/* ── Tom state / loading ────────────────────────────────── */}
       {loading ? (
-        <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>Laddar...</span>
+        <div style={{ padding: 'var(--space-lg)' }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{ marginBottom: 'var(--space-lg)' }}>
+              <div style={{
+                display: 'flex', gap: 'var(--space-md)', alignItems: 'flex-start',
+                padding: 'var(--space-md)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-surface-elevated)',
+                opacity: 0.6,
+                animation: 'pulse 2s ease-in-out infinite',
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%',
+                  background: 'var(--color-border)', flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    height: 12, borderRadius: 4,
+                    background: 'var(--color-border)', marginBottom: 8,
+                    width: '80%',
+                  }} />
+                  <div style={{
+                    height: 10, borderRadius: 4,
+                    background: 'var(--color-border)',
+                    width: '60%',
+                  }} />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : feedItems.length === 0 ? (
         <div className="empty-state" style={{ padding: 'var(--space-xl) var(--space-lg)' }}>

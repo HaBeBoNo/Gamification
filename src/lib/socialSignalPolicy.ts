@@ -28,6 +28,14 @@ export function setLastSocialSignalSync(memberKey: string, ts: number): void {
   }
 }
 
+export function clearSocialSignalSync(memberKey: string): void {
+  try {
+    localStorage.removeItem(`${SOCIAL_SYNC_PREFIX}${memberKey}`)
+  } catch {
+    // Ignore storage errors during logout cleanup.
+  }
+}
+
 export function getSocialBackfillCutoff(memberKey: string, now = Date.now()): number {
   const lastSync = getLastSocialSignalSync(memberKey)
   if (!lastSync) return now - INITIAL_SOCIAL_BACKFILL_WINDOW_MS

@@ -52,15 +52,17 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
     showXP?.(result.totalXP);
 
     // Spara i historik
-    if (!S.chars[me!].completedQuests) S.chars[me!].completedQuests = [];
-    S.chars[me!].completedQuests.push({
-      id: liveQuest.id,
-      title: liveQuest.title,
-      xp: result.totalXP,
-      cat: liveQuest.cat,
-      reflection: reflection || '',
-      completedAt: Date.now(),
-    });
+    if (me && S.chars[me]) {
+      if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
+      S.chars[me].completedQuests.push({
+        id: liveQuest.id,
+        title: liveQuest.title,
+        xp: result.totalXP,
+        cat: liveQuest.cat,
+        reflection: reflection || '',
+        completedAt: Date.now(),
+      });
+    }
 
     save();
 

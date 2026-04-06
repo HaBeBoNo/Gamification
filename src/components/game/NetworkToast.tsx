@@ -49,6 +49,16 @@ export default function NetworkToast() {
     return () => { window.fetch = origFetch; };
   }, [addToast]);
 
+  // Listen for Supabase sync failures
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      addToast(detail?.message || 'Synkronisering misslyckades');
+    };
+    window.addEventListener('sek:sync-error', handler);
+    return () => window.removeEventListener('sek:sync-error', handler);
+  }, [addToast]);
+
   if (toasts.length === 0) return null;
 
   return (

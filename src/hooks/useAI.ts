@@ -3,7 +3,7 @@
 //
 // Ansvarsfördelning:
 //   src/lib/claudeApi.ts  — HTTP-klient, parseJSON, ts()
-//   src/lib/aiPrompts.js  — Alla promptmallar och coach-identiteter
+//   src/lib/aiPrompts.ts  — Alla promptmallar och coach-identiteter
 //   src/hooks/useAI.ts    — Spellogik: state-mutationer, save(), notify()
 // ═══════════════════════════════════════════════════════════════
 
@@ -54,7 +54,7 @@ export async function aiValidate(
   showXPPop?:  ShowXPPop,
   rollReward?: RollReward,
 ): Promise<void> {
-  const m = (MEMBERS as Record<string, unknown>)[S.me!];
+  const m = (MEMBERS as Record<string, any>)[S.me!];
   const c = S.chars[S.me!];
   if (!m || !c) return;
 
@@ -111,7 +111,7 @@ export async function aiValidate(
  * Genererar 4 personliga AI-quests och lägger till dem i S.quests.
  */
 export async function generatePersonalQuests(refreshMode = false): Promise<void> {
-  const m = (MEMBERS as Record<string, unknown>)[S.me!];
+  const m = (MEMBERS as Record<string, any>)[S.me!];
   const c = S.chars[S.me!];
   if (!m || !c) return;
 
@@ -235,7 +235,7 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
  */
 export async function checkGhostQuest(): Promise<void> {
   const c = S.chars[S.me!];
-  const m = (MEMBERS as Record<string, unknown>)[S.me!];
+  const m = (MEMBERS as Record<string, any>)[S.me!];
   if (!c || !m) return;
 
   const lastQuestDate = (c.lastQuestDate as number | undefined)
@@ -283,7 +283,7 @@ export async function checkGhostQuest(): Promise<void> {
  * Genererar 3 sidequest-förslag och returnerar dem som array.
  */
 export async function showSidequestNudge(_weekKey?: string): Promise<SidequestSuggestion[]> {
-  const m = (MEMBERS as Record<string, unknown>)[S.me!];
+  const m = (MEMBERS as Record<string, any>)[S.me!];
   const c = S.chars[S.me!];
 
   const fallbacks: SidequestSuggestion[] = [

@@ -56,6 +56,7 @@ import { create } from 'zustand';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
+import { STORAGE_KEY, SEASON_DEFAULTS, SYNC_CONFIG, DEFAULT_METRICS } from '../lib/config';
 import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification } from '../types/game';
 
 // ── Zustand store ────────────────────────────────────────────────
@@ -80,16 +81,35 @@ export function notify(): void {
 
 let _supabaseSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
+let _supabaseSyncRetryCount = 0;
+
 function supabaseSync(memberKey: string): void {
   if (_supabaseSyncTimer) clearTimeout(_supabaseSyncTimer);
   _supabaseSyncTimer = setTimeout(() => {
-    syncToSupabase(memberKey).catch(() => {});
-  }, 1500);
+    syncToSupabase(memberKey)
+      .then(() => { _supabaseSyncRetryCount = 0; })
+      .catch((err) => {
+        console.error('[Sync] Supabase sync failed:', err);
+        _supabaseSyncRetryCount++;
+        if (_supabaseSyncRetryCount <= SYNC_CONFIG.maxRetries) {
+          const backoff = Math.min(2000 * Math.pow(2, _supabaseSyncRetryCount - 1), 15000);
+          console.warn(`[Sync] Retry ${_supabaseSyncRetryCount}/${SYNC_CONFIG.maxRetries} in ${backoff}ms`);
+          setTimeout(() => supabaseSync(memberKey), backoff);
+        } else {
+          console.error('[Sync] Max retries reached — data may not be saved');
+          _supabaseSyncRetryCount = 0;
+          // Dispatch custom event so NetworkToast can pick it up
+          window.dispatchEvent(new CustomEvent('sek:sync-error', {
+            detail: { message: 'Kunde inte synka till servern. Dina ändringar finns sparade lokalt.' },
+          }));
+        }
+      });
+  }, SYNC_CONFIG.debounceMs);
 }
 
 // ── Hjälpfunktioner ──────────────────────────────────────────────
 
-export const SEASON_START_DATE = new Date('2026-03-01T00:00:00');
+export const SEASON_START_DATE = new Date(SEASON_DEFAULTS.startDate);
 
 export function calcWeekNum(): number {
   const now  = new Date();
@@ -143,12 +163,12 @@ interface SState {
 // ── State-initiering från localStorage ───────────────────────────
 
 const RAW = (() => {
-  try { return JSON.parse(localStorage.getItem('sek-v6') || 'null') as Record<string, unknown> | null; }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as Record<string, unknown> | null; }
   catch { return null; }
 })();
 
 useGameStore.setState({
-  notifications: ((RAW?.notifications as Notification[]) || []).slice(0, 50),
+  notifications: ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit),
 });
 
 export const S: SState = {
@@ -165,24 +185,24 @@ export const S: SState = {
   quests: (RAW?.quests as Quest[]) || (BASE_QUESTS as unknown[]).map((q) => ({
     ...(q as Record<string, unknown>), done: false, aiVerdict: null, personal: false,
   })) as Quest[],
-  metrics:        (RAW?.metrics as Metrics) || { spf: 110, str: 45500, ig: 209, x: 0, tix: 0 },
-  prev:           (RAW?.prev    as Metrics) || { spf: 110, str: 45500, ig: 209, x: 0, tix: 0 },
+  metrics:        (RAW?.metrics as Metrics) || DEFAULT_METRICS,
+  prev:           (RAW?.prev    as Metrics) || DEFAULT_METRICS,
   feed:           (RAW?.feed as FeedEntry[]) || [],
   tab:            'personal',
   coachText:      '',
   weekNum:        calcWeekNum(),
   adminMode:      false,
-  operationName:  (RAW?.operationName as string)  || 'Operation POST II',
+  operationName:  (RAW?.operationName as string)  || SEASON_DEFAULTS.operationName,
   weeklyCheckouts:(RAW?.weeklyCheckouts as Record<string, unknown>) || {},
-  seasonStart:    (RAW?.seasonStart as string)    || '2026-03-18',
-  seasonEnd:      (RAW?.seasonEnd   as string)    || '2026-07-31',
+  seasonStart:    (RAW?.seasonStart as string)    || SEASON_DEFAULTS.start,
+  seasonEnd:      (RAW?.seasonEnd   as string)    || SEASON_DEFAULTS.end,
 };
 
 // ── Persist + notify ─────────────────────────────────────────────
 
 export function save(): void {
   const notifications = useGameStore.getState().notifications;
-  localStorage.setItem('sek-v6', JSON.stringify({
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
     me:              S.me,
     onboarded:       S.onboarded,
     chars:           S.chars,

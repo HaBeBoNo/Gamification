@@ -12,12 +12,14 @@ import { sendPush } from '../lib/sendPush';
  * @param eventTitle Evenemangets titel
  */
 export function checkIn(eventId: string, eventTitle: string): void {
+  if (!S.me) return;
+
   // Lazy-init: om store.js ännu inte har checkIns-arrayen
   if (!S.checkIns) S.checkIns = [];
 
   // Kontrollera att member inte redan checkat in
-  const already = S.checkIns.find(
-    (c: { eventId: string; member?: string; memberKey?: string; type?: string }) =>
+  const already = (S.checkIns as Array<{ eventId: string; member?: string; memberKey?: string; type?: string }>).find(
+    (c) =>
       c.eventId === eventId &&
       c.type !== 'rsvp' &&
       (c.member === S.me || c.memberKey === S.me)
@@ -59,13 +61,15 @@ export function checkIn(eventId: string, eventTitle: string): void {
   void awardXP(quest, 40, null, undefined, undefined, undefined, undefined);
 
   // Push-notis: kalender-incheckning
-  const memberName = MEMBERS[S.me]?.name || S.me;
-  sendPush(
-    `${memberName} checkade in`,
-    `Närvarade på ${eventTitle || 'bandaktivitet'}`,
-    S.me,
-    '/'
-  );
+  const memberName = (S.me && MEMBERS[S.me]?.name) || S.me;
+  if (S.me) {
+    sendPush(
+      `${memberName} checkade in`,
+      `Närvarade på ${eventTitle || 'bandaktivitet'}`,
+      S.me,
+      '/'
+    );
+  }
 
   save();
 }

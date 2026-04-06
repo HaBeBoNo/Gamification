@@ -2,14 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut, Clock } from 'lucide-react';
-import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
 import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
-import MetricsBar from '@/components/game/MetricsBar';
-import { BandPulse } from '@/components/game/BandPulse';
 import { HomeScreen } from '@/components/game/HomeScreen';
 import QuestGrid from '@/components/game/QuestGrid';
 import Scoreboard from '@/components/game/Scoreboard';
@@ -36,6 +33,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useFeedSync } from '@/hooks/useFeedSync';
 import { useSocialNotifications } from '@/hooks/useSocialNotifications';
+import { STORAGE_KEY } from '@/lib/config';
+import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
@@ -92,6 +91,13 @@ export default function Index() {
   const isAdmin = S.me === 'hannes';
   const isCurl  = S.me === 'carl';
 
+  const handleTabTap = useCallback((tabId: string) => {
+    if (tabId === 'more') { setShowMore(true); return; }
+    setActiveView('tab');
+    setMobileTab(tabId);
+    setActiveTab(tabId);
+  }, []);
+
   const { handleTouchStart, handleTouchEnd } = useSwipeNavigation(mobileTab, handleTabTap);
 
   function openNotifications() {
@@ -114,7 +120,7 @@ export default function Index() {
   const handleOpenCoach = useCallback((msg?: string) => {
     if (msg) setCoachInsight(msg);
     else handleTabTap('coach');
-  }, []);
+  }, [handleTabTap]);
 
   const keyboardHandlers = useMemo(() => ({
     setMobileTab,
@@ -148,7 +154,7 @@ export default function Index() {
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            if (import.meta.env.DEV) console.log('[SW] New version available — reloading');
+            if (import.meta.env.DEV) console.warn('[SW] New version available — reloading');
             window.location.reload();
           }
         });
@@ -156,7 +162,7 @@ export default function Index() {
     });
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (import.meta.env.DEV) console.log('[SW] Controller changed — reloading');
+      if (import.meta.env.DEV) console.warn('[SW] Controller changed — reloading');
       window.location.reload();
     });
   }, []);
@@ -186,8 +192,10 @@ export default function Index() {
   async function handleOverflowSelect(id: string) {
     setShowMore(false);
     if (id === 'logout') {
+      const currentMember = S.me;
       if (supabase) await supabase.auth.signOut();
-      localStorage.clear();
+      localStorage.removeItem(STORAGE_KEY);
+      if (currentMember) clearSocialSignalSync(currentMember);
       window.location.reload();
       return;
     }
@@ -197,13 +205,6 @@ export default function Index() {
     setActiveView('tab');
     setMobileTab(id);
     setActiveTab(id);
-  }
-
-  function handleTabTap(tabId: string) {
-    if (tabId === 'more') { setShowMore(true); return; }
-    setActiveView('tab');
-    setMobileTab(tabId);
-    setActiveTab(tabId);
   }
 
   // ── Content renderers ─────────────────────────────────────────────
@@ -255,10 +256,9 @@ export default function Index() {
     }
   }
 
-  const coachName = S.chars[S.me!]?.coachName ||
-    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
-       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn'
-    } as Record<string, string>)[S.me || ''] || 'Coach';
+  const COACH_NAMES_INDEX: Record<string, string> = { hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
+       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' };
+  const coachName: string = (S.chars[S.me!]?.coachName || (S.me ? COACH_NAMES_INDEX[S.me] : undefined) || 'Coach') as string;
 
   const overflowItems = [
     { id: 'coach',    icon: MessageCircle, label: coachName,    subtitle: 'Din personliga AI-coach' },
@@ -282,9 +282,6 @@ export default function Index() {
       <InstallPrompt />
       <NetworkToast />
       <Topbar
-        rerender={rerender}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         onAdmin={() => setShowAdmin(true)}
         logoRef={logoLongPressRef}
         onNotifications={openNotifications}
@@ -380,7 +377,7 @@ export default function Index() {
                 const Icon = item.icon;
                 return (
                   <React.Fragment key={item.id}>
-                    {i > 0 && <div className="overflow-sep" />}
+                    {i > 0 ? <div className="overflow-sep" /> : null}
                     <button className="overflow-row" onClick={() => handleOverflowSelect(item.id)}>
                       <Icon
                         size={20}

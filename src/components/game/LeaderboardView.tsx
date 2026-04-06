@@ -213,8 +213,6 @@ function LeaderboardView() {
     return [...rows].sort(compare).map((r, i) => ({ ...r, rank: i + 1 }));
   }, [rows, sortKey]);
 
-  console.log('[Leaderboard] chars:', Object.keys(S.chars), 'me:', S.me, 'loadingData:', loadingData);
-
   if (loadingData) {
     return (
       <div style={{
@@ -260,7 +258,7 @@ function LeaderboardView() {
             const char = S.chars[row.id];
             const questsDone = char?.questsDone || 0;
             const streak = S.chars[row.id]?.streak || 0;
-            const longestStreak = char?.longestStreak || streak;
+            const longestStreak = (char?.longestStreak || streak) as number;
             const weeklyQuests = (S.quests || []).filter(
               (q: any) => wasQuestCompletedByMember(q, row.id) &&
               q.completedAt && Date.now() - q.completedAt < 7 * 24 * 60 * 60 * 1000

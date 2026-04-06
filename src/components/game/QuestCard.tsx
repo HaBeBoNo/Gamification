@@ -58,7 +58,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const verdictText = verdict?.message || verdict?.text;
 
   async function handleComplete() {
-    if (isDone || !me) return;
+    if (isDone || !me || thinking) return;
     if (needsAI && !verdictApproved) return;
 
     const idx = S.quests.findIndex((q: any) => q.id === quest.id);
@@ -160,16 +160,22 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   }
 
   function handleAIValidate() {
-    if (!aiDesc.trim() || !me) return;
+    if (!aiDesc.trim() || !me || thinking) return;
     setThinking(true);
-    aiValidate(quest, aiDesc, null).then(() => {
-      setThinking(false);
-      const idx = S.quests.findIndex((q: any) => q.id === quest.id);
-      if (idx >= 0) setVerdict(S.quests[idx].aiVerdict);
-    });
+    aiValidate(quest, aiDesc, null)
+      .then(() => {
+        const idx = S.quests.findIndex((q: any) => q.id === quest.id);
+        if (idx >= 0) setVerdict(S.quests[idx].aiVerdict);
+      })
+      .catch((err: unknown) => {
+        console.error('AI validation failed:', err);
+        setVerdict({ approved: false, message: 'AI-validering misslyckades. Försök igen.' });
+      })
+      .finally(() => setThinking(false));
   }
 
   function handleJoin(quest: any) {
+    if (!S.me) return;
     if (!quest.participants) quest.participants = [];
     if (quest.participants.includes(S.me)) return;
 

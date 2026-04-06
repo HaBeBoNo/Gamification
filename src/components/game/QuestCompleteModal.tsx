@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
@@ -32,6 +32,16 @@ export default function QuestCompleteModal({
   const otherMembers = Object.entries(MEMBERS).filter(([id]) => id !== S.me);
   const trapRef = useFocusTrap<HTMLDivElement>(true);
 
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    }
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   function submitPhase1() {
     if (!what.trim()) return;
     // Spara genomförande på quest
@@ -48,7 +58,7 @@ export default function QuestCompleteModal({
   }
 
   function submitHighFive() {
-    if (highFiveTo) {
+    if (highFiveTo && S.me) {
       const targetName = (MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo;
       pushFeedEntry({
         who: S.me,
@@ -93,6 +103,7 @@ export default function QuestCompleteModal({
         {/* Stäng-knapp */}
         <button
           onClick={onClose}
+          aria-label="Stäng"
           style={{
             position: 'absolute',
             top: 16,

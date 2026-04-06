@@ -14,7 +14,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const coachName = (S.chars[S.me]?.coachName as string | undefined) || 'Coach';
+  const coachName = (S.me && S.chars[S.me]?.coachName as string | undefined) || 'Coach';
 
   async function handleSend() {
     if (!input.trim()) return;
@@ -31,16 +31,17 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 300,
-          system: buildCoachPrompt(S.me),
+          system: S.me ? buildCoachPrompt(S.me) : 'Du är en coach.',
           messages: newMessages,
         }),
       });
       const data = await res.json();
       const reply = data.content?.[0]?.text?.trim();
-      if (reply) {
+      if (reply && S.me && S.chars[S.me]) {
+        const charData = S.chars[S.me];
         setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-        if (!S.chars[S.me].coachLog) S.chars[S.me].coachLog = [];
-        S.chars[S.me].coachLog.push({ user: userMessage, coach: reply, ts: Date.now() });
+        if (!charData.coachLog) charData.coachLog = [];
+        charData.coachLog.push({ user: userMessage, coach: reply, ts: Date.now() });
         save();
       }
     } catch {}

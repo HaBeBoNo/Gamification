@@ -1,23 +1,13 @@
 // ═══════════════════════════════════════════════════════════════
-// quests.js — Sektionen Gamification
+// quests.ts — Sektionen Gamification
 // Operation POST II · Reviderad mars 2026
 // 108 quests fördelade på 8 members.
 // Separata projekt: BASE_QUESTS, HIDDEN_BANK
 // ═══════════════════════════════════════════════════════════════
 
-// ── Quest-struktur ───────────────────────────────────────────────
-// id:        unik int
-// owner:     member id-sträng (matchar members.js)
-// title:     kort, specifik
-// desc:      konkret instruktion — vad, hur, till vem
-// cat:       'global' | 'social' | 'wisdom' | 'money' | 'health' | 'tech'
-// xp:        poäng vid completion
-// region:    visningstext för regionskolumn
-// recur:     'none' | 'daily' | 'weekly'
-// type:      'standard' | 'strategic' | 'metric' | 'hidden' | 'ghost' | 'sidequest'
-// ────────────────────────────────────────────────────────────────
+import { Quest } from '@/types/game';
 
-export const BASE_QUESTS = [
+export const BASE_QUESTS: Quest[] = [
 
   // ── HANNES — Creative Director / Amplifier ──────────────────
   // AMPLIFIER: Tar det som finns och gör det större. Berättelsen
@@ -648,11 +638,11 @@ export const BASE_QUESTS = [
 
 // ── Hidden quest pools per rolltyp ────────────────────────────────
 // Plockas slumpmässigt vid onboarding av getRoleHidden(roleType)
-export function getRoleHidden(roleType) {
+export function getRoleHidden(roleType: string): Partial<Quest>[] {
   return HIDDEN_BANK[roleType] || [];
 }
 
-export const HIDDEN_BANK = {
+export const HIDDEN_BANK: Record<string, Partial<Quest>[]> = {
   amplifier: [
     { title:'Skriv ned varför du spelar musik', desc:'Inte för publicering. Bara för dig. Minst 100 ord.', cat:'wisdom', xp:75 },
     { title:'Spela en låt för en fremling', desc:'Någon du inte känner. En låt. Inga förklaringar.', cat:'social', xp:100 },

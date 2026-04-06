@@ -2,7 +2,7 @@ import React from 'react';
 import { S } from '@/state/store';
 
 export default function QuestHistory() {
-  const completedQuests = (S.chars[S.me]?.completedQuests || [])
+  const completedQuests = (S.me && S.chars[S.me]?.completedQuests || [])
     .slice()
     .reverse();
 

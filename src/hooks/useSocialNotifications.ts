@@ -180,11 +180,17 @@ export function useSocialNotifications() {
     }
 
     async function seed() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
+
+      if (error) {
+        console.warn('[SocialNotifications] Seed failed:', error.message);
+        initialized.current = true;
+        return;
+      }
 
       [...(data || [])]
         .sort((a, b) => getActivityTs(a) - getActivityTs(b))

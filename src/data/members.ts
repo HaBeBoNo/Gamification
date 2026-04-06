@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════════════
-// members.js — Sektionen Gamification
+// members.ts — Sektionen Gamification
 // Operation POST II · Mars 2026
 // ═══════════════════════════════════════════════════════════════
 
 // ── Member-struktur ──────────────────────────────────────────────
 // name:      visningsnamn
 // role:      officiell roll (från verksamhetsplan 2026)
+// email:     e-postadress för autentisering
 // emoji:     avatar-ikon
 // color:     bakgrundsfärg för kort (rgba)
 // xpColor:   accentfärg för XP-bar och detaljer
@@ -21,11 +22,43 @@
 //              Ludvig, Simon, Carl.
 // ────────────────────────────────────────────────────────────────
 
-export const MEMBERS = {
+// ── TypeScript Interfaces ────────────────────────────────────────
+
+export interface Member {
+  name: string;
+  role: string;
+  email: string;
+  emoji: string;
+  color: string;
+  xpColor: string;
+  roleType: 'amplifier' | 'enabler' | 'builder';
+}
+
+export interface RoleTypeMetadata {
+  label: string;
+  color: string;
+  border: string;
+  labelColor: string;
+  desc: string;
+  xpScaling: number;
+  workMult: number;
+}
+
+export interface RoleTypeLabel {
+  label: string;
+  color: string;
+}
+
+export type MemberId = 'hannes' | 'ludvig' | 'martin' | 'nisse' | 'simon' | 'johannes' | 'carl' | 'niklas';
+
+// ── Members Database ─────────────────────────────────────────────
+
+export const MEMBERS: Record<MemberId, Member> = {
 
   hannes: {
     name: 'Hannes',
     role: 'Creative Director',
+    email: 'hannes.norrby@gmail.com',
     emoji: '🎨',
     color: 'rgba(200,100,50,0.15)',
     xpColor: '#e07840',
@@ -54,6 +87,7 @@ export const MEMBERS = {
   martin: {
     name: 'Martin',
     role: 'Head of Production',
+    email: 'mschulzprivate@gmail.com',
     emoji: '🎛️',
     color: 'rgba(64,128,224,0.12)',
     xpColor: '#4090e0',
@@ -68,6 +102,7 @@ export const MEMBERS = {
   nisse: {
     name: 'Nisse',
     role: 'PR & Outreach',
+    email: 'nilsmedskils@gmail.com',
     emoji: '📡',
     color: 'rgba(160,80,224,0.12)',
     xpColor: '#a050e0',
@@ -81,6 +116,7 @@ export const MEMBERS = {
   simon: {
     name: 'Simon',
     role: 'Business Manager',
+    email: 'simonfalk90@gmail.com',
     emoji: '💼',
     color: 'rgba(224,80,64,0.12)',
     xpColor: '#e06050',
@@ -94,6 +130,7 @@ export const MEMBERS = {
   johannes: {
     name: 'Johannes',
     role: 'Logistics & Merch',
+    email: 'johanneslincke@gmail.com',
     emoji: '🗂️',
     color: 'rgba(64,160,224,0.12)',
     xpColor: '#40a0e0',
@@ -107,6 +144,7 @@ export const MEMBERS = {
   carl: {
     name: 'Carl',
     role: 'Grant Manager',
+    email: 'callegh9351@gmail.com',
     emoji: '📋',
     color: 'rgba(200,160,64,0.12)',
     xpColor: '#c8a040',
@@ -121,6 +159,7 @@ export const MEMBERS = {
   niklas: {
     name: 'Niklas',
     role: 'Tech & Facilities',
+    email: 'niklas.arkhede@gmail.com',
     emoji: '⚙️',
     color: 'rgba(64,192,128,0.12)',
     xpColor: '#40c080',
@@ -133,23 +172,32 @@ export const MEMBERS = {
 
 };
 
-// ── Typ-definition för TypeScript-annotations ────────────────────
-/** @typedef {{ name: string, role: string, emoji: string, color: string, xpColor: string, roleType: string }} Member */
-
 // ── Hjälpfunktioner ──────────────────────────────────────────────
 
 // Alla member-ids som array
-export const MEMBER_IDS = Object.keys(MEMBERS);
+export const MEMBER_IDS: MemberId[] = Object.keys(MEMBERS) as MemberId[];
 
 // Hämta member-objekt med fallback
-export function getMember(id) {
+export function getMember(id: MemberId): Member | null {
   return MEMBERS[id] || null;
 }
+
+// Email-to-member mapping för autentisering
+export const EMAIL_TO_MEMBER: Record<string, MemberId> = {
+  'hannes.norrby@gmail.com':  'hannes',
+  'mschulzprivate@gmail.com': 'martin',
+  'luddeslinser@gmail.com':   'ludvig',
+  'johanneslincke@gmail.com': 'johannes',
+  'simonfalk90@gmail.com':    'simon',
+  'nilsmedskils@gmail.com':   'nisse',
+  'niklas.arkhede@gmail.com': 'niklas',
+  'callegh9351@gmail.com':    'carl',
+};
 
 // Rolltyp-metadata för UI, logik och XP-skalning
 // xpScaling: multiplikator på base XP vid quest completion
 // workMult:  multiplikator på arbetspoäng för scoreboard
-export const ROLE_TYPES = {
+export const ROLE_TYPES: Record<string, RoleTypeMetadata> = {
   amplifier: {
     label: 'Amplifier',
     color: 'rgba(200,100,50,0.2)',
@@ -180,7 +228,7 @@ export const ROLE_TYPES = {
 };
 
 // Alias — konsoliderat från ROLE_TYPES för bakåtkompatibilitet
-export const ROLE_TYPE_LABEL = {
+export const ROLE_TYPE_LABEL: Record<string, RoleTypeLabel> = {
   amplifier: { label: ROLE_TYPES.amplifier.label, color: ROLE_TYPES.amplifier.labelColor },
   enabler:   { label: ROLE_TYPES.enabler.label,   color: ROLE_TYPES.enabler.labelColor },
   builder:   { label: ROLE_TYPES.builder.label,    color: ROLE_TYPES.builder.labelColor },

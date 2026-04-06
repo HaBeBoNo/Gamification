@@ -95,7 +95,7 @@ export async function completeMyPart(
   collabQuestId: string,
   currentCompletedBy: string[]
 ): Promise<{ allDone: boolean; completedBy: string[] } | null> {
-  if (!supabase) return null
+  if (!supabase || !S.me) return null
   const newCompletedBy = [...new Set([...currentCompletedBy, S.me])]
   const { data: quest } = await supabase
     .from('collaborative_quests')
@@ -134,7 +134,7 @@ export function subscribeCollaborativeQuests(
       },
       (payload) => {
         const quest = payload.new as CollaborativeQuest
-        if (quest.participants?.includes(S.me)) {
+        if (S.me && quest.participants?.includes(S.me)) {
           onUpdate(quest)
         }
       }

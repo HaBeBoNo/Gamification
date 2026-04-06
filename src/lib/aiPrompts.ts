@@ -1,15 +1,17 @@
 // ═══════════════════════════════════════════════════════════════
-// aiPrompts.js — Promptmallar och coach-identiteter för Sektionen
-// Extraherat från useAI.js för separation av logik och text.
+// aiPrompts.ts — Promptmallar och coach-identiteter för Sektionen
+// Extraherat från useAI.ts för separation av logik och text.
 // ═══════════════════════════════════════════════════════════════
 
 import { S } from '../state/store';
 import { ROLE_TYPES } from '../data/members';
 import { isQuestDoneNow } from './questUtils';
+import type { CharData, Quest, ResponseProfile } from '../types/game';
+import type { Member } from '../data/members';
 
 // ── Coach-identiteter ──────────────────────────────────────────────
 
-export const DEFAULT_COACH_NAMES = {
+export const DEFAULT_COACH_NAMES: Record<string, string> = {
   hannes:   'Scout',
   martin:   'Brodern',
   niklas:   'Arkitekten',
@@ -20,7 +22,7 @@ export const DEFAULT_COACH_NAMES = {
   ludvig:   'Katalysatorn',
 };
 
-export const WELCOME_MESSAGES = {
+export const WELCOME_MESSAGES: Record<string, string> = {
   hannes:   'Brand Manager. Visionär. Välkommen in.',
   martin:   'Head of Production. Ljudet är ditt. Välkommen in.',
   ludvig:   'Ordförande. Kittet som håller ihop. Välkommen in.',
@@ -31,7 +33,7 @@ export const WELCOME_MESSAGES = {
   carl:     'Medel och bidrag. Pengarna finns där ute. Välkommen in.',
 };
 
-const COACH_CONTEXT = {
+const COACH_CONTEXT: Record<string, string> = {
   hannes:   'Hannes har gjort enormt mycket operativt — mix, master, distribution, app, föreningskonto, releasefest. Risken är att han fortsätter i samma modus istället för att växla till strategiskt tänkande. Utmana det varsamt. Han söker kreativ vision och helhetsgrepp tillsammans med Ludvig.',
   martin:   'Martin har levererat på varje front — mix, master, saxofon, livemix, London-kontakter om STEMS. Han navigerar sin roll framåt. Saxofonen är en känslig punkt — han når inte samma nivå som resten av bandet ännu. Koppla alltid framsteg till bandet och de konkreta personerna i det. Konfrontera aldrig saxofon-osäkerheten direkt — möt den med nyfikenhet.',
   ludvig:   'Ludvig håller ihop bandet bakifrån — merch, styrelsemöten, individuella samtal som bollplank. Han saknar tydlig egen identitet i bandet. Det finns motivation och potential men ingen klar riktning. Hjälp honom hitta sin riktning utan att definiera den åt honom. Öppna frågor, aldrig direktiv.',
@@ -44,7 +46,7 @@ const COACH_CONTEXT = {
 
 // ── Promptbyggare ──────────────────────────────────────────────────
 
-export function buildValidatePrompt(m, c, q, desc) {
+export function buildValidatePrompt(m: Member, c: CharData, q: Quest, desc: string): string {
   return `Du är AI-coach för ${m.name} (${m.role}) i Sektionen.
 
 Deras profil:
@@ -65,7 +67,7 @@ VERDICT:[accepted|partial|rejected]
 FEEDBACK:[en mening svenska, max 110 tecken, personlig, direkt]`;
 }
 
-export function buildQuestGenPrompt(m, c, refreshMode) {
+export function buildQuestGenPrompt(m: Member, c: CharData, refreshMode: boolean): string {
   const rtLabel = ROLE_TYPES[m.roleType]?.label || 'Amplifier';
   const rtDesc  = ROLE_TYPES[m.roleType]?.desc  || '';
   const completedQuests = S.quests
@@ -146,11 +148,11 @@ Svara EXAKT i JSON (inget annat):
 [{"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":50,"type":"standard|strategic|hidden"},{"title":"...","desc":"...","cat":"...","xp":100,"type":"strategic"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"standard"},{"title":"...","desc":"...","cat":"...","xp":75,"type":"hidden"}]`;
 }
 
-export function buildCoachPrompt(memberKey) {
+export function buildCoachPrompt(memberKey: string): string {
   const c = S.chars[memberKey] || {};
   const coachName = c.coachName || DEFAULT_COACH_NAMES[memberKey] || 'Coach';
 
-  const COACH_PERSONALITIES = {
+  const COACH_PERSONALITIES: Record<string, string> = {
     hannes:   `Du är ${coachName} — Hannes personliga coach. Hannes drivs av dopamin och kreativ energi. Han ser mönster och möjligheter innan andra. Din roll: skärp hans fokus utan att döda energin. Kort, precist, utmanande. Aldrig föreläsande.`,
     martin:   `Du är ${coachName} — Martins personliga coach. Martin drivs av vänskap och lojalitet mot de han spelar med. Han rör sig när relationen är stark. Din roll: koppla alltid insatser till bandet och de konkreta personerna i det. Aldrig abstrakt. Aldrig ensam.`,
     niklas:   `Du är ${coachName} — Niklas personliga coach. Niklas tänker i system och narrativ — han är Guild Architect. Han vill förstå hur delarna hänger ihop. Din roll: visa honom helheten och hans plats i den. Tekniskt konkret, aldrig vagt.`,
@@ -184,7 +186,7 @@ Regler som alltid gäller:
 - Om meddelandet är otvetydigt tvetydigt: ställ en enda precis fråga, aldrig fler
 - Svara alltid på svenska`;
 
-  const profile = c.responseProfile;
+  const profile: ResponseProfile | undefined = c.responseProfile;
   const profileContext = profile ? `
 Kommunikationsprofil:
 - Register: ${profile.register}
@@ -201,7 +203,7 @@ Om metaphorical är true — använd bilder naturligt.
 Om languageComplexity är simple — håll dig konkret och kort.
 Om pronounDominance är vi — koppla alltid till bandet.` : '';
 
-  const temporal = c.temporalBehavior;
+  const temporal: any = c.temporalBehavior;
   const temporalContext = temporal ? `
 Temporalt mönster: ${temporal.pattern}
 Urgency: ${temporal.currentUrgency}
@@ -222,7 +224,7 @@ Om anomaly är true: något har förändrats — möt med nyfikenhet.` : '';
   const deletedQuests  = (S.chars[memberKey]?.deletedQuests || []).slice(-5);
   const deletionContext = deletedQuests.length > 0 ? `
 Borttagna uppdrag (member-signaler om kalibrering):
-${deletedQuests.map(d => `- "${d.title}" (${d.cat}): ${
+${deletedQuests.map((d: any) => `- "${d.title}" (${d.cat}): ${
   d.reason === 'irrelevant' ? 'inte relevant för rollen' :
   d.reason === 'done'       ? 'redan gjort' :
   'fel timing'
@@ -237,7 +239,7 @@ Om reason är 'timing' — föreslå samma typ av uppdrag igen om 2–3 veckor.`
   return `${personality}\n${contextNoteSection}\n${coachRules}\n${onboardingContext}\n${profileContext}\n${temporalContext}\n${insightContext}\n${deletionContext}\n${focusContext}`;
 }
 
-export function buildDailyCoachPrompt(memberKey) {
+export function buildDailyCoachPrompt(memberKey: string): string {
   const coachContext = buildCoachPrompt(memberKey);
   const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
   const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
@@ -267,7 +269,7 @@ Krav:
 - Tonen ska kännas personlig och lätt att agera på idag`;
 }
 
-export function buildGhostPrompt(m, c, daysSince) {
+export function buildGhostPrompt(m: Member, c: CharData, daysSince: number): string {
   return `Du är AI-coach för ${m.name} i Sektionen, ett 8-personersband från Göteborg på väg från ideell till professionell verksamhet. Operation POST II pågår — truminspelning juli 2026.
 
 ${m.name} har inte loggat in på ${Math.floor(daysSince)} dagar. Det betyder inte att de inte arbetat — systemet vet bara inte vad de gjort.
@@ -283,7 +285,7 @@ Svara EXAKT i JSON:
 {"title":"...","desc":"...","cat":"global|social|wisdom|money|health|tech","xp":75}`;
 }
 
-export function buildSidequestPrompt(m, c) {
+export function buildSidequestPrompt(m: Member, c: CharData): string {
   return `Du är AI-coach för ${m.name} i Sektionen, ett indie-band från Göteborg i Operation POST II — truminspelning juli 2026.
 
 De har precis checkat in sin obligatoriska timme för veckan. Nu frågar du om de vill göra mer — ett sidequest.

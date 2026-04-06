@@ -104,7 +104,7 @@ export interface Quest {
   region:        string;
   recur:         'none' | 'daily' | 'weekly';
   type:          string;
-  done:          boolean;
+  done?:         boolean;
   aiVerdict?:    {
     text: string;
     cls: string;
@@ -114,7 +114,7 @@ export interface Quest {
     verdict?: 'accepted' | 'partial' | 'rejected';
   } | null;
   aiThinking?:   boolean;
-  personal:      boolean;
+  personal?:     boolean;
   collaborative?: boolean;
   participants?:  string[];
   deadline?:     number;

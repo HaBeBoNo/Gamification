@@ -59,6 +59,15 @@ const CAT_LABELS: Record<string, string> = {
   global: 'Global',
 };
 
+const EMPTY_CAT_COUNTS: Record<string, number> = {
+  wisdom: 0,
+  tech: 0,
+  social: 0,
+  money: 0,
+  health: 0,
+  global: 0,
+};
+
 // ── Stat Radar (compact SVG) ────────────────────────────────────
 
 interface RadarProps {
@@ -213,6 +222,11 @@ export default function ProfileView() {
   const me = S.me || '';
   const member = (MEMBERS as Record<string, any>)[me];
   const char = S.chars[me];
+  const questsDone = char?.questsDone || 0;
+  const catCounts = useMemo(
+    () => (me ? getCategoryBreakdown(me) : EMPTY_CAT_COUNTS),
+    [me, questsDone],
+  );
   if (!member || !char) return null;
 
   const xpColor = member.xpColor || 'var(--color-accent)';
@@ -220,7 +234,6 @@ export default function ProfileView() {
   const xp = char.xp || 0;
   const xpToNext = char.xpToNext || xpForLevel(level);
   const totalXp = char.totalXp || 0;
-  const questsDone = char.questsDone || 0;
   const streak = char.streak || 0;
   const stats = char.stats || { vit: 10, wis: 10, for: 10, cha: 10 };
   const form = char.form || [];
@@ -228,8 +241,6 @@ export default function ProfileView() {
   const rtLabel = (ROLE_TYPE_LABEL as Record<string, any>)[roleType];
   const temporalPattern = char.temporalBehavior?.pattern;
   const xpPercent = xpToNext > 0 ? Math.round((xp / xpToNext) * 100) : 0;
-
-  const catCounts = useMemo(() => getCategoryBreakdown(me), [me, questsDone]);
 
   // Season progress
   const seasonStart = new Date(S.seasonStart || '2026-03-01');

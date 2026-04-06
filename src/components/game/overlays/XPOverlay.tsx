@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface XPOverlayProps {
   amount: number;
@@ -7,7 +8,7 @@ interface XPOverlayProps {
 
 export default function XPOverlay({ amount, onDone }: XPOverlayProps) {
   const [display, setDisplay] = useState(0);
-  const [fading, setFading] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const startRef = useRef<number | null>(null);
   const stableOnDone = useCallback(onDone, []);
 
@@ -23,7 +24,7 @@ export default function XPOverlay({ amount, onDone }: XPOverlayProps) {
         requestAnimationFrame(tick);
       } else {
         setTimeout(() => {
-          setFading(true);
+          setIsVisible(false);
           setTimeout(stableOnDone, 300);
         }, 100);
       }
@@ -32,12 +33,22 @@ export default function XPOverlay({ amount, onDone }: XPOverlayProps) {
   }, [amount, stableOnDone]);
 
   return (
-    <div className={`xp-overlay-backdrop ${fading ? 'xp-fading' : ''}`}>
-      <div className="xp-overlay-card">
-        <div className="xp-overlay-glow" />
-        <div className="xp-overlay-value">+{display}</div>
-        <div className="xp-overlay-label">XP</div>
-      </div>
-    </div>
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          className="xp-overlay-backdrop"
+          initial={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -60 }}
+          transition={{ duration: 1.5, ease: 'easeOut' }}
+        >
+          <div className="xp-overlay-card">
+            <div className="xp-overlay-glow" />
+            <div className="xp-overlay-value">+{display}</div>
+            <div className="xp-overlay-label">XP</div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -79,13 +79,13 @@ function catToStat(cat: string): StatKey | null {
 
 function calcMilestoneBonus(memberId: string, baseXp: number): number {
   if (baseXp < 150) return 0;
-  const rt = (MEMBERS as Record<string, MemberDef>)[memberId]?.roleType || 'amplifier';
+  const rt = (MEMBERS as any)[memberId]?.roleType || 'amplifier';
   return ({ enabler: 25, builder: 20, amplifier: 10 } as Record<string, number>)[rt] ?? 0;
 }
 
 function calcWorkPts(memberId: string, baseXp: number, region?: string): number {
-  const rt       = (MEMBERS as Record<string, MemberDef>)[memberId]?.roleType || 'amplifier';
-  const rtDef    = (ROLE_TYPES as Record<string, RoleTypeDef>)[rt] || {};
+  const rt       = (MEMBERS as any)[memberId]?.roleType || 'amplifier';
+  const rtDef    = (ROLE_TYPES as any)[rt] || {};
   const workMult = rtDef.workMult ?? 1.0;
   let base = Math.round(baseXp * 0.5 * workMult);
   if (region?.includes('Japan'))  base = Math.round(base * 1.5);
@@ -100,8 +100,8 @@ function calcWorkPts(memberId: string, baseXp: number, region?: string): number 
  * Ren funktion — behöver inget state.
  */
 export function calcQuestXP(memberId: string, baseXp: number): number {
-  const rt   = (MEMBERS as Record<string, MemberDef>)[memberId]?.roleType || 'amplifier';
-  const mult = (ROLE_TYPES as Record<string, RoleTypeDef>)[rt]?.xpScaling ?? 1.0;
+  const rt   = (MEMBERS as any)[memberId]?.roleType || 'amplifier';
+  const mult = (ROLE_TYPES as any)[rt]?.xpScaling ?? 1.0;
   return Math.round(baseXp * mult);
 }
 
@@ -152,7 +152,9 @@ export function calcAwardXP(
   const prevQuestDate = c.lastQuestDate || 0;
   const today   = new Date(); today.setHours(0, 0, 0, 0);
   const prevDay = new Date(prevQuestDate); prevDay.setHours(0, 0, 0, 0);
-  const dayGap  = prevQuestDate ? Math.round((today.getTime() - prevDay.getTime()) / 86400000) : 0;
+  const dayGap  = (prevQuestDate && !isNaN(prevDay.getTime()))
+    ? Math.round((today.getTime() - prevDay.getTime()) / 86400000)
+    : 0;
 
   let newStreak: number;
   if      (dayGap === 1) newStreak = (c.streak || 0) + 1;
@@ -224,7 +226,7 @@ export function awardXP(
   rollReward?: (xp: number) => unknown | null,
 ): AwardXPResult | null {
   const c = S.chars[S.me!];
-  const m = (MEMBERS as Record<string, MemberDef>)[S.me!];
+  const m = (MEMBERS as any)[S.me!];
   if (!c || !m) return null;
 
   const questIdx = S.quests.findIndex(sq => sq.id === q.id);
@@ -259,7 +261,7 @@ export function awardXP(
   // Streak milestone notifikationer
   const streakMilestones = [5, 10, 14, 30];
   if (streakMilestones.includes(c.streak)) {
-    const memberName = (MEMBERS as Record<string, MemberDef>)[S.me!]?.name || S.me;
+    const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
     addNotifToAll(createStreakNotif(S.me!, memberName as string, c.streak));
   }
 
@@ -272,7 +274,7 @@ export function awardXP(
 
   // Level-up notifikation + push
   if (leveled) {
-    const memberName = (MEMBERS as Record<string, MemberDef>)[S.me!]?.name || S.me;
+    const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
     addNotifToAll(createLevelUpNotif(S.me!, memberName as string, c.level));
     sendPush(
       `${memberName} gick upp till Level ${c.level}`,
