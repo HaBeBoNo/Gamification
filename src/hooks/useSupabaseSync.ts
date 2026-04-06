@@ -17,7 +17,7 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     onboarded: S.onboarded,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
-    notifications: useGameStore.getState().notifications,
+    notifications: useGameStore.getState().notifications.filter((notification) => notification.source !== 'supabase'),
     seasonStart: S.seasonStart,
     seasonEnd: S.seasonEnd,
   };

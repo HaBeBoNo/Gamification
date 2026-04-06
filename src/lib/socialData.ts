@@ -27,6 +27,7 @@ type RemoteNotificationRow = {
   body?: string | null;
   read?: boolean | null;
   read_at?: string | null;
+  dedupe_key?: string | null;
   payload?: Record<string, unknown> | null;
   feed_item_id?: string | null;
   created_at?: string | null;
@@ -59,7 +60,9 @@ function isMissingSocialResourceError(error: unknown): boolean {
     text.includes('could not find the table') ||
     text.includes('could not find the relation') ||
     text.includes('schema cache') ||
+    text.includes('permission denied') ||
     text.includes('42p01') ||
+    text.includes('42501') ||
     text.includes('42703') ||
     text.includes('pgrst205')
   );
@@ -300,6 +303,9 @@ export async function insertFeedCommentActivity(params: {
 
 function toLocalNotification(row: RemoteNotificationRow): Notification {
   const payload = normalizePayload(row.payload);
+  if (row.dedupe_key && !payload.dedupeKey) {
+    payload.dedupeKey = row.dedupe_key;
+  }
   if (row.actor_member_key && !payload.memberId) {
     payload.memberId = row.actor_member_key;
   }
@@ -330,7 +336,7 @@ export async function fetchRemoteNotifications(
 
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, member_key, actor_member_key, type, title, body, read, read_at, payload, feed_item_id, created_at')
+    .select('id, member_key, actor_member_key, type, title, body, read, read_at, dedupe_key, payload, feed_item_id, created_at')
     .eq('member_key', memberKey)
     .order('created_at', { ascending: false })
     .limit(limit);

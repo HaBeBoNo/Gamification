@@ -235,6 +235,26 @@ function BandStatusRow() {
     loadPulse();
     loadNextEvent();
     loadRank();
+
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('home-band-status')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'activity_feed',
+      }, () => { void loadPulse(); })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'member_presence',
+      }, () => { void loadPulse(); })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const cards = [

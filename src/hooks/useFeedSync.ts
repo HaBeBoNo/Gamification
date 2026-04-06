@@ -2,18 +2,40 @@ import { useEffect, useRef } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { supabase } from '@/lib/supabase';
 import type { FeedEntry } from '@/types/game';
+import { getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
+
+function getTimestampCandidate(value: unknown): string | null {
+  if (!value) return null;
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function getTimestampFromIdentity(identity?: string): string | null {
+  if (!identity) return null;
+  const match = identity.match(/(\d{13})/);
+  if (!match) return null;
+  const parsed = new Date(Number(match[1]));
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+export function resolveFeedCreatedAt(item: Partial<FeedEntry>): string {
+  return (
+    getTimestampCandidate(item.created_at) ||
+    getTimestampCandidate(item.ts) ||
+    getTimestampCandidate(item.time) ||
+    getTimestampFromIdentity(item.syncId) ||
+    getTimestampFromIdentity(item.id) ||
+    new Date(0).toISOString()
+  );
+}
 
 function getFeedFingerprint(item: FeedEntry): string {
-  const createdAt = item.ts && !Number.isNaN(new Date(item.ts).getTime())
-    ? new Date(item.ts).toISOString()
-    : new Date().toISOString();
-
   return [
-    item.syncId || 'legacy',
+    item.syncId || item.id || 'legacy',
     item.who || '',
     item.action || '',
     item.xp ?? 0,
-    createdAt,
+    resolveFeedCreatedAt(item),
   ].join('|');
 }
 
@@ -39,12 +61,15 @@ export function useFeedSync() {
 
     async function syncItems() {
       for (const item of [...newItems].reverse()) {
-        const createdAt = item.ts && !Number.isNaN(new Date(item.ts).getTime())
-          ? new Date(item.ts).toISOString()
-          : new Date().toISOString();
+        const createdAt = resolveFeedCreatedAt(item);
 
         const fingerprint = getFeedFingerprint({ ...item, ts: createdAt });
         if (syncedFingerprints.current.has(fingerprint)) continue;
+        const commentMeta = getFeedCommentMeta(item);
+        const contextLabel = item.context_label || getFeedContextLabel(item);
+        const metadata = item.metadata && typeof item.metadata === 'object'
+          ? item.metadata
+          : {};
 
         const { data: existing, error: selectError } = await supabase
           .from('activity_feed')
@@ -66,6 +91,12 @@ export function useFeedSync() {
             action: item.action,
             xp: item.xp ?? 0,
             created_at: createdAt,
+            interaction_type: commentMeta ? 'comment' : item.interaction_type || 'activity',
+            parent_feed_item_id: commentMeta?.parentFeedItemId || item.parent_feed_item_id || null,
+            context_label: contextLabel || null,
+            comment_body: commentMeta?.comment || item.comment_body || null,
+            target_member_key: commentMeta?.targetKey || item.target_member_key || null,
+            metadata,
           });
 
           if (error) {
