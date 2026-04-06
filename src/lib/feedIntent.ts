@@ -7,6 +7,11 @@ export interface FeedIntent {
   ownerKey?: string;
   contextLabel?: string;
   draft?: string;
+  replyTarget?: {
+    memberKey?: string;
+    memberName: string;
+    commentId?: string;
+  };
   createdAt: number;
 }
 
@@ -50,7 +55,8 @@ export function isFreshFeedIntent(intent: FeedIntent | null, maxAgeMs = 30_000):
 
 export function resolveFeedIntentItem(intent: FeedIntent, feedItems: any[]): any | null {
   if (intent.feedItemId) {
-    return feedItems.find((item) => String(item.id || '') === String(intent.feedItemId)) || null;
+    const exactMatch = feedItems.find((item) => String(item.id || '') === String(intent.feedItemId)) || null;
+    if (exactMatch) return exactMatch;
   }
 
   if (!intent.ownerKey) return null;

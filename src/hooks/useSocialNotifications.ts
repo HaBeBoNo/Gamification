@@ -56,6 +56,7 @@ export function useSocialNotifications() {
           comment: parsedComment.comment,
           contextLabel: parsedComment.contextLabel,
           feedEventId: itemId,
+          parentFeedItemId: parsedComment.parentFeedItemId || undefined,
         },
       });
     }

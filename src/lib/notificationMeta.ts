@@ -114,10 +114,18 @@ export function getNotificationFeedIntent(notification: Notification): Omit<Feed
     case 'feed_comment':
       return {
         mode: 'reply',
+        feedItemId: notification.payload?.parentFeedItemId as string | undefined,
         ownerKey: notification.memberKey,
         contextLabel: notification.payload?.contextLabel as string | undefined,
         draft: memberNameFromPayload(notification)
           ? `@${memberNameFromPayload(notification).split(' ')[0]} `
+          : undefined,
+        replyTarget: memberNameFromPayload(notification)
+          ? {
+              memberKey: notification.payload?.memberId as string | undefined,
+              memberName: memberNameFromPayload(notification),
+              commentId: notification.payload?.feedEventId as string | undefined,
+            }
           : undefined,
       };
     case 'feed_reaction':

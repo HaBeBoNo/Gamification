@@ -2,6 +2,8 @@ import { S } from '../state/store';
 import type { FeedEntry } from '../types/game';
 import { MEMBERS } from '../data/members';
 
+const COMMENT_PAYLOAD_MARKER = '__sek_comment__:';
+
 function buildFeedSyncId(): string {
   return `feed_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -52,11 +54,77 @@ function getFeedMemberKeyByName(name?: string): string | null {
   return entry?.[0] || null;
 }
 
+function getPossessiveLabel(name: string): string {
+  return /[sxz]$/i.test(name) ? `${name}'` : `${name}s`;
+}
+
+function getCommentActionPrefixes(name: string): string[] {
+  const prefixes = [
+    `kommenterade ${getPossessiveLabel(name)} `,
+    `kommenterade ${name} `,
+  ];
+
+  // Backward compatibility for older generated strings like "Hanness".
+  if (/[sxz]$/i.test(name)) {
+    prefixes.push(`kommenterade ${name}s `);
+  }
+
+  return prefixes;
+}
+
 export interface ParsedFeedCommentAction {
   targetName: string;
   targetKey: string | null;
   contextLabel: string;
   comment: string;
+  parentFeedItemId?: string | null;
+}
+
+interface FeedCommentActionInput {
+  targetName: string;
+  contextLabel: string;
+  comment: string;
+  parentFeedItemId?: string | null;
+}
+
+function encodeCommentPayload(payload: FeedCommentActionInput): string {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeCommentPayload(encoded: string): FeedCommentActionInput | null {
+  try {
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
+    return JSON.parse(json) as FeedCommentActionInput;
+  } catch {
+    return null;
+  }
+}
+
+export function createFeedCommentAction({
+  targetName,
+  contextLabel,
+  comment,
+  parentFeedItemId,
+}: FeedCommentActionInput): string {
+  const labelPart = contextLabel === 'aktivitet' ? 'aktivitet' : `"${contextLabel}"`;
+  const payload = encodeCommentPayload({
+    targetName,
+    contextLabel,
+    comment,
+    parentFeedItemId: parentFeedItemId || null,
+  });
+
+  return `kommenterade ${getPossessiveLabel(targetName)} ${labelPart}: ${COMMENT_PAYLOAD_MARKER}${payload}`;
 }
 
 export function parseFeedCommentAction(action?: string): ParsedFeedCommentAction | null {
@@ -66,11 +134,30 @@ export function parseFeedCommentAction(action?: string): ParsedFeedCommentAction
     .map((member: any) => member?.name)
     .filter(Boolean)
     .sort((a: any, b: any) => String(b).length - String(a).length)
-    .find((name: any) => action.startsWith(`kommenterade ${name}s `));
+    .find((name: any) => getCommentActionPrefixes(String(name)).some((prefix) => action.startsWith(prefix)));
 
   if (!targetEntry) return null;
 
-  const remainder = action.slice(`kommenterade ${targetEntry}s `.length);
+  const matchedPrefix = getCommentActionPrefixes(String(targetEntry))
+    .find((prefix) => action.startsWith(prefix));
+  if (!matchedPrefix) return null;
+
+  const remainder = action.slice(matchedPrefix.length);
+  const markerIndex = remainder.indexOf(COMMENT_PAYLOAD_MARKER);
+  if (markerIndex >= 0) {
+    const encodedPayload = remainder.slice(markerIndex + COMMENT_PAYLOAD_MARKER.length).trim();
+    const decoded = decodeCommentPayload(encodedPayload);
+    if (decoded?.comment) {
+      return {
+        targetName: String(targetEntry),
+        targetKey: getFeedMemberKeyByName(String(targetEntry)),
+        contextLabel: decoded.contextLabel || 'aktivitet',
+        comment: decoded.comment,
+        parentFeedItemId: decoded.parentFeedItemId || null,
+      };
+    }
+  }
+
   const match = remainder.match(/^(aktivitet|"([^"]+)"):\s*"([^"]+)"$/);
   if (!match) return null;
 
@@ -79,11 +166,14 @@ export function parseFeedCommentAction(action?: string): ParsedFeedCommentAction
     targetKey: getFeedMemberKeyByName(String(targetEntry)),
     contextLabel: match[2] || 'aktivitet',
     comment: match[3] || '',
+    parentFeedItemId: null,
   };
 }
 
 export function getFeedContextLabel(item: { action?: string } | null | undefined): string {
   if (!item?.action) return 'aktivitet';
+  const parsedComment = parseFeedCommentAction(item.action);
+  if (parsedComment) return parsedComment.contextLabel;
   const quoted = item.action.match(/[""]([^""]+)[""]/);
   return quoted?.[1] || 'aktivitet';
 }

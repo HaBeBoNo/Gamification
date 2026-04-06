@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
+import { createFeedCommentAction, getFeedContextLabel, parseFeedCommentAction } from '@/lib/feed';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -60,51 +61,8 @@ function getMemberName(memberKey?: string): string {
   return (MEMBERS as Record<string, { name?: string }>)[memberKey]?.name || memberKey;
 }
 
-function getMemberKeyByName(name?: string): string | null {
-  if (!name) return null;
-  const normalized = name.trim().toLowerCase();
-  const entry = Object.entries(MEMBERS).find(([, member]) => member.name?.toLowerCase() === normalized);
-  return entry?.[0] || null;
-}
-
-interface ParsedCommentAction {
-  targetName: string;
-  targetKey: string | null;
-  contextLabel: string;
-  comment: string;
-}
-
-function parseCommentAction(action?: string): ParsedCommentAction | null {
-  if (!action || !action.startsWith('kommenterade ')) return null;
-
-  const targetEntry = Object.values(MEMBERS)
-    .map((member: any) => member?.name)
-    .filter(Boolean)
-    .sort((a: any, b: any) => String(b).length - String(a).length)
-    .find((name: any) => action.startsWith(`kommenterade ${name}s `));
-
-  if (!targetEntry) return null;
-
-  const remainder = action.slice(`kommenterade ${targetEntry}s `.length);
-  const match = remainder.match(/^(aktivitet|"([^"]+)"):\s*"([^"]+)"$/);
-  if (!match) return null;
-
-  return {
-    targetName: String(targetEntry),
-    targetKey: getMemberKeyByName(String(targetEntry)),
-    contextLabel: match[2] || 'aktivitet',
-    comment: match[3] || '',
-  };
-}
-
 function isCommentItem(item: any): boolean {
-  return Boolean(parseCommentAction(item?.action));
-}
-
-function getFeedContextLabel(item: any): string {
-  if (!item?.action) return 'aktivitet';
-  const quoted = item.action.match(/[""]([^""]+)[""]/);
-  return quoted?.[1] || 'aktivitet';
+  return Boolean(parseFeedCommentAction(item?.action));
 }
 
 function buildFeedPresentation(feedItems: any[]) {
@@ -114,11 +72,19 @@ function buildFeedPresentation(feedItems: any[]) {
   const pendingGeneric = new Map<string, Array<any>>();
 
   feedItems.forEach((item) => {
-    const parsed = parseCommentAction(item.action);
+    const parsed = parseFeedCommentAction(item.action);
     const itemId = String(item.id || '');
 
     if (parsed) {
       const enriched = { ...item, parsedComment: parsed };
+      if (parsed.parentFeedItemId) {
+        const list = commentsByItemId.get(parsed.parentFeedItemId) || [];
+        list.push(enriched);
+        commentsByItemId.set(parsed.parentFeedItemId, list);
+        if (itemId) hiddenCommentIds.add(itemId);
+        return;
+      }
+
       if (parsed.contextLabel === 'aktivitet') {
         const list = pendingGeneric.get(parsed.targetKey || parsed.targetName) || [];
         list.push(enriched);
@@ -285,6 +251,15 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     setThreadItemId(null);
   }
 
+  function findParentItemForComment(commentItemId: string): any | null {
+    for (const [parentItemId, comments] of presentation.commentsByItemId.entries()) {
+      if (comments.some((commentItem) => String(commentItem.id || '') === commentItemId)) {
+        return feedItems.find((item) => String(item.id || '') === parentItemId) || null;
+      }
+    }
+    return null;
+  }
+
   function openCommentComposer(item: any, replyTarget?: ReplyTarget) {
     const itemId = String(item.id || '');
     if (!itemId) return;
@@ -332,6 +307,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (error) {
       console.warn('toggleReaction failed:', error.message);
+      updateFeedItemLocal(item.id, current => ({ ...current, reactions: currentReactions }));
     }
   }
 
@@ -356,6 +332,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (error) {
       console.warn('toggleWitness failed:', error.message);
+      updateFeedItemLocal(item.id, current => ({ ...current, witnesses: currentWitnesses }));
     }
   }
 
@@ -373,7 +350,12 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     const itemLabel = (item.action || '').includes('"')
       ? (item.action.match(/[""]([^""]+)[""]/)?.[1] || 'aktivitet')
       : 'aktivitet';
-    const action = `kommenterade ${targetName}s ${itemLabel === 'aktivitet' ? 'aktivitet' : `"${itemLabel}"`}: "${comment}"`;
+    const action = createFeedCommentAction({
+      targetName,
+      contextLabel: itemLabel,
+      comment,
+      parentFeedItemId: itemId,
+    });
     const createdAt = new Date().toISOString();
     const optimisticId = `local-comment-${Date.now()}`;
     const optimisticItem = {
@@ -427,6 +409,12 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (error) {
       console.warn('create comment activity failed:', error.message);
+      setFeedItems(prev => prev.filter((feedItem) => String(feedItem.id || '') !== optimisticId));
+      setOpenCommentId(itemId);
+      if (replyTarget) {
+        setReplyTargets(prev => ({ ...prev, [itemId]: replyTarget }));
+      }
+      setCommentDrafts(prev => ({ ...prev, [itemId]: rawDraft }));
       setSubmittingCommentId(null);
       return;
     }
@@ -489,7 +477,13 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     if (!intent || !isFreshFeedIntent(intent) || feedItems.length === 0) return;
     if (lastHandledIntentId.current === intent.id) return;
 
-    const targetItem = resolveFeedIntentItem(intent, feedItems);
+    let targetItem = resolveFeedIntentItem(intent, feedItems);
+    if (!targetItem?.id) return;
+
+    const parsedIntentComment = parseFeedCommentAction(targetItem.action);
+    if (parsedIntentComment) {
+      targetItem = findParentItemForComment(String(targetItem.id || '')) || targetItem;
+    }
     if (!targetItem?.id) return;
 
     const targetId = String(targetItem.id);
@@ -499,17 +493,22 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (intent.mode === 'reply') {
       setOpenCommentId(targetId);
-      const draft = intent.draft || '';
-      if (draft) {
+      if (intent.replyTarget) {
+        setReplyTargets(prev => ({
+          ...prev,
+          [targetId]: intent.replyTarget,
+        }));
+      } else if (intent.draft) {
+        const fallbackDraft = intent.draft;
         setReplyTargets(prev => ({
           ...prev,
           [targetId]: {
-            memberName: draft.trim().replace(/^@/, ''),
+            memberName: fallbackDraft.trim().replace(/^@/, ''),
           },
         }));
       }
-      if (draft) {
-        setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || draft }));
+      if (intent.draft) {
+        setCommentDrafts(prev => ({ ...prev, [targetId]: prev[targetId] || intent.draft! }));
       }
     }
 
@@ -1014,8 +1013,8 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         <div className="feed-list feed-list-flat">
           {feedItems.map((item: any, i: number) => {
             const itemId = String(item.id || '');
-            const parsedComment = parseCommentAction(item.action);
-            const inlineComments = presentation.commentsByItemId.get(itemId) || [];
+            const parsedComment = parseFeedCommentAction(item.action);
+            const inlineComments = sortFeedItemsByTimeAsc(presentation.commentsByItemId.get(itemId) || []);
             const areCommentsExpanded = expandedCommentGroups[itemId] || false;
             const visibleInlineComments = areCommentsExpanded
               ? inlineComments
