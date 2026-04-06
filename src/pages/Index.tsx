@@ -33,6 +33,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useFeedSync } from '@/hooks/useFeedSync';
 import { useSocialNotifications } from '@/hooks/useSocialNotifications';
+import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 
@@ -77,6 +78,7 @@ export default function Index() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const unreadCount = useGameStore(s => s.notifications.filter((n: any) => !n.read).length);
+  const currentSurface = activeView === 'home' ? 'home' : activeTab;
 
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
   const [showHistory, setShowHistory] = useState(false);
@@ -84,6 +86,7 @@ export default function Index() {
 
   // Google OAuth auth gate
   const { user, synced } = useAuth();
+  usePresenceSync(currentSurface);
 
   // Sync from Supabase on app start
   useSupabaseData(S.me);

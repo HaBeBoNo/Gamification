@@ -17,8 +17,9 @@
 //   useGameStore(s => s.notifications)
 // ═══════════════════════════════════════════════════════════════
 
-import { save, useGameStore } from './store';
+import { S, save, useGameStore } from './store';
 import type { Notification } from '../types/game';
+import { markRemoteNotificationsRead } from '@/lib/socialData';
 
 export type { Notification };
 
@@ -45,6 +46,34 @@ export const NOTIF_TYPES = {
   FEED_REACTION:          'feed_reaction',
   FEED_WITNESS:           'feed_witness',
 } as const;
+
+function notificationIdentity(notification: Notification): string {
+  const dedupeKey = notification.payload?.dedupeKey;
+  if (typeof dedupeKey === 'string' && dedupeKey) {
+    return `dedupe:${notification.type}:${notification.memberKey || ''}:${dedupeKey}`;
+  }
+
+  if (notification.source === 'supabase' && notification.remoteId) {
+    return `remote:${notification.remoteId}`;
+  }
+
+  return `local:${String(notification.id)}`;
+}
+
+function sortAndTrimNotifications(notifications: Notification[]): Notification[] {
+  const deduped = new Map<string, Notification>();
+
+  [...notifications]
+    .sort((a, b) => b.ts - a.ts)
+    .forEach((notification) => {
+      const identity = notificationIdentity(notification);
+      if (!deduped.has(identity)) {
+        deduped.set(identity, notification);
+      }
+    });
+
+  return [...deduped.values()].sort((a, b) => b.ts - a.ts).slice(0, 50);
+}
 
 // ── Factory-funktioner ───────────────────────────────────────────
 
@@ -116,9 +145,14 @@ export function getUnreadCount(): number {
 
 /** Lägger till en ny notifikation längst fram. */
 export function addNotification(notification: Omit<Notification, 'id' | 'read'>): void {
-  const notif: Notification = { ...notification, id: Date.now() + Math.random(), read: false };
+  const notif: Notification = {
+    ...notification,
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    read: false,
+    source: notification.source || 'local',
+  };
   useGameStore.setState(s => ({
-    notifications: [notif, ...s.notifications].slice(0, 50),
+    notifications: sortAndTrimNotifications([notif, ...s.notifications]),
   }));
   save();
 }
@@ -126,7 +160,7 @@ export function addNotification(notification: Omit<Notification, 'id' | 'read'>)
 /** Lägger till ett redan format notif-objekt (med id + ts) och trunkerar till 50. */
 export function addNotifToAll(notif: Notification): void {
   useGameStore.setState(s => ({
-    notifications: [notif, ...s.notifications].slice(0, 50),
+    notifications: sortAndTrimNotifications([{ ...notif, source: notif.source || 'local' }, ...s.notifications]),
   }));
   save();
 }
@@ -143,32 +177,64 @@ export function addNotifToMembers(
   memberKeys.forEach(memberKey => {
     const fullNotif: Notification = {
       ...notif,
-      id:        Date.now() + Math.random(),
+      id:        `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       memberKey,
       ts:        Date.now(),
       read:      false,
+      source:    notif.source || 'local',
     };
     useGameStore.setState(s => ({
-      notifications: [fullNotif, ...s.notifications].slice(0, 50),
+      notifications: sortAndTrimNotifications([fullNotif, ...s.notifications]),
     }));
   });
   save();
 }
 
-/** Markerar alla notifikationer som lästa. */
-export function markAllRead(): void {
-  useGameStore.setState(s => ({
-    notifications: s.notifications.map(n => ({ ...n, read: true })),
+export function upsertNotifications(notifications: Notification[]): void {
+  if (notifications.length === 0) return;
+
+  useGameStore.setState((state) => ({
+    notifications: sortAndTrimNotifications([
+      ...notifications.map((notification) => ({
+        ...notification,
+        source: notification.source || 'supabase',
+      })),
+      ...state.notifications,
+    ]),
   }));
   save();
 }
 
+/** Markerar alla notifikationer som lästa. */
+export function markAllRead(): void {
+  const currentNotifications = useGameStore.getState().notifications;
+  const remoteIds = currentNotifications
+    .filter((notification) => !notification.read && notification.source === 'supabase')
+    .map((notification) => notification.remoteId || String(notification.id));
+
+  useGameStore.setState(s => ({
+    notifications: s.notifications.map(n => ({ ...n, read: true })),
+  }));
+  save();
+
+  if (S.me && remoteIds.length > 0) {
+    void markRemoteNotificationsRead(S.me, remoteIds);
+  }
+}
+
 /** Markerar en enskild notifikation som läst. */
-export function markRead(id: number): void {
+export function markRead(id: string | number): void {
+  const currentNotifications = useGameStore.getState().notifications;
+  const notification = currentNotifications.find((item) => item.id === id);
+
   useGameStore.setState(s => ({
     notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n),
   }));
   save();
+
+  if (S.me && notification?.source === 'supabase') {
+    void markRemoteNotificationsRead(S.me, [notification.remoteId || String(notification.id)]);
+  }
 }
 
 /**

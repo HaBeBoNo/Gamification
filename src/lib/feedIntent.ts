@@ -1,4 +1,4 @@
-import { getFeedContextLabel, parseFeedCommentAction } from '@/lib/feed';
+import { getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
 
 export interface FeedIntent {
   id: string;
@@ -62,7 +62,7 @@ export function resolveFeedIntentItem(intent: FeedIntent, feedItems: any[]): any
   if (!intent.ownerKey) return null;
 
   return feedItems.find((item) => {
-    if (parseFeedCommentAction(item?.action)) return false;
+    if (getFeedCommentMeta(item)) return false;
     if ((item.who || item.memberKey || item.member_key || '') !== intent.ownerKey) return false;
 
     if (!intent.contextLabel || intent.contextLabel === 'aktivitet') return true;

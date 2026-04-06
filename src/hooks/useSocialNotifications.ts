@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getFeedContextLabel, getFeedMemberName, parseFeedCommentAction } from '@/lib/feed';
-import { addNotification, getNotifications, NOTIF_TYPES } from '@/state/notifications';
+import { getFeedCommentMeta, getFeedContextLabel, getFeedMemberName } from '@/lib/feed';
+import { addNotification, getNotifications, NOTIF_TYPES, upsertNotifications } from '@/state/notifications';
 import { S } from '@/state/store';
 import { getSocialBackfillCutoff, setLastSocialSignalSync } from '@/lib/socialSignalPolicy';
+import { fetchRemoteNotifications, subscribeToRemoteNotifications } from '@/lib/socialData';
 
 function getActivityTs(item: any): number {
   const raw = item?.created_at || item?.ts || item?.time || item?.t;
@@ -33,13 +34,16 @@ export function useSocialNotifications() {
     seenReactionKeys.current = new Set();
     seenWitnessKeys.current = new Set();
     const backfillCutoffTs = getSocialBackfillCutoff(S.me);
+    let cancelled = false;
+    let legacyChannel: ReturnType<typeof supabase.channel> | null = null;
+    let remoteChannel: ReturnType<typeof supabase.channel> | null = null;
 
     function maybePersistSync(ts = Date.now()) {
       if (!S.me) return;
       setLastSocialSignalSync(S.me, ts);
     }
 
-    function createCommentNotification(item: any, parsedComment: NonNullable<ReturnType<typeof parseFeedCommentAction>>, eventTs: number) {
+    function createCommentNotification(item: any, parsedComment: NonNullable<ReturnType<typeof getFeedCommentMeta>>, eventTs: number) {
       const itemId = String(item.id || '');
       const dedupeKey = `comment:${itemId}`;
       if (hasNotification(NOTIF_TYPES.FEED_COMMENT, dedupeKey)) return;
@@ -104,7 +108,7 @@ export function useSocialNotifications() {
 
     function seedItem(item: any, allowBackfill = false) {
       const itemId = String(item.id || '');
-      const parsedComment = parseFeedCommentAction(item.action);
+      const parsedComment = getFeedCommentMeta(item);
       const eventTs = getActivityTs(item);
 
       if (parsedComment?.targetKey === S.me && itemId) {
@@ -141,7 +145,7 @@ export function useSocialNotifications() {
 
     function handleInsert(item: any) {
       const itemId = String(item.id || '');
-      const parsedComment = parseFeedCommentAction(item.action);
+      const parsedComment = getFeedCommentMeta(item);
       const eventTs = getActivityTs(item) || Date.now();
 
       if (parsedComment?.targetKey === S.me && itemId && !seenCommentIds.current.has(itemId)) {
@@ -200,30 +204,57 @@ export function useSocialNotifications() {
       maybePersistSync(Date.now());
     }
 
-    void seed();
+    async function syncRemote() {
+      if (!S.me || cancelled) return false;
+      const result = await fetchRemoteNotifications(S.me);
+      if (cancelled || !result.supported) return result.supported;
+      upsertNotifications(result.notifications);
+      initialized.current = true;
+      maybePersistSync(Date.now());
+      return true;
+    }
 
-    const channel = supabase
-      .channel('social-notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'activity_feed',
-      }, (payload) => {
-        if (!initialized.current) return;
-        handleInsert(payload.new as any);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'activity_feed',
-      }, (payload) => {
-        if (!initialized.current) return;
-        handleUpdate(payload.new as any);
-      })
-      .subscribe();
+    async function initialize() {
+      const remoteSupported = await syncRemote();
+      if (cancelled) return;
+
+      if (remoteSupported) {
+        remoteChannel = subscribeToRemoteNotifications(S.me!, () => {
+          void syncRemote();
+        });
+        return;
+      }
+
+      await seed();
+      if (cancelled) return;
+
+      legacyChannel = supabase
+        .channel('social-notifications')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'activity_feed',
+        }, (payload) => {
+          if (!initialized.current) return;
+          handleInsert(payload.new as any);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'activity_feed',
+        }, (payload) => {
+          if (!initialized.current) return;
+          handleUpdate(payload.new as any);
+        })
+        .subscribe();
+    }
+
+    void initialize();
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (legacyChannel) supabase.removeChannel(legacyChannel);
+      if (remoteChannel) supabase.removeChannel(remoteChannel);
     };
   }, [S.me]);
 }

@@ -12,6 +12,8 @@ import { markRead, type Notification } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
 import { RUNTIME_ISSUE_CLEAR_EVENT, RUNTIME_ISSUE_EVENT, getRuntimeIssues, type RuntimeIssue } from '@/lib/runtimeHealth';
+import { fetchPresenceSnapshot, hydrateFeedItems } from '@/lib/socialData';
+import { getFeedCommentMeta } from '@/lib/feed';
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -163,6 +165,7 @@ function HeroCard() {
 // ── BandStatusRow ───────────────────────────────────────────────────
 function BandStatusRow() {
   const [activeToday, setActiveToday] = useState(0);
+  const [activeNow, setActiveNow] = useState<number | null>(null);
   const [xp48h, setXp48h] = useState(0);
   const [nextEvent, setNextEvent] = useState<{ title: string; date: string } | null>(null);
   const [myRank, setMyRank] = useState<{ pos: number; gap: number; above: string } | null>(null);
@@ -171,10 +174,13 @@ function BandStatusRow() {
     async function loadPulse() {
       try {
         const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-        const { data } = await supabase
-          .from('activity_feed')
-          .select('who, xp, created_at')
-          .gte('created_at', since);
+        const [{ data }, presence] = await Promise.all([
+          supabase
+            .from('activity_feed')
+            .select('who, xp, created_at')
+            .gte('created_at', since),
+          fetchPresenceSnapshot(),
+        ]);
         if (!data) return;
         const todayStr = new Date().toDateString();
         const active = new Set(
@@ -182,6 +188,7 @@ function BandStatusRow() {
         );
         setActiveToday(active.size);
         setXp48h(data.reduce((s: number, i: any) => s + (i.xp ?? 0), 0));
+        setActiveNow(presence.supported ? presence.activeNow : null);
       } catch {}
     }
 
@@ -235,7 +242,7 @@ function BandStatusRow() {
       icon: '⚡',
       value: `${activeToday}/8`,
       label: 'Aktiva idag',
-      sub: `${xp48h} XP · 48h`,
+      sub: activeNow !== null ? `${activeNow} live nu · ${xp48h} XP / 48h` : `${xp48h} XP · 48h`,
     },
     nextEvent ? {
       icon: '📅',
@@ -322,7 +329,7 @@ type AttentionSignal = {
   subtitle: string;
   target: NotificationTarget;
   cta: string;
-  notificationId?: number;
+  notificationId?: string | number;
   notification?: Notification;
 };
 
@@ -587,13 +594,12 @@ function WaitingOnYouCard({
           .select('*')
           .order('created_at', { ascending: false })
           .limit(40);
+        const hydrated = await hydrateFeedItems(data || []);
 
-        const myName = getMemberName(me || undefined).toLowerCase();
-        const directComments = (data || []).filter((item: any) =>
-          item.who !== me &&
-          typeof item.action === 'string' &&
-          item.action.toLowerCase().includes(`kommenterade ${myName}`)
-        );
+        const directComments = hydrated.filter((item: any) => {
+          const parsed = getFeedCommentMeta(item);
+          return item.who !== me && parsed?.targetKey === me;
+        });
 
         if (directComments.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
@@ -606,7 +612,7 @@ function WaitingOnYouCard({
           });
         }
 
-        const feedbackItems = (data || []).filter((item: any) => {
+        const feedbackItems = hydrated.filter((item: any) => {
           if (item.who !== me) return false;
 
           const reactionMembers = Object.values(item.reactions ?? {}).flat() as string[];

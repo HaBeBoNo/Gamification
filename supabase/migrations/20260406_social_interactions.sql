@@ -23,20 +23,6 @@ begin
 end;
 $$;
 
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  member_key text unique not null,
-  email text,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists public.member_data (
-  id uuid default gen_random_uuid() primary key,
-  member_key text unique not null,
-  data jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now()
-);
-
 create table if not exists public.activity_feed (
   id uuid default gen_random_uuid() primary key,
   who text not null,
@@ -44,16 +30,18 @@ create table if not exists public.activity_feed (
   xp integer not null default 0,
   type text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  interaction_type text not null default 'activity',
-  parent_feed_item_id text,
-  context_label text,
-  comment_body text,
-  target_member_key text,
-  metadata jsonb not null default '{}'::jsonb,
-  reactions jsonb not null default '{}'::jsonb,
-  witnesses text[] not null default '{}'::text[]
+  updated_at timestamptz not null default now()
 );
+
+alter table public.activity_feed add column if not exists interaction_type text not null default 'activity';
+alter table public.activity_feed add column if not exists parent_feed_item_id text;
+alter table public.activity_feed add column if not exists context_label text;
+alter table public.activity_feed add column if not exists comment_body text;
+alter table public.activity_feed add column if not exists target_member_key text;
+alter table public.activity_feed add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table public.activity_feed add column if not exists reactions jsonb not null default '{}'::jsonb;
+alter table public.activity_feed add column if not exists witnesses text[] not null default '{}'::text[];
+alter table public.activity_feed add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.notifications (
   id uuid default gen_random_uuid() primary key,
@@ -348,11 +336,6 @@ create trigger activity_feed_touch_updated_at
 before update on public.activity_feed
 for each row execute function public.touch_updated_at();
 
-drop trigger if exists member_data_touch_updated_at on public.member_data;
-create trigger member_data_touch_updated_at
-before update on public.member_data
-for each row execute function public.touch_updated_at();
-
 drop trigger if exists notifications_touch_updated_at on public.notifications;
 create trigger notifications_touch_updated_at
 before update on public.notifications
@@ -398,22 +381,12 @@ create trigger feed_witness_notify_trigger
 after insert on public.feed_witnesses
 for each row execute function public.notify_feed_witness();
 
-alter table public.profiles enable row level security;
-alter table public.member_data enable row level security;
 alter table public.activity_feed enable row level security;
 alter table public.notifications enable row level security;
 alter table public.feed_reactions enable row level security;
 alter table public.feed_witnesses enable row level security;
 alter table public.member_presence enable row level security;
 alter table public.push_subscriptions enable row level security;
-
-drop policy if exists "Own profile only" on public.profiles;
-create policy "Own profile only" on public.profiles
-  for all using (auth.uid() = id);
-
-drop policy if exists "Own data only" on public.member_data;
-create policy "Own data only" on public.member_data
-  for all using (member_key = public.current_member_key());
 
 drop policy if exists "Authenticated can read activity feed" on public.activity_feed;
 create policy "Authenticated can read activity feed" on public.activity_feed

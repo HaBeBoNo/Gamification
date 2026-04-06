@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFeedCommentAction, parseFeedCommentAction } from './feed';
+import { createFeedCommentAction, getFeedCommentMeta, parseFeedCommentAction } from './feed';
 import { resolveFeedIntentItem } from './feedIntent';
 
 describe('feed comment actions', () => {
@@ -31,6 +31,25 @@ describe('feed comment actions', () => {
       parentFeedItemId: null,
     });
   });
+
+  it('prefers structured comment fields when available', () => {
+    const parsed = getFeedCommentMeta({
+      interaction_type: 'comment',
+      parent_feed_item_id: 'feed-42',
+      context_label: 'Demo',
+      comment_body: 'Vi har en tydlig refräng här.',
+      target_member_key: 'hannes',
+      metadata: { targetMemberName: 'Hannes' },
+    });
+
+    expect(parsed).toMatchObject({
+      targetName: 'Hannes',
+      targetKey: 'hannes',
+      contextLabel: 'Demo',
+      comment: 'Vi har en tydlig refräng här.',
+      parentFeedItemId: 'feed-42',
+    });
+  });
 });
 
 describe('feed intents', () => {
@@ -50,5 +69,29 @@ describe('feed intents', () => {
     }, items);
 
     expect(resolved?.id).toBe('1');
+  });
+
+  it('ignores structured comment rows when resolving owner/context fallback', () => {
+    const items = [
+      {
+        id: 'comment-1',
+        who: 'martin',
+        interaction_type: 'comment',
+        comment_body: 'Bra steg.',
+        target_member_key: 'hannes',
+        context_label: 'Demo',
+      },
+      { id: 'feed-1', who: 'hannes', action: 'slutförde "Demo" (+40 XP)' },
+    ];
+
+    const resolved = resolveFeedIntentItem({
+      id: 'intent-2',
+      createdAt: Date.now(),
+      mode: 'focus',
+      ownerKey: 'hannes',
+      contextLabel: 'Demo',
+    }, items);
+
+    expect(resolved?.id).toBe('feed-1');
   });
 });

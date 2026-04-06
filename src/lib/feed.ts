@@ -80,6 +80,16 @@ export interface ParsedFeedCommentAction {
   parentFeedItemId?: string | null;
 }
 
+type FeedCommentSource = {
+  action?: string;
+  interaction_type?: string | null;
+  parent_feed_item_id?: string | null;
+  context_label?: string | null;
+  comment_body?: string | null;
+  target_member_key?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
 interface FeedCommentActionInput {
   targetName: string;
   contextLabel: string;
@@ -170,9 +180,38 @@ export function parseFeedCommentAction(action?: string): ParsedFeedCommentAction
   };
 }
 
+function structuredTargetName(item: FeedCommentSource): string {
+  const targetMemberKey = item.target_member_key || '';
+  if (targetMemberKey) return getFeedMemberName(targetMemberKey);
+
+  const metadataTargetName = item.metadata?.targetMemberName;
+  return typeof metadataTargetName === 'string' && metadataTargetName
+    ? metadataTargetName
+    : 'Någon';
+}
+
+export function getFeedCommentMeta(item?: FeedCommentSource | null): ParsedFeedCommentAction | null {
+  if (!item) return null;
+
+  if (item.interaction_type === 'comment' || item.comment_body || item.parent_feed_item_id || item.target_member_key) {
+    return {
+      targetName: structuredTargetName(item),
+      targetKey: item.target_member_key || null,
+      contextLabel: item.context_label || 'aktivitet',
+      comment: item.comment_body || '',
+      parentFeedItemId: item.parent_feed_item_id || null,
+    };
+  }
+
+  return parseFeedCommentAction(item.action);
+}
+
 export function getFeedContextLabel(item: { action?: string } | null | undefined): string {
-  if (!item?.action) return 'aktivitet';
-  const parsedComment = parseFeedCommentAction(item.action);
+  if (!item) return 'aktivitet';
+  const structuredLabel = (item as FeedCommentSource).context_label;
+  if (structuredLabel) return structuredLabel;
+  if (!item.action) return 'aktivitet';
+  const parsedComment = getFeedCommentMeta(item as FeedCommentSource);
   if (parsedComment) return parsedComment.contextLabel;
   const quoted = item.action.match(/[""]([^""]+)[""]/);
   return quoted?.[1] || 'aktivitet';

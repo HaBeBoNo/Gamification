@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { S, save, useGameStore } from '@/state/store';
 import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
+import { fetchRemoteNotifications } from '@/lib/socialData';
+import { upsertNotifications } from '@/state/notifications';
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -105,7 +107,10 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   if (remote.metrics) S.metrics = remote.metrics;
   if (remote.prev) S.prev = remote.prev;
   if (remote.checkIns) S.checkIns = remote.checkIns;
-  if (remote.notifications) {
+  const remoteNotifications = await fetchRemoteNotifications(memberKey);
+  if (remoteNotifications.supported) {
+    upsertNotifications(remoteNotifications.notifications);
+  } else if (remote.notifications) {
     useGameStore.setState({ notifications: remote.notifications });
   }
   if (remote.seasonStart) S.seasonStart = remote.seasonStart;

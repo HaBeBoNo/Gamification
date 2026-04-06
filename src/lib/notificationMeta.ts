@@ -41,11 +41,20 @@ export function getNotificationText(notification: Notification): { title: string
     case 'quest_complete':
       return { title: notification.title || 'Uppdrag slutfört', subtitle: notification.body || '' };
     case 'feed_comment':
-      return { title: notification.title || 'Ny kommentar', subtitle: notification.body || '' };
+      return {
+        title: notification.title || `${memberName || 'Någon'} kommenterade din aktivitet`,
+        subtitle: notification.body || '',
+      };
     case 'feed_reaction':
-      return { title: notification.title || 'Ny reaktion', subtitle: notification.body || '' };
+      return {
+        title: notification.title || `${memberName || 'Någon'} reagerade på din aktivitet`,
+        subtitle: notification.body || '',
+      };
     case 'feed_witness':
-      return { title: notification.title || 'Någon såg din aktivitet', subtitle: notification.body || '' };
+      return {
+        title: notification.title || `${memberName || 'Någon'} såg din aktivitet`,
+        subtitle: notification.body || '',
+      };
     default:
       return { title: notification.title || 'Notifikation', subtitle: notification.body || '' };
   }

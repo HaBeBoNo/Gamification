@@ -8,13 +8,15 @@
 // ── Notifikationer ───────────────────────────────────────────────
 
 export interface Notification {
-  id:        number;
+  id:        string | number;
   type:      string;
   ts:        number;
   read:      boolean;
   title?:    string;
   body?:     string;
   memberKey?: string;
+  remoteId?: string;
+  source?:   'local' | 'supabase';
   payload?:  Record<string, unknown>;
 }
 
@@ -145,8 +147,19 @@ export interface FeedEntry {
   ts?:    string;   // HH:MM timestamp (most entries)
   time?:  string;   // alias used by some callers (insight bonus)
   xp?:    number;
+  id?:    string;
+  created_at?: string;
+  updated_at?: string;
   syncId?: string;
   type?:   string;
+  interaction_type?: 'activity' | 'comment';
+  parent_feed_item_id?: string | null;
+  context_label?: string | null;
+  comment_body?: string | null;
+  target_member_key?: string | null;
+  metadata?: Record<string, unknown> | null;
+  reactions?: Record<string, string[]>;
+  witnesses?: string[];
 }
 
 // ── Zustand store state ──────────────────────────────────────────

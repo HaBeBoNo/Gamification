@@ -8,7 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
-import { createFeedCommentAction, getFeedContextLabel, parseFeedCommentAction } from '@/lib/feed';
+import { createFeedCommentAction, getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
+import { hydrateFeedItems, insertFeedCommentActivity, toggleStructuredReaction, toggleStructuredWitness } from '@/lib/socialData';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -61,10 +62,6 @@ function getMemberName(memberKey?: string): string {
   return (MEMBERS as Record<string, { name?: string }>)[memberKey]?.name || memberKey;
 }
 
-function isCommentItem(item: any): boolean {
-  return Boolean(parseFeedCommentAction(item?.action));
-}
-
 function buildFeedPresentation(feedItems: any[]) {
   const commentsByItemId = new Map<string, Array<any>>();
   const hiddenCommentIds = new Set<string>();
@@ -72,7 +69,7 @@ function buildFeedPresentation(feedItems: any[]) {
   const pendingGeneric = new Map<string, Array<any>>();
 
   feedItems.forEach((item) => {
-    const parsed = parseFeedCommentAction(item.action);
+    const parsed = getFeedCommentMeta(item);
     const itemId = String(item.id || '');
 
     if (parsed) {
@@ -300,13 +297,23 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (!item.id || String(item.id).startsWith('local-') || !supabase) return;
 
-    const { error } = await supabase
-      .from('activity_feed')
-      .update({ reactions: newReactions })
-      .eq('id', item.id);
+    try {
+      const mode = await toggleStructuredReaction({
+        feedItemId: String(item.id),
+        memberKey: me,
+        emoji,
+        hasReacted,
+      });
 
-    if (error) {
-      console.warn('toggleReaction failed:', error.message);
+      if (mode === 'legacy') {
+        const { error } = await supabase
+          .from('activity_feed')
+          .update({ reactions: newReactions })
+          .eq('id', item.id);
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      console.warn('toggleReaction failed:', error?.message || error);
       updateFeedItemLocal(item.id, current => ({ ...current, reactions: currentReactions }));
     }
   }
@@ -325,13 +332,22 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     if (!item.id || String(item.id).startsWith('local-') || !supabase) return;
 
-    const { error } = await supabase
-      .from('activity_feed')
-      .update({ witnesses: updated })
-      .eq('id', item.id);
+    try {
+      const mode = await toggleStructuredWitness({
+        feedItemId: String(item.id),
+        memberKey: me,
+        hasWitnessed,
+      });
 
-    if (error) {
-      console.warn('toggleWitness failed:', error.message);
+      if (mode === 'legacy') {
+        const { error } = await supabase
+          .from('activity_feed')
+          .update({ witnesses: updated })
+          .eq('id', item.id);
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      console.warn('toggleWitness failed:', error?.message || error);
       updateFeedItemLocal(item.id, current => ({ ...current, witnesses: currentWitnesses }));
     }
   }
@@ -346,12 +362,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     const comment = rawDraft.trim();
     if (!isCommentReady(rawDraft, replyTarget)) return;
 
-    const targetName = getMemberName(item.who);
-    const itemLabel = (item.action || '').includes('"')
-      ? (item.action.match(/[""]([^""]+)[""]/)?.[1] || 'aktivitet')
-      : 'aktivitet';
+    const targetMemberKey = replyTarget?.memberKey || item.who || null;
+    const targetName = getMemberName(targetMemberKey || undefined);
+    const itemLabel = getFeedContextLabel(item);
     const action = createFeedCommentAction({
-      targetName,
+      targetName: getMemberName(item.who),
       contextLabel: itemLabel,
       comment,
       parentFeedItemId: itemId,
@@ -396,16 +411,16 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('activity_feed')
-      .insert({
-        who: me,
-        action,
-        xp: 0,
-        created_at: createdAt,
-      })
-      .select('*')
-      .single();
+    const { data, error } = await insertFeedCommentActivity({
+      who: me,
+      action,
+      createdAt,
+      parentFeedItemId: itemId,
+      contextLabel: itemLabel,
+      commentBody: comment,
+      targetMemberKey,
+      targetMemberName: targetName,
+    });
 
     if (error) {
       console.warn('create comment activity failed:', error.message);
@@ -432,12 +447,15 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
     async function loadFeed() {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('activity_feed')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-      if (data) setFeedItems(data);
+      if (data) {
+        const hydrated = await hydrateFeedItems(data);
+        setFeedItems(hydrated);
+      }
       setLoading(false);
     }
 
@@ -480,7 +498,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     let targetItem = resolveFeedIntentItem(intent, feedItems);
     if (!targetItem?.id) return;
 
-    const parsedIntentComment = parseFeedCommentAction(targetItem.action);
+    const parsedIntentComment = getFeedCommentMeta(targetItem);
     if (parsedIntentComment) {
       targetItem = findParentItemForComment(String(targetItem.id || '')) || targetItem;
     }
@@ -1013,7 +1031,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         <div className="feed-list feed-list-flat">
           {feedItems.map((item: any, i: number) => {
             const itemId = String(item.id || '');
-            const parsedComment = parseFeedCommentAction(item.action);
+            const parsedComment = getFeedCommentMeta(item);
             const inlineComments = sortFeedItemsByTimeAsc(presentation.commentsByItemId.get(itemId) || []);
             const areCommentsExpanded = expandedCommentGroups[itemId] || false;
             const visibleInlineComments = areCommentsExpanded
