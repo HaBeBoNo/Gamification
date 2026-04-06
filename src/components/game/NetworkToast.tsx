@@ -64,7 +64,7 @@ export default function NetworkToast() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (!detail?.toast) return;
-      addToast(detail?.issue?.message || 'En funktion kor i reservlage');
+      addToast(detail?.issue?.message || 'En funktion kör i reservläge');
     };
     window.addEventListener(RUNTIME_ISSUE_EVENT, handler);
     return () => window.removeEventListener(RUNTIME_ISSUE_EVENT, handler);

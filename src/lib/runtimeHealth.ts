@@ -12,6 +12,15 @@ const STORAGE_KEY = 'sek-runtime-health-v1';
 export const RUNTIME_ISSUE_EVENT = 'sek:runtime-issue';
 export const RUNTIME_ISSUE_CLEAR_EVENT = 'sek:runtime-issue-clear';
 
+function normalizeRuntimeMessage(message: string): string {
+  return (message || '')
+    .replace(/kor/g, 'kör')
+    .replace(/reservlage/g, 'reservläge')
+    .replace(/fortsatter/g, 'fortsätter')
+    .replace(/ar /g, 'är ')
+    .replace(/begransade/g, 'begränsade');
+}
+
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof localStorage !== 'undefined';
 }
@@ -38,6 +47,10 @@ function writeIssueMap(issues: Partial<Record<RuntimeService, RuntimeIssue>>): v
 export function getRuntimeIssues(): RuntimeIssue[] {
   return Object.values(readIssueMap())
     .filter(Boolean)
+    .map((issue) => ({
+      ...issue,
+      message: normalizeRuntimeMessage(issue?.message || ''),
+    }))
     .sort((a, b) => b.ts - a.ts) as RuntimeIssue[];
 }
 
@@ -50,7 +63,7 @@ export function setRuntimeIssue(
   const issue: RuntimeIssue = {
     service,
     level,
-    message,
+    message: normalizeRuntimeMessage(message),
     ts: Date.now(),
   };
 

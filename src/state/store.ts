@@ -102,7 +102,7 @@ function supabaseSync(memberKey: string): void {
         } else {
           console.error('[Sync] Max retries reached — data may not be saved');
           _supabaseSyncRetryCount = 0;
-          setRuntimeIssue('sync', 'Serverkopplingen ar ojämn just nu. Dina andringar fortsatter sparas lokalt.', 'warn');
+          setRuntimeIssue('sync', 'Serverkopplingen är ojämn just nu. Dina ändringar fortsätter sparas lokalt.', 'warn');
           // Dispatch custom event so NetworkToast can pick it up
           window.dispatchEvent(new CustomEvent('sek:sync-error', {
             detail: { message: 'Kunde inte synka till servern. Dina ändringar finns sparade lokalt.' },

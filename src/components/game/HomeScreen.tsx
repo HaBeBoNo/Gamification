@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import ActivityFeed from './ActivityFeed';
 import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
@@ -354,6 +353,46 @@ type AttentionSignal = {
   notification?: Notification;
 };
 
+function getActivityTimestamp(item: any): number {
+  const raw = item?.created_at ?? item?.ts ?? item?.time ?? item?.t;
+  if (!raw) return 0;
+  if (typeof raw === 'number') return raw;
+  const parsed = Date.parse(String(raw));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function formatActivityAge(item: any): string {
+  const ts = getActivityTimestamp(item);
+  if (!ts) return '';
+
+  const diff = Date.now() - ts;
+  const minutes = Math.max(1, Math.floor(diff / 60000));
+  if (minutes < 60) return `${minutes}m sedan`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h sedan`;
+
+  const days = Math.floor(hours / 24);
+  return `${days}d sedan`;
+}
+
+function getHomeEchoSummary(item: any): { title: string; body: string } {
+  const actor = getMemberName(item?.who);
+  const commentMeta = getFeedCommentMeta(item);
+
+  if (commentMeta) {
+    return {
+      title: `${actor} kommenterade`,
+      body: commentMeta.comment || item?.action || 'Svarade i tråden',
+    };
+  }
+
+  return {
+    title: actor,
+    body: item?.action || 'Gjorde något i bandet',
+  };
+}
+
 function DailyCoachCard({
   onNavigate,
   onOpenCoach,
@@ -392,7 +431,7 @@ function DailyCoachCard({
         letterSpacing: '0.08em',
         margin: '0 0 var(--space-sm)',
       }}>
-        Dagens riktning
+        Läget just nu
       </p>
       <div
         onClick={() => onOpenCoach?.(message)}
@@ -451,7 +490,7 @@ function DailyCoachCard({
           marginBottom: 'var(--space-lg)',
           minHeight: 52,
         }}>
-          {loading ? 'Coach kalibrerar dagens riktning...' : message}
+          {loading ? 'Coach kalibrerar läget...' : message}
         </div>
 
         {focusQuest && (
@@ -861,20 +900,20 @@ function getRuntimeIssueMeta(issue: RuntimeIssue): { icon: string; title: string
   switch (issue.service) {
     case 'ai':
       return {
-        icon: 'AI',
-        title: 'Coachen kor i reservlage',
+        icon: '✦',
+        title: 'Coachen är tillfälligt begränsad',
         subtitle: issue.message,
       };
     case 'push':
       return {
-        icon: '!',
-        title: 'Push-signaler ar begransade',
+        icon: '•',
+        title: 'Pushsignaler är begränsade',
         subtitle: issue.message,
       };
     case 'sync':
       return {
-        icon: '~',
-        title: 'Serverkopplingen ar ojämn',
+        icon: '↺',
+        title: 'Synken går i reservläge',
         subtitle: issue.message,
       };
     default:
@@ -911,7 +950,7 @@ function RuntimeStatusCard() {
         letterSpacing: '0.08em',
         margin: '0 0 var(--space-sm)',
       }}>
-        Systempuls
+        Systemstatus
       </p>
       <div style={{
         background: 'var(--color-surface-elevated)',
@@ -973,6 +1012,223 @@ function RuntimeStatusCard() {
   );
 }
 
+function HomeBandEcho({
+  onNavigate,
+}: {
+  onNavigate?: (tab: string) => void;
+}) {
+  const me = S.me;
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!me) return;
+    let cancelled = false;
+
+    async function loadEcho() {
+      setLoading(true);
+
+      try {
+        const { data } = await supabase
+          .from('activity_feed')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(24);
+
+        const hydrated = await hydrateFeedItems(data || []);
+        const others = hydrated
+          .filter((item: any) => item?.who && item.who !== me)
+          .sort((left: any, right: any) => getActivityTimestamp(right) - getActivityTimestamp(left))
+          .slice(0, 3);
+
+        if (!cancelled) {
+          setItems(others);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadEcho();
+
+    const channel = supabase
+      .channel('home-band-echo')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'activity_feed',
+      }, () => { void loadEcho(); })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [me]);
+
+  return (
+    <div style={{ padding: '0 var(--space-md)' }}>
+      <p style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        margin: '0 0 var(--space-sm)',
+      }}>
+        Från bandet
+      </p>
+      <div style={{
+        background: 'var(--color-surface-elevated)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-border)',
+        overflow: 'hidden',
+      }}>
+        {loading ? (
+          <div style={{
+            padding: 'var(--space-lg)',
+            color: 'var(--color-text-muted)',
+            fontSize: 'var(--text-caption)',
+          }}>
+            Lyssnar in bandet...
+          </div>
+        ) : items.length === 0 ? (
+          <div style={{
+            padding: 'var(--space-lg)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-sm)',
+          }}>
+            <div style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text)',
+              fontWeight: 600,
+            }}>
+              Det är lugnt i bandet just nu.
+            </div>
+            <div style={{
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.45,
+            }}>
+              När någon annan rör sig dyker det upp här först. Hela flödet finns fortfarande under Aktivitet.
+            </div>
+            <button
+              onClick={() => onNavigate?.('activity')}
+              style={{
+                alignSelf: 'flex-start',
+                marginTop: 'var(--space-xs)',
+                background: 'transparent',
+                color: 'var(--color-primary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-pill)',
+                padding: '10px 14px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              Öppna flödet
+            </button>
+          </div>
+        ) : (
+          <>
+            {items.map((item, index) => {
+              const summary = getHomeEchoSummary(item);
+              const actor = item?.who;
+              return (
+                <button
+                  key={String(item?.id || index)}
+                  onClick={() => onNavigate?.('activity')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 'var(--space-md)',
+                    padding: 'var(--space-md) var(--space-lg)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderTop: index === 0 ? 'none' : '1px solid var(--color-border)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ flexShrink: 0, marginTop: 2 }}>
+                    <MemberIcon id={actor} size={24} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 'var(--space-sm)',
+                      marginBottom: 4,
+                    }}>
+                      <div style={{
+                        fontSize: 'var(--text-caption)',
+                        color: 'var(--color-text)',
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {summary.title}
+                      </div>
+                      <div style={{
+                        fontSize: 'var(--text-micro)',
+                        color: 'var(--color-text-muted)',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {formatActivityAge(item)}
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: 'var(--text-caption)',
+                      color: 'var(--color-text-muted)',
+                      lineHeight: 1.5,
+                    }}>
+                      {summary.body}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            <div style={{
+              padding: '0 var(--space-lg) var(--space-lg)',
+            }}>
+              <button
+                onClick={() => onNavigate?.('activity')}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  color: 'var(--color-primary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '10px 14px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-micro)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Se hela flödet
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── HomeScreen ──────────────────────────────────────────────────────
 interface HomeScreenProps {
   rerender: () => void;
@@ -991,27 +1247,15 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
       paddingBottom: 'calc(var(--nav-height, 80px) + var(--space-xl))',
     }}>
       <HeroCard />
+      <BandStatusRow />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
       <WaitingOnYouCard
         onNavigate={onNavigate}
         onOpenNotifications={onOpenNotifications}
         onOpenCoach={onOpenCoach}
       />
+      <HomeBandEcho onNavigate={onNavigate} />
       <RuntimeStatusCard />
-      <div style={{ padding: '0 var(--space-md)' }}>
-        <p style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 'var(--text-micro)',
-          color: 'var(--color-text-muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          margin: '0 0 var(--space-sm)',
-        }}>
-          Bandets eko
-        </p>
-        <ActivityFeed hideHeader={true} />
-      </div>
-      <BandStatusRow />
     </div>
   );
 }
