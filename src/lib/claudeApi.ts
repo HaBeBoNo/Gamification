@@ -5,7 +5,6 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { AI_MODEL } from './config';
-import { clearRuntimeIssue, setRuntimeIssue } from './runtimeHealth';
 
 const API_URL = '/api/claude';
 const MODEL   = AI_MODEL;
@@ -16,36 +15,29 @@ const MODEL   = AI_MODEL;
  * Kastar ett Error om anropet misslyckas.
  */
 export async function callClaude(prompt: string, maxTokens = 400): Promise<string> {
+  const res = await fetch(API_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model:      MODEL,
+      max_tokens: maxTokens,
+      messages:   [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  const raw = await res.text();
+  let data: any = null;
   try {
-    const res = await fetch(API_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model:      MODEL,
-        max_tokens: maxTokens,
-        messages:   [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    const raw = await res.text();
-    let data: any = null;
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      setRuntimeIssue('ai', 'Försök igen om en liten stund. Resten av appen fungerar som vanligt.', 'warn');
-      throw new Error(`API ${res.status}`);
-    }
-
-    clearRuntimeIssue('ai');
-    return (data.content?.[0]?.text as string) || '';
+    data = raw ? JSON.parse(raw) : null;
   } catch (error) {
-    setRuntimeIssue('ai', 'Försök igen om en liten stund. Resten av appen fungerar som vanligt.', 'warn');
-    throw error;
+    data = null;
   }
+
+  if (!res.ok) {
+    throw new Error(`API ${res.status}`);
+  }
+
+  return (data.content?.[0]?.text as string) || '';
 }
 
 /**

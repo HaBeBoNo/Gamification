@@ -21,7 +21,7 @@ import {
 } from '../lib/aiPrompts';
 import type { Quest } from '../types/game';
 import { isQuestDoneNow } from '../lib/questUtils';
-import { setRuntimeIssue } from '../lib/runtimeHealth';
+import { clearRuntimeIssue } from '../lib/runtimeHealth';
 
 // Re-export constants that components already import from this file
 export { DEFAULT_COACH_NAMES, WELCOME_MESSAGES, buildCoachPrompt } from '../lib/aiPrompts';
@@ -178,9 +178,11 @@ export async function generatePersonalQuests(refreshMode = false): Promise<void>
 export async function refreshCoach(): Promise<string> {
   if (!S.me || !S.chars[S.me]) return 'Laddar din profil...';
   try {
-    return await callClaude(buildCoachPrompt(S.me) as string, 200);
+    const response = await callClaude(buildCoachPrompt(S.me) as string, 200);
+    clearRuntimeIssue('ai');
+    return response;
   } catch {
-    setRuntimeIssue('ai', 'Coachen svarar inte just nu. Ett reservmeddelande visas i stallet.', 'warn', { toast: true });
+    clearRuntimeIssue('ai');
     return 'Håll ut. Det du bygger nu syns inte ännu — men det spelar roll.';
   }
 }
@@ -215,6 +217,7 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
   try {
     const msg = (await callClaude(buildDailyCoachPrompt(memberKey) as string, 180)).trim();
     if (msg) {
+      clearRuntimeIssue('ai');
       char.dailyCoachMessage = msg;
       char.dailyCoachDate = today;
       save();
@@ -225,6 +228,7 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
   }
 
   const fallback = buildDailyCoachFallback(memberKey);
+  clearRuntimeIssue('ai');
   char.dailyCoachMessage = fallback;
   char.dailyCoachDate = today;
   save();
