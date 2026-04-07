@@ -55,38 +55,29 @@ type OverflowItem = {
   id: string;
   icon: React.ElementType;
   label: string;
-  subtitle: string;
   section: string;
-  intro?: string;
 };
 
 function SecondaryTabShell({
   icon: Icon,
   label,
-  subtitle,
-  intro,
   children,
 }: {
   icon: React.ElementType;
   label: string;
-  subtitle: string;
-  intro?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="secondary-view-shell">
       <div className="secondary-view-header">
-        <div className="secondary-view-eyebrow">Mer</div>
         <div className="secondary-view-title-row">
           <div className="secondary-view-icon">
             <Icon size={18} />
           </div>
           <div>
             <div className="secondary-view-title">{label}</div>
-            <div className="secondary-view-subtitle">{subtitle}</div>
           </div>
         </div>
-        {intro ? <div className="secondary-view-intro">{intro}</div> : null}
       </div>
       <div className="secondary-view-body">
         {children}
@@ -308,61 +299,48 @@ export default function Index() {
       id: 'coach',
       icon: MessageCircle,
       label: coachName,
-      subtitle: 'Din personliga AI-coach',
       section: 'Fokus',
-      intro: 'Coachrummet ska kännas som en tydlig förlängning av uppdragen, inte en sidofunktion.',
     },
     {
       id: 'activity',
       icon: Activity,
       label: 'Aktivitet',
-      subtitle: 'Bandets signaler och svar',
       section: 'Fokus',
-      intro: 'Här ska interaktionen kännas levande och lätt att följa vidare in i trådar.',
     },
     {
       id: 'home',
       icon: Home,
       label: 'Hem',
-      subtitle: 'Bandets överblick och puls',
       section: 'Överblick',
     },
     {
       id: 'season',
       icon: BarChart2,
       label: 'Säsong',
-      subtitle: 'Progress, tempo och riktning',
       section: 'Överblick',
-      intro: 'Säsongen ska kännas som långsam rörelse framåt, inte som ett separat statistikverktyg.',
     },
     {
       id: 'profile',
       icon: User,
       label: 'Profil',
-      subtitle: 'Din progression och form',
       section: 'Överblick',
-      intro: 'Profilen ska läsa som en personlig berättelse om hur du rör dig genom säsongen.',
     },
     {
       id: 'history',
       icon: Clock,
       label: 'Uppdragshistorik',
-      subtitle: 'Det du faktiskt har gjort',
       section: 'Verktyg',
     },
     ...(isCurl ? [{
       id: 'ideas',
       icon: Lightbulb,
       label: 'Idéer',
-      subtitle: 'Lösa tankar och nästa frön',
       section: 'Verktyg',
-      intro: 'Här ska idéer få landa snabbt utan att kännas som en tung process.',
     }] : []),
     {
       id: 'logout',
       icon: LogOut,
       label: 'Logga ut',
-      subtitle: 'Avsluta session',
       section: 'Konto',
     },
   ];
@@ -380,8 +358,6 @@ export default function Index() {
       <SecondaryTabShell
         icon={secondaryTab.icon}
         label={secondaryTab.label}
-        subtitle={secondaryTab.subtitle}
-        intro={secondaryTab.intro}
       >
         {content}
       </SecondaryTabShell>
@@ -395,8 +371,6 @@ export default function Index() {
       <SecondaryTabShell
         icon={mobileSecondaryTab.icon}
         label={mobileSecondaryTab.label}
-        subtitle={mobileSecondaryTab.subtitle}
-        intro={mobileSecondaryTab.intro}
       >
         {mobileContent}
       </SecondaryTabShell>
@@ -490,22 +464,8 @@ export default function Index() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={sheetSpring}
-              drag="y"
-              dragDirectionLock
-              dragElastic={0.12}
-              dragConstraints={{ top: 0, bottom: 0 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 90 || info.velocity.y > 700) setShowMore(false);
-              }}
             >
               <div className="overflow-handle" />
-              <div className="overflow-sheet-header">
-                <div className="overflow-sheet-eyebrow">Mer</div>
-                <div className="overflow-sheet-title">Fler rum i HQ</div>
-                <div className="overflow-sheet-subtitle">
-                  Sekundära ytor som fortfarande ska kännas lika genomarbetade som huvudflikarna.
-                </div>
-              </div>
               {overflowItems.map((item, i) => {
                 const Icon = item.icon;
                 const previous = overflowItems[i - 1];
@@ -529,7 +489,6 @@ export default function Index() {
                       />
                       <div className="overflow-row-text">
                         <span className="overflow-row-label">{item.label}</span>
-                        <span className="overflow-row-sub">{item.subtitle}</span>
                       </div>
                       <div className="overflow-row-meta">
                         {active ? <span className="overflow-row-active">Här nu</span> : null}

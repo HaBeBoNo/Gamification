@@ -1,11 +1,9 @@
 import React, { useMemo } from 'react';
 import { S, useGameStore } from '@/state/store';
-import { MEMBERS, ROLE_TYPES, ROLE_TYPE_LABEL } from '@/data/members';
+import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import SkillNodes from './SkillNodes';
-import TrophyRoom from './TrophyRoom';
 import ActivityHeatmap from './ActivityHeatmap';
-import { Star, Flame, Zap, Target, Calendar, TrendingUp, Award, Clock } from 'lucide-react';
+import { Star, Flame, Zap, Target, Clock, Compass, LineChart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
@@ -41,6 +39,10 @@ function getCategoryBreakdown(memberId: string) {
   return counts;
 }
 
+function getDominantCategory(counts: Record<string, number>) {
+  return Object.entries(counts).sort(([, a], [, b]) => b - a)[0] || ['wisdom', 0];
+}
+
 const CAT_COLORS: Record<string, string> = {
   wisdom: 'var(--cat-wisdom)',
   tech: 'var(--cat-tech)',
@@ -51,12 +53,12 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 const CAT_LABELS: Record<string, string> = {
-  wisdom: 'Wisdom',
-  tech: 'Tech',
-  social: 'Social',
-  money: 'Money',
-  health: 'Health',
-  global: 'Global',
+  wisdom: 'Visdom',
+  tech: 'Teknik',
+  social: 'Socialt',
+  money: 'Ekonomi',
+  health: 'Hälsa',
+  global: 'Globalt',
 };
 
 const EMPTY_CAT_COUNTS: Record<string, number> = {
@@ -67,6 +69,35 @@ const EMPTY_CAT_COUNTS: Record<string, number> = {
   health: 0,
   global: 0,
 };
+
+function getCoachReading({
+  motivation,
+  streak,
+  temporalPattern,
+  dominantCategory,
+}: {
+  motivation?: string;
+  streak: number;
+  temporalPattern?: string;
+  dominantCategory: string;
+}) {
+  if (motivation?.trim()) return motivation.trim();
+
+  const paceMap: Record<string, string> = {
+    early: 'Du går ofta igång tidigt när riktningen är tydlig.',
+    'deadline-driven': 'Du svarar starkt när det finns ett skarpt läge att möta.',
+    steady: 'Du bygger bäst när du får hålla en stadig rytm över tid.',
+  };
+
+  const categoryPart = CAT_LABELS[dominantCategory]
+    ? `Just nu dras du mest mot ${CAT_LABELS[dominantCategory].toLowerCase()}.`
+    : 'Just nu håller din riktning fortfarande på att ta form.';
+  const streakPart = streak >= 3
+    ? ' Streaken visar att du redan är inne i rörelse.'
+    : ' Nästa steg blir viktigt för att sätta rytmen.';
+
+  return `${paceMap[temporalPattern || ''] || 'Du rör dig bäst när uppdraget känns relevant direkt.'} ${categoryPart}${streakPart}`;
+}
 
 // ── Stat Radar (compact SVG) ────────────────────────────────────
 
@@ -241,28 +272,22 @@ export default function ProfileView() {
   const rtLabel = (ROLE_TYPE_LABEL as Record<string, any>)[roleType];
   const temporalPattern = char.temporalBehavior?.pattern;
   const xpPercent = xpToNext > 0 ? Math.round((xp / xpToNext) * 100) : 0;
-
-  // Season progress
-  const seasonStart = new Date(S.seasonStart || '2026-03-01');
-  const seasonEnd = new Date(S.seasonEnd || '2026-07-31');
-  const now = new Date();
-  const seasonTotal = seasonEnd.getTime() - seasonStart.getTime();
-  const seasonElapsed = Math.max(0, now.getTime() - seasonStart.getTime());
-  const seasonPercent = Math.min(100, Math.round((seasonElapsed / seasonTotal) * 100));
-
-  // Work points total
-  const pts = char.pts || { work: 0, spotify: 0, social: 0, bonus: 0 };
-  const totalPts = pts.work + pts.spotify + pts.social + pts.bonus;
-
-  // Coach name
   const coachName = (char as any).coachName ||
     ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
        nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn'
     } as Record<string, string>)[me] || 'Coach';
+  const [dominantCategory, dominantCount] = getDominantCategory(catCounts);
+  const focusLabel = dominantCount > 0 ? CAT_LABELS[dominantCategory] : 'Tar form';
+  const coachReading = getCoachReading({
+    motivation: char.motivation,
+    streak,
+    temporalPattern,
+    dominantCategory,
+  });
+  const formWins = form.filter((entry) => entry === 'W').length;
 
   return (
     <div className="pv-view">
-      {/* ── Hero Card ── */}
       <motion.div
         className="pv-hero"
         initial={{ opacity: 0, y: 12 }}
@@ -289,7 +314,6 @@ export default function ProfileView() {
           </div>
         </div>
 
-        {/* XP Bar */}
         <div className="pv-xp-section">
           <div className="pv-xp-labels">
             <span className="pv-xp-current">{formatNumber(xp)} XP</span>
@@ -306,73 +330,101 @@ export default function ProfileView() {
           </div>
           <div className="pv-xp-total">{formatNumber(totalXp)} total XP</div>
         </div>
+
+        <div className="pv-hero-strip">
+          <div className="pv-hero-chip">
+            <Compass size={12} />
+            <span>{focusLabel}</span>
+          </div>
+          <div className="pv-hero-chip">
+            <LineChart size={12} />
+            <span>{coachName}</span>
+          </div>
+        </div>
       </motion.div>
 
-      {/* ── Quick Stats Grid ── */}
       <motion.div
-        className="pv-stats-grid"
+        className="pv-section pv-glance-section"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.1 }}
       >
-        <div className="pv-stat-card">
-          <Target size={16} style={{ color: xpColor }} />
-          <span className="pv-stat-value">{questsDone}</span>
-          <span className="pv-stat-label">Uppdrag</span>
+        <div className="pv-section-header">
+          <Target size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">LÄGET JUST NU</span>
         </div>
-        <div className="pv-stat-card">
-          <Flame size={16} style={{ color: streak >= 7 ? '#f59e0b' : streak >= 3 ? xpColor : 'var(--color-text-muted)' }} />
-          <span className="pv-stat-value">{streak}</span>
-          <span className="pv-stat-label">Streak</span>
-        </div>
-        <div className="pv-stat-card">
-          <Zap size={16} style={{ color: xpColor }} />
-          <span className="pv-stat-value">{formatNumber(totalPts)}</span>
-          <span className="pv-stat-label">Poäng</span>
-        </div>
-        <div className="pv-stat-card">
-          <Clock size={16} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-stat-value" style={{ fontSize: '0.75rem' }}>{getTemporalLabel(temporalPattern)}</span>
-          <span className="pv-stat-label">Arbetsstil</span>
+        <div className="pv-glance-grid">
+          <div className="pv-stat-card pv-glance-card">
+            <Target size={16} style={{ color: xpColor }} />
+            <span className="pv-stat-value">{questsDone}</span>
+            <span className="pv-stat-label">Uppdrag</span>
+            <span className="pv-stat-helper">gjorda hittills</span>
+          </div>
+          <div className="pv-stat-card pv-glance-card">
+            <Flame size={16} style={{ color: streak >= 7 ? '#f59e0b' : streak >= 3 ? xpColor : 'var(--color-text-muted)' }} />
+            <span className="pv-stat-value">{streak}</span>
+            <span className="pv-stat-label">Streak</span>
+            <span className="pv-stat-helper">dagar i rörelse</span>
+          </div>
+          <div className="pv-stat-card pv-glance-card">
+            <Clock size={16} style={{ color: 'var(--color-text-muted)' }} />
+            <span className="pv-stat-value pv-stat-value-text">{getTemporalLabel(temporalPattern)}</span>
+            <span className="pv-stat-label">Arbetsstil</span>
+            <span className="pv-stat-helper">så brukar du arbeta</span>
+          </div>
+          <div className="pv-stat-card pv-glance-card">
+            <Zap size={16} style={{ color: xpColor }} />
+            <span className="pv-stat-value pv-stat-value-text">{focusLabel}</span>
+            <span className="pv-stat-label">Fokus</span>
+            <span className="pv-stat-helper">där du växer mest</span>
+          </div>
         </div>
       </motion.div>
 
-      {/* ── Form + Radar Row ── */}
       <motion.div
-        className="pv-radar-section"
+        className="pv-composer-grid"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.15 }}
       >
         <div className="pv-radar-card">
-          <div className="pv-section-label">KARAKTÄRSSTATS</div>
-          <StatRadar stats={stats} color={xpColor} />
-          <div className="pv-stat-row-grid">
-            {[
-              { key: 'vit', label: 'Vitalitet' },
-              { key: 'wis', label: 'Visdom' },
-              { key: 'for', label: 'Styrka' },
-              { key: 'cha', label: 'Karisma' },
-            ].map(s => (
-              <div key={s.key} className="pv-stat-mini">
-                <span className="pv-stat-mini-label">{s.label}</span>
-                <span className="pv-stat-mini-value" style={{ color: xpColor }}>
-                  {(stats as any)[s.key] || 10}
-                </span>
-              </div>
-            ))}
+          <div className="pv-section-label">KARAKTÄR</div>
+          <div className="pv-character-layout">
+            <StatRadar stats={stats} color={xpColor} />
+            <div className="pv-stat-row-grid">
+              {[
+                { key: 'vit', label: 'Vitalitet' },
+                { key: 'wis', label: 'Visdom' },
+                { key: 'for', label: 'Styrka' },
+                { key: 'cha', label: 'Karisma' },
+              ].map(s => (
+                <div key={s.key} className="pv-stat-mini">
+                  <span className="pv-stat-mini-label">{s.label}</span>
+                  <span className="pv-stat-mini-value" style={{ color: xpColor }}>
+                    {(stats as any)[s.key] || 10}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="pv-form-card">
-          <div className="pv-section-label">SENASTE FORM</div>
-          <FormDots form={form} color={xpColor} />
-          <div className="pv-section-label" style={{ marginTop: 16 }}>KATEGORIER</div>
+        <div className="pv-form-card pv-focus-card">
+          <div className="pv-section-label">ARBETSMÖNSTER</div>
+          <div className="pv-focus-summary">
+            <div className="pv-focus-copy">
+              <span className="pv-focus-head">Form senaste fem</span>
+              <span className="pv-focus-sub">
+                {formWins} av 5 steg sattes med tydlig framdrift.
+              </span>
+            </div>
+            <FormDots form={form} color={xpColor} />
+          </div>
+          <div className="pv-section-label pv-section-label-spaced">TYNGDPUNKT</div>
           <CategoryBars counts={catCounts} color={xpColor} />
         </div>
       </motion.div>
 
-      {/* ── Activity Heatmap ── */}
       <motion.div
         className="pv-section"
         initial={{ opacity: 0, y: 8 }}
@@ -380,76 +432,28 @@ export default function ProfileView() {
         transition={{ duration: 0.25, delay: 0.2 }}
       >
         <div className="pv-section-header">
-          <Calendar size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">AKTIVITET</span>
+          <LineChart size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">DIN RYTM</span>
         </div>
         <ActivityHeatmap memberId={me} xpColor={xpColor} />
       </motion.div>
 
-      {/* ── Skill Trees ── */}
-      <motion.div
-        className="pv-section"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.25 }}
-      >
-        <div className="pv-section-header">
-          <TrendingUp size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">FRAMSTEG</span>
-        </div>
-        <SkillNodes />
-      </motion.div>
-
-      {/* ── Trophy Room ── */}
-      <motion.div
-        className="pv-section"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.3 }}
-      >
-        <div className="pv-section-header">
-          <Award size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">MÄRKEN</span>
-        </div>
-        <TrophyRoom />
-      </motion.div>
-
-      {/* ── Season Progress ── */}
-      <motion.div
-        className="pv-season-card"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.35 }}
-      >
-        <div className="pv-section-label">{S.operationName || 'SÄSONG'}</div>
-        <div className="pv-season-bar-track">
-          <div
-            className="pv-season-bar-fill"
-            style={{ width: `${seasonPercent}%`, background: xpColor }}
-          />
-        </div>
-        <div className="pv-season-labels">
-          <span>{seasonStart.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
-          <span style={{ color: xpColor }}>{seasonPercent}%</span>
-          <span>{seasonEnd.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}</span>
-        </div>
-      </motion.div>
-
-      {/* ── Coach Info ── */}
       <motion.div
         className="pv-coach-card"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.4 }}
+        transition={{ duration: 0.25, delay: 0.25 }}
       >
-        <div className="pv-section-label">DIN COACH</div>
+        <div className="pv-section-label">COACHENS LÄSNING</div>
         <div className="pv-coach-name" style={{ color: xpColor }}>{coachName}</div>
-        {char.motivation && (
-          <div className="pv-coach-motivation">
-            <span className="pv-coach-quote-label">Drivkraft</span>
-            <span className="pv-coach-quote">"{char.motivation}"</span>
-          </div>
-        )}
+        <div className="pv-coach-motivation">
+          <span className="pv-coach-quote-label">Just nu</span>
+          <span className="pv-coach-quote">{coachReading}</span>
+        </div>
+        <div className="pv-coach-tags">
+          <span className="pv-coach-tag">{rtLabel?.label || roleType}</span>
+          <span className="pv-coach-tag">{focusLabel}</span>
+        </div>
       </motion.div>
     </div>
   );
