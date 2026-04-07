@@ -152,11 +152,13 @@ export interface FeedEntry {
   updated_at?: string;
   syncId?: string;
   type?:   string;
+  category?: string | null;
   interaction_type?: 'activity' | 'comment';
   parent_feed_item_id?: string | null;
   context_label?: string | null;
   comment_body?: string | null;
   target_member_key?: string | null;
+  meta?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
   reactions?: Record<string, string[]>;
   witnesses?: string[];

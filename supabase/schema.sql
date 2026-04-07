@@ -34,6 +34,8 @@ create table if not exists public.member_data (
   id uuid default gen_random_uuid() primary key,
   member_key text unique not null,
   data jsonb not null default '{}'::jsonb,
+  endorsements jsonb,
+  mvp_badge boolean,
   updated_at timestamptz not null default now()
 );
 
@@ -42,7 +44,7 @@ create table if not exists public.activity_feed (
   who text not null,
   action text not null,
   xp integer not null default 0,
-  type text,
+  category text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   interaction_type text not null default 'activity',
@@ -50,9 +52,10 @@ create table if not exists public.activity_feed (
   context_label text,
   comment_body text,
   target_member_key text,
+  meta jsonb,
   metadata jsonb not null default '{}'::jsonb,
   reactions jsonb not null default '{}'::jsonb,
-  witnesses text[] not null default '{}'::text[]
+  witnesses jsonb not null default '[]'::jsonb
 );
 
 create table if not exists public.notifications (
@@ -174,10 +177,10 @@ begin
   update public.activity_feed
   set
     witnesses = coalesce((
-      select array_agg(member_key order by created_at, member_key)
+      select to_jsonb(array_agg(member_key order by created_at, member_key))
       from public.feed_witnesses
       where feed_item_id = target_feed_item_id
-    ), '{}'::text[]),
+    ), '[]'::jsonb),
     updated_at = now()
   where id::text = target_feed_item_id;
 

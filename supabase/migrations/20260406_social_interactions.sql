@@ -28,19 +28,21 @@ create table if not exists public.activity_feed (
   who text not null,
   action text not null,
   xp integer not null default 0,
-  type text,
+  category text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table public.activity_feed add column if not exists category text;
 alter table public.activity_feed add column if not exists interaction_type text not null default 'activity';
 alter table public.activity_feed add column if not exists parent_feed_item_id text;
 alter table public.activity_feed add column if not exists context_label text;
 alter table public.activity_feed add column if not exists comment_body text;
 alter table public.activity_feed add column if not exists target_member_key text;
+alter table public.activity_feed add column if not exists meta jsonb;
 alter table public.activity_feed add column if not exists metadata jsonb not null default '{}'::jsonb;
 alter table public.activity_feed add column if not exists reactions jsonb not null default '{}'::jsonb;
-alter table public.activity_feed add column if not exists witnesses text[] not null default '{}'::text[];
+alter table public.activity_feed add column if not exists witnesses jsonb not null default '[]'::jsonb;
 alter table public.activity_feed add column if not exists updated_at timestamptz not null default now();
 
 create table if not exists public.notifications (
@@ -162,10 +164,10 @@ begin
   update public.activity_feed
   set
     witnesses = coalesce((
-      select array_agg(member_key order by created_at, member_key)
+      select to_jsonb(array_agg(member_key order by created_at, member_key))
       from public.feed_witnesses
       where feed_item_id = target_feed_item_id
-    ), '{}'::text[]),
+    ), '[]'::jsonb),
     updated_at = now()
   where id::text = target_feed_item_id;
 

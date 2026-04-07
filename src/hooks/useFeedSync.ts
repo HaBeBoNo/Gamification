@@ -72,6 +72,7 @@ export function useFeedSync() {
           ...(item.metadata && typeof item.metadata === 'object' ? item.metadata : {}),
           ...(syncId ? { syncId } : {}),
         };
+        const category = item.category || item.type || null;
 
         const existingQuery = syncId
           ? supabase
@@ -100,12 +101,14 @@ export function useFeedSync() {
             who: item.who ?? S.me,
             action: item.action,
             xp: item.xp ?? 0,
+            category,
             created_at: createdAt,
             interaction_type: commentMeta ? 'comment' : item.interaction_type || 'activity',
             parent_feed_item_id: commentMeta?.parentFeedItemId || item.parent_feed_item_id || null,
             context_label: contextLabel || null,
             comment_body: commentMeta?.comment || item.comment_body || null,
             target_member_key: commentMeta?.targetKey || item.target_member_key || null,
+            meta: metadata,
             metadata,
           });
 
