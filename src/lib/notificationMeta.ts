@@ -32,6 +32,16 @@ export function getNotificationText(notification: Notification): { title: string
       return { title: `Bandet passerade ${str(p.milestoneName)}!`, subtitle: '' };
     case 'quest_completed':
       return { title: `${memberName} klarade ${str(p.questTitle)}`, subtitle: '' };
+    case 'first_login':
+      return {
+        title: notification.title || `${memberName || 'Någon'} anslöt sig till HQ`,
+        subtitle: notification.body || '',
+      };
+    case 'streak':
+      return {
+        title: notification.title || `${memberName || 'Någon'} håller en streak`,
+        subtitle: notification.body || '',
+      };
     case 'level_up':
       return { title: notification.title || 'Level up!', subtitle: notification.body || '' };
     case 'high_five':
@@ -66,6 +76,7 @@ export function getNotificationTarget(notification: Notification): NotificationT
     case 'feed_reaction':
     case 'feed_witness':
     case 'high_five':
+    case 'first_login':
       return 'activity';
     case 'delegation_received':
     case 'delegation_accepted':

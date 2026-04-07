@@ -25,6 +25,7 @@ export function useSocialNotifications() {
   const seenCommentIds = useRef<Set<string>>(new Set());
   const seenReactionKeys = useRef<Set<string>>(new Set());
   const seenWitnessKeys = useRef<Set<string>>(new Set());
+  const remoteRetryTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!supabase || !S.me) return;
@@ -205,23 +206,32 @@ export function useSocialNotifications() {
     }
 
     async function syncRemote() {
-      if (!S.me || cancelled) return false;
+      if (!S.me || cancelled) return { supported: false, transientError: false };
       const result = await fetchRemoteNotifications(S.me);
-      if (cancelled || !result.supported) return result.supported;
-      upsertNotifications(result.notifications);
+      if (cancelled || !result.supported) return result;
+      if (!result.transientError) {
+        upsertNotifications(result.notifications);
+        maybePersistSync(Date.now());
+      }
       initialized.current = true;
-      maybePersistSync(Date.now());
-      return true;
+      return result;
     }
 
     async function initialize() {
-      const remoteSupported = await syncRemote();
+      const remoteResult = await syncRemote();
       if (cancelled) return;
 
-      if (remoteSupported) {
+      if (remoteResult.supported) {
         remoteChannel = subscribeToRemoteNotifications(S.me!, () => {
           void syncRemote();
         });
+        if (remoteResult.transientError) {
+          remoteRetryTimer.current = window.setTimeout(() => {
+            if (!cancelled) {
+              void syncRemote();
+            }
+          }, 5000);
+        }
         return;
       }
 
@@ -253,6 +263,9 @@ export function useSocialNotifications() {
 
     return () => {
       cancelled = true;
+      if (remoteRetryTimer.current) {
+        window.clearTimeout(remoteRetryTimer.current);
+      }
       if (legacyChannel) supabase.removeChannel(legacyChannel);
       if (remoteChannel) supabase.removeChannel(remoteChannel);
     };

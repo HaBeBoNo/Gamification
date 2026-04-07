@@ -8,6 +8,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { createFirstLoginNotif, addNotifToAll } from '@/state/notifications';
+import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals';
 
 const TOTAL_STEPS = 8;
 
@@ -138,6 +139,16 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
         const memberName = (MEMBERS as any)[selectedMember]?.name || selectedMember;
         const notif = createFirstLoginNotif(selectedMember, memberName);
         addNotifToAll(notif);
+        void notifyMembersSignal({
+          targetMemberKeys: getBandmateKeys(selectedMember),
+          type: 'first_login',
+          title: `${memberName} har anslutit sig till Headquarters! 🎉`,
+          body: 'Välkommen till bandet.',
+          dedupeKey: `first-login:${selectedMember}`,
+          payload: {
+            memberId: selectedMember,
+          },
+        });
       }
       // Synka till Supabase direkt
       try { await syncToSupabase(selectedMember!); } catch {}

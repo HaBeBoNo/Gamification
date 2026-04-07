@@ -5,6 +5,7 @@ import { MEMBERS } from '@/data/members';
 import { awardInsightBonus } from '@/hooks/useXP';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { pushFeedEntry } from '@/lib/feed';
+import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
 interface QuestCompleteModalProps {
@@ -73,10 +74,27 @@ export default function QuestCompleteModal({
   function submitHighFive() {
     if (highFiveTo && me) {
       const targetName = (MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo;
+      const meName = (MEMBERS as Record<string, { name?: string }>)[me]?.name || me;
       pushFeedEntry({
         who: me,
         action: `gav en high-five till ${targetName} 🙌`,
         xp: 0,
+      });
+      void notifyMembersSignal({
+        targetMemberKeys: [highFiveTo],
+        type: 'high_five',
+        title: `${meName} gav dig en high-five 🙌`,
+        body: `Efter "${quest.title}"`,
+        dedupeKey: `high-five:${me}:${highFiveTo}:${quest.id}`,
+        payload: {
+          memberId: me,
+          questTitle: quest.title,
+        },
+        push: {
+          title: `${meName} gav dig en high-five`,
+          body: `Efter "${quest.title}" 🙌`,
+          excludeMember: me,
+        },
       });
       save();
     }

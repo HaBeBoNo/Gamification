@@ -21,6 +21,7 @@ import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { createLevelUpNotif, createStreakNotif, addNotifToAll } from '../state/notifications';
 import { sendPush } from '../lib/sendPush';
 import { pushFeedEntry } from '../lib/feed';
+import { getBandmateKeys, notifyMembersSignal } from '../lib/notificationSignals';
 import { getQuestCycleKey } from '../lib/questUtils';
 import type { CharData, Quest } from '../types/game';
 
@@ -263,6 +264,17 @@ export function awardXP(
   if (streakMilestones.includes(c.streak)) {
     const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
     addNotifToAll(createStreakNotif(S.me!, memberName as string, c.streak));
+    void notifyMembersSignal({
+      targetMemberKeys: getBandmateKeys(S.me),
+      type: 'streak',
+      title: `${memberName} har ${c.streak} dagars streak! 🔥`,
+      body: `${c.streak} dagar i rad — håll i det.`,
+      dedupeKey: `streak:${S.me}:${c.streak}`,
+      payload: {
+        memberId: S.me,
+        streakDays: c.streak,
+      },
+    });
   }
 
   // XP och level
@@ -276,12 +288,22 @@ export function awardXP(
   if (leveled) {
     const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
     addNotifToAll(createLevelUpNotif(S.me!, memberName as string, c.level));
-    sendPush(
-      `${memberName} gick upp till Level ${c.level}`,
-      `Nytt level uppnått i Sektionen HQ`,
-      S.me!,
-      '/'
-    );
+    void notifyMembersSignal({
+      targetMemberKeys: getBandmateKeys(S.me),
+      type: 'level_up',
+      title: `${memberName} nådde nivå ${c.level}! ⚡`,
+      body: `Ny nivå uppnådd i Sektionen HQ`,
+      dedupeKey: `level-up:${S.me}:${c.level}`,
+      payload: {
+        memberId: S.me,
+        level: c.level,
+      },
+      push: {
+        title: `${memberName} gick upp till Level ${c.level}`,
+        body: 'Nytt level uppnått i Sektionen HQ',
+        excludeMember: S.me || undefined,
+      },
+    });
   }
 
   // Karaktärs-stats

@@ -4,6 +4,7 @@ import { getFeedCommentMeta } from '@/lib/feed';
 
 type SocialCapability =
   | 'notifications'
+  | 'notification_rpc'
   | 'feed_reactions'
   | 'feed_witnesses'
   | 'member_presence';
@@ -376,7 +377,7 @@ function toLocalNotification(row: RemoteNotificationRow): Notification {
 export async function fetchRemoteNotifications(
   memberKey: string,
   limit = 50
-): Promise<{ supported: boolean; notifications: Notification[] }> {
+): Promise<{ supported: boolean; notifications: Notification[]; transientError?: boolean }> {
   if (!supabase || !memberKey) return { supported: false, notifications: [] };
   if (getCapability('notifications') === false) return { supported: false, notifications: [] };
 
@@ -394,7 +395,7 @@ export async function fetchRemoteNotifications(
     }
 
     console.warn('[SocialData] notifications unavailable:', error.message);
-    return { supported: false, notifications: [] };
+    return { supported: true, notifications: [], transientError: true };
   }
 
   setCapability('notifications', true);
@@ -402,6 +403,43 @@ export async function fetchRemoteNotifications(
     supported: true,
     notifications: ((data || []) as RemoteNotificationRow[]).map(toLocalNotification),
   };
+}
+
+export async function createRemoteNotifications(params: {
+  targetMemberKeys: string[];
+  type: string;
+  title?: string | null;
+  body?: string | null;
+  dedupeKey?: string | null;
+  feedItemId?: string | null;
+  payload?: Record<string, unknown>;
+}): Promise<'structured' | 'legacy'> {
+  if (!supabase) return 'legacy';
+  if (getCapability('notification_rpc') === false) return 'legacy';
+
+  const targetMemberKeys = [...new Set((params.targetMemberKeys || []).filter(Boolean))];
+  if (targetMemberKeys.length === 0) return 'structured';
+
+  const { error } = await supabase.rpc('create_member_notifications', {
+    target_member_keys: targetMemberKeys,
+    notification_type: params.type,
+    notification_title: params.title || null,
+    notification_body: params.body || null,
+    related_feed_item_id: params.feedItemId || null,
+    notification_dedupe_key: params.dedupeKey || null,
+    notification_payload: params.payload || {},
+  });
+
+  if (error) {
+    if (isMissingSocialResourceError(error)) {
+      setCapability('notification_rpc', false);
+      return 'legacy';
+    }
+    throw error;
+  }
+
+  setCapability('notification_rpc', true);
+  return 'structured';
 }
 
 export function subscribeToRemoteNotifications(

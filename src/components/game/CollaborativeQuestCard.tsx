@@ -4,7 +4,7 @@ import { MEMBERS } from '@/data/members'
 import { S } from '@/state/store'
 import { completeMyPart } from '@/lib/collaborativeQuests'
 import { awardXP } from '@/hooks/useXP'
-import { sendPush } from '@/lib/sendPush'
+import { notifyMembersSignal } from '@/lib/notificationSignals'
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests'
 import QuestCompleteModal from './QuestCompleteModal'
 
@@ -53,28 +53,45 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
     // Push-notis
     const memberName = (S.me && (MEMBERS as any)[S.me]?.name) || S.me || 'Unknown'
     if (result.allDone) {
-      sendPush(
-        `${memberName} slutförde ert gemensamma uppdrag`,
-        `"${q.title}" — alla klara! 🎉`,
-        {
+      void notifyMembersSignal({
+        targetMemberKeys: participants.filter((p: string) => p !== S.me),
+        type: 'collaborative_complete',
+        title: `${memberName} slutförde ert gemensamma uppdrag`,
+        body: `"${q.title}" — alla klara! 🎉`,
+        dedupeKey: `collab-complete:${quest.id}`,
+        payload: {
+          memberId: S.me,
+          questId: quest.quest_id,
+          questTitle: q.title,
+        },
+        push: {
+          title: `${memberName} slutförde ert gemensamma uppdrag`,
+          body: `"${q.title}" — alla klara! 🎉`,
           excludeMember: S.me || undefined,
-          targetMemberKeys: participants.filter((p: string) => p !== S.me),
-          url: '/',
-        }
-      )
+        },
+      })
     } else {
       const remaining = participants.filter(
         (p: string) => !result.completedBy.includes(p)
       ).length
-      sendPush(
-        `${memberName} slutförde sin del`,
-        `"${q.title}" — ${remaining} kvar`,
-        {
+      void notifyMembersSignal({
+        targetMemberKeys: participants.filter((p: string) => p !== S.me),
+        type: 'quest_complete',
+        title: `${memberName} slutförde sin del`,
+        body: `"${q.title}" — ${remaining} kvar`,
+        dedupeKey: `collab-progress:${quest.id}:${S.me}`,
+        payload: {
+          memberId: S.me,
+          questId: quest.quest_id,
+          questTitle: q.title,
+          remaining,
+        },
+        push: {
+          title: `${memberName} slutförde sin del`,
+          body: `"${q.title}" — ${remaining} kvar`,
           excludeMember: S.me || undefined,
-          targetMemberKeys: participants.filter((p: string) => p !== S.me),
-          url: '/',
-        }
-      )
+        },
+      })
     }
   }
 

@@ -3,11 +3,11 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { supabase } from '@/lib/supabase';
 import { awardXP } from '@/hooks/useXP';
-import { sendPush } from '@/lib/sendPush';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip } from 'lucide-react';
 import { getQuestOrigin, ORIGIN_LABELS, isQuestDoneNow } from '@/lib/questUtils';
 import { pushFeedEntry } from '@/lib/feed';
+import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
@@ -87,29 +87,46 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       if (everyoneDone) {
         q.done = true;
         const memberName = (MEMBERS as any)[me]?.name || me;
-        sendPush(
-          `${memberName} slutförde ert gemensamma uppdrag`,
-          `"${quest.title}" — alla deltagare klara! 🎉`,
-          {
+        void notifyMembersSignal({
+          targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
+          type: 'collaborative_complete',
+          title: `${memberName} slutförde ert gemensamma uppdrag`,
+          body: `"${quest.title}" — alla deltagare klara! 🎉`,
+          dedupeKey: `collab-complete:${quest.id}`,
+          payload: {
+            memberId: me,
+            questId: quest.id,
+            questTitle: quest.title,
+          },
+          push: {
+            title: `${memberName} slutförde ert gemensamma uppdrag`,
+            body: `"${quest.title}" — alla deltagare klara! 🎉`,
             excludeMember: me,
-            targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
-            url: '/',
-          }
-        );
+          },
+        });
       } else {
         const memberName = (MEMBERS as any)[me]?.name || me;
         const remaining = (q.participants as string[]).filter(
           (id: string) => !completedBy.includes(id)
         ).length;
-        sendPush(
-          `${memberName} slutförde sin del`,
-          `"${quest.title}" — ${remaining} kvar`,
-          {
+        void notifyMembersSignal({
+          targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
+          type: 'quest_complete',
+          title: `${memberName} slutförde sin del`,
+          body: `"${quest.title}" — ${remaining} kvar`,
+          dedupeKey: `collab-progress:${quest.id}:${me}`,
+          payload: {
+            memberId: me,
+            questId: quest.id,
+            questTitle: quest.title,
+            remaining,
+          },
+          push: {
+            title: `${memberName} slutförde sin del`,
+            body: `"${quest.title}" — ${remaining} kvar`,
             excludeMember: me,
-            targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
-            url: '/',
-          }
-        );
+          },
+        });
       }
 
       if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
