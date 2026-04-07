@@ -50,6 +50,52 @@ const BandHubFallback = (
   </div>
 );
 
+const PRIMARY_TAB_IDS = new Set(['quests', 'bandhub', 'leaderboard']);
+
+type OverflowItem = {
+  id: string;
+  icon: React.ElementType;
+  label: string;
+  subtitle: string;
+  section: string;
+  intro?: string;
+};
+
+function SecondaryTabShell({
+  icon: Icon,
+  label,
+  subtitle,
+  intro,
+  children,
+}: {
+  icon: React.ElementType;
+  label: string;
+  subtitle: string;
+  intro?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="secondary-view-shell">
+      <div className="secondary-view-header">
+        <div className="secondary-view-eyebrow">Mer</div>
+        <div className="secondary-view-title-row">
+          <div className="secondary-view-icon">
+            <Icon size={18} />
+          </div>
+          <div>
+            <div className="secondary-view-title">{label}</div>
+            <div className="secondary-view-subtitle">{subtitle}</div>
+          </div>
+        </div>
+        {intro ? <div className="secondary-view-intro">{intro}</div> : null}
+      </div>
+      <div className="secondary-view-body">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Index() {
   // Zustand-driven reactivity: alla save()/notify() triggar re-render
   useGameStore(s => s.tick);
@@ -281,21 +327,112 @@ export default function Index() {
        nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' };
   const coachName: string = (S.chars[S.me!]?.coachName || (S.me ? COACH_NAMES_INDEX[S.me] : undefined) || 'Coach') as string;
 
-  const overflowItems = [
-    { id: 'coach',    icon: MessageCircle, label: coachName,    subtitle: 'Din personliga AI-coach' },
-    { id: 'home',     icon: Home,          label: 'Hem',        subtitle: 'Bandets översikt och metrics' },
-    { id: 'activity', icon: Activity,      label: 'Aktivitet',  subtitle: 'Senaste händelser' },
-    { id: 'season',   icon: BarChart2,     label: 'Säsong',     subtitle: 'Säsongsöversikt och XP-kurva' },
-    { id: 'profile',  icon: User,          label: 'Profil',     subtitle: 'Din profil och statistik' },
-    { id: 'history',  icon: Clock,         label: 'Uppdragshistorik', subtitle: 'Avklarade uppdrag' },
-    ...(isCurl  ? [{ id: 'ideas', icon: Lightbulb, label: 'Idéer',  subtitle: 'Lösa tankar' }] : []),
-    ...(isAdmin ? [{ id: 'admin', icon: Settings,  label: 'Admin',  subtitle: 'Systemkontroller' }] : []),
-    { id: 'logout', icon: LogOut, label: 'Logga ut', subtitle: 'Avsluta session' },
+  const overflowItems: OverflowItem[] = [
+    {
+      id: 'coach',
+      icon: MessageCircle,
+      label: coachName,
+      subtitle: 'Din personliga AI-coach',
+      section: 'Fokus',
+      intro: 'Coachrummet ska kännas som en tydlig förlängning av uppdragen, inte en sidofunktion.',
+    },
+    {
+      id: 'activity',
+      icon: Activity,
+      label: 'Aktivitet',
+      subtitle: 'Bandets signaler och svar',
+      section: 'Fokus',
+      intro: 'Här ska interaktionen kännas levande och lätt att följa vidare in i trådar.',
+    },
+    {
+      id: 'home',
+      icon: Home,
+      label: 'Hem',
+      subtitle: 'Bandets överblick och puls',
+      section: 'Överblick',
+    },
+    {
+      id: 'season',
+      icon: BarChart2,
+      label: 'Säsong',
+      subtitle: 'Progress, tempo och riktning',
+      section: 'Överblick',
+      intro: 'Säsongen ska kännas som långsam rörelse framåt, inte som ett separat statistikverktyg.',
+    },
+    {
+      id: 'profile',
+      icon: User,
+      label: 'Profil',
+      subtitle: 'Din progression och form',
+      section: 'Överblick',
+      intro: 'Profilen ska läsa som en personlig berättelse om hur du rör dig genom säsongen.',
+    },
+    {
+      id: 'history',
+      icon: Clock,
+      label: 'Uppdragshistorik',
+      subtitle: 'Det du faktiskt har gjort',
+      section: 'Verktyg',
+    },
+    ...(isCurl ? [{
+      id: 'ideas',
+      icon: Lightbulb,
+      label: 'Idéer',
+      subtitle: 'Lösa tankar och nästa frön',
+      section: 'Verktyg',
+      intro: 'Här ska idéer få landa snabbt utan att kännas som en tung process.',
+    }] : []),
+    ...(isAdmin ? [{
+      id: 'admin',
+      icon: Settings,
+      label: 'Admin',
+      subtitle: 'Systemkontroller',
+      section: 'Verktyg',
+    }] : []),
+    {
+      id: 'logout',
+      icon: LogOut,
+      label: 'Logga ut',
+      subtitle: 'Avsluta session',
+      section: 'Konto',
+    },
   ];
+  const overflowItemById = Object.fromEntries(overflowItems.map((item) => [item.id, item])) as Record<string, OverflowItem>;
+  const mobileOverflowActive = activeView === 'tab' && !PRIMARY_TAB_IDS.has(mobileTab);
 
   const coachIconColor = MEMBERS[S.me || '']?.xpColor || 'var(--color-primary)';
 
   // ── Render ────────────────────────────────────────────────────────
+
+  const content = renderContent(activeTab);
+  const secondaryTab = activeView === 'tab' ? overflowItemById[activeTab] : undefined;
+  const framedContent = secondaryTab && secondaryTab.id !== 'home'
+    ? (
+      <SecondaryTabShell
+        icon={secondaryTab.icon}
+        label={secondaryTab.label}
+        subtitle={secondaryTab.subtitle}
+        intro={secondaryTab.intro}
+      >
+        {content}
+      </SecondaryTabShell>
+    )
+    : content;
+
+  const mobileContent = renderContent(mobileTab);
+  const mobileSecondaryTab = activeView === 'tab' ? overflowItemById[mobileTab] : undefined;
+  const framedMobileContent = mobileSecondaryTab && mobileSecondaryTab.id !== 'home'
+    ? (
+      <SecondaryTabShell
+        icon={mobileSecondaryTab.icon}
+        label={mobileSecondaryTab.label}
+        subtitle={mobileSecondaryTab.subtitle}
+        intro={mobileSecondaryTab.intro}
+      >
+        {mobileContent}
+      </SecondaryTabShell>
+    )
+    : mobileContent;
 
   return (
     <div className="app-shell">
@@ -328,7 +465,7 @@ export default function Index() {
         <div className="quest-center-wrapper stagger-1">
           {/* Desktop: render active tab directly */}
           <div className="desktop-content">
-            {renderContent(activeTab)}
+            {framedContent}
           </div>
 
           {/* Mobile: animated tab transitions */}
@@ -347,7 +484,7 @@ export default function Index() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={viewTransition}
               >
-                {renderContent(mobileTab)}
+                {framedMobileContent}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -364,6 +501,7 @@ export default function Index() {
         activeView={activeView}
         onTabChange={handleTabTap}
         showMore={showMore}
+        overflowActive={mobileOverflowActive}
         onMoreTap={() => setShowMore(true)}
         unreadCount={unreadCount}
       />
@@ -394,12 +532,29 @@ export default function Index() {
               }}
             >
               <div className="overflow-handle" />
+              <div className="overflow-sheet-header">
+                <div className="overflow-sheet-eyebrow">Mer</div>
+                <div className="overflow-sheet-title">Fler rum i HQ</div>
+                <div className="overflow-sheet-subtitle">
+                  Sekundära ytor som fortfarande ska kännas lika genomarbetade som huvudflikarna.
+                </div>
+              </div>
               {overflowItems.map((item, i) => {
                 const Icon = item.icon;
+                const previous = overflowItems[i - 1];
+                const active = activeView === 'tab' ? activeTab === item.id : item.id === 'home' && activeView === 'home';
+                const showSection = !previous || previous.section !== item.section;
                 return (
                   <React.Fragment key={item.id}>
-                    {i > 0 ? <div className="overflow-sep" /> : null}
-                    <button className="overflow-row" onClick={() => handleOverflowSelect(item.id)}>
+                    {showSection ? (
+                      <div className="overflow-section-title">{item.section}</div>
+                    ) : (
+                      <div className="overflow-sep" />
+                    )}
+                    <button
+                      className={`overflow-row ${active ? 'is-active' : ''}`}
+                      onClick={() => handleOverflowSelect(item.id)}
+                    >
                       <Icon
                         size={20}
                         className="overflow-row-icon"
@@ -409,7 +564,10 @@ export default function Index() {
                         <span className="overflow-row-label">{item.label}</span>
                         <span className="overflow-row-sub">{item.subtitle}</span>
                       </div>
-                      <ChevronRight size={16} className="overflow-row-chevron" />
+                      <div className="overflow-row-meta">
+                        {active ? <span className="overflow-row-active">Här nu</span> : null}
+                        <ChevronRight size={16} className="overflow-row-chevron" />
+                      </div>
                     </button>
                   </React.Fragment>
                 );

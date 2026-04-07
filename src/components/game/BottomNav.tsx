@@ -12,6 +12,7 @@ interface BottomNavProps {
   activeView: 'home' | 'tab';
   onTabChange: (id: string) => void;
   showMore: boolean;
+  overflowActive?: boolean;
   onMoreTap: () => void;
   unreadCount?: number;
 }
@@ -36,7 +37,15 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   minHeight: 'var(--control-height)',
 });
 
-export function BottomNav({ activeTab, activeView, onTabChange, showMore, onMoreTap, unreadCount = 0 }: BottomNavProps) {
+export function BottomNav({
+  activeTab,
+  activeView,
+  onTabChange,
+  showMore,
+  overflowActive = false,
+  onMoreTap,
+  unreadCount = 0,
+}: BottomNavProps) {
   return (
     <nav
       className="bottom-tab-bar"
@@ -81,13 +90,13 @@ export function BottomNav({ activeTab, activeView, onTabChange, showMore, onMore
       {/* More / overflow button */}
       <button
         role="tab"
-        aria-selected={showMore}
+        aria-selected={showMore || overflowActive}
         aria-label="Mer"
         onClick={onMoreTap}
-        style={tabStyle(showMore)}
+        style={tabStyle(showMore || overflowActive)}
       >
         <span className="tab-badge-wrap" style={{ position: 'relative', lineHeight: 0 }}>
-          <MoreHorizontal size={22} strokeWidth={showMore ? 2 : 1.5} />
+          <MoreHorizontal size={22} strokeWidth={showMore || overflowActive ? 2 : 1.5} />
           {unreadCount > 0 && <span className="more-notif-dot" />}
         </span>
         MER
