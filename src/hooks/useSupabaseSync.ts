@@ -3,6 +3,18 @@ import { S, save, useGameStore } from '@/state/store';
 import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
 import { fetchRemoteNotifications } from '@/lib/socialData';
 import { upsertNotifications } from '@/state/notifications';
+import type { Reminder } from '@/types/game';
+
+function mergeReminders(localReminders: Reminder[] = [], remoteReminders: Reminder[] = []): Reminder[] {
+  const merged = new Map<string, Reminder>();
+
+  [...remoteReminders, ...localReminders].forEach((reminder) => {
+    if (!reminder?.eventId || !reminder?.memberKey) return;
+    merged.set(`${reminder.memberKey}:${reminder.eventId}`, reminder);
+  });
+
+  return [...merged.values()].sort((a, b) => (a.eventStart || '').localeCompare(b.eventStart || ''));
+}
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -13,6 +25,7 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
     metrics: S.metrics,
     prev: S.prev,
     checkIns: S.checkIns,
+    reminders: S.reminders,
     onboarded: S.onboarded,
     operationName: S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
@@ -105,6 +118,7 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   if (remote.metrics) S.metrics = remote.metrics;
   if (remote.prev) S.prev = remote.prev;
   if (remote.checkIns) S.checkIns = remote.checkIns;
+  if (remote.reminders) S.reminders = mergeReminders(S.reminders, remote.reminders as Reminder[]);
   const remoteNotifications = await fetchRemoteNotifications(memberKey);
   if (remoteNotifications.supported) {
     upsertNotifications(remoteNotifications.notifications);

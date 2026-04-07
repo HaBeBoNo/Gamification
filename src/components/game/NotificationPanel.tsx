@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
-import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye } from 'lucide-react';
+import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin } from 'lucide-react';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText } from '@/lib/notificationMeta';
 
@@ -23,6 +23,8 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   feed_comment: MessageCircle,
   feed_reaction: Award,
   feed_witness: Eye,
+  calendar_rsvp: CalendarDays,
+  calendar_check_in: MapPin,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -42,6 +44,8 @@ const TYPE_COLORS: Record<string, string> = {
   feed_comment: 'var(--color-primary)',
   feed_reaction: 'var(--color-accent)',
   feed_witness: 'var(--color-green)',
+  calendar_rsvp: 'var(--color-primary)',
+  calendar_check_in: 'var(--color-accent)',
 };
 
 function timeAgo(ts: number): string {

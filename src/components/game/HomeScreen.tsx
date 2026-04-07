@@ -609,6 +609,10 @@ function getSignalIcon(notification: Notification): string {
       return '📥';
     case 'collaborative_complete':
       return '🤝';
+    case 'calendar_rsvp':
+      return '📅';
+    case 'calendar_check_in':
+      return '📍';
     default:
       return '🔔';
   }

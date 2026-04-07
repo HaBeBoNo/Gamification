@@ -5,6 +5,8 @@ import {
 } from '@/lib/googleCalendar'
 import { S, save } from '@/state/store'
 import { checkIn } from '@/hooks/useCheckIn'
+import { MEMBERS } from '@/data/members'
+import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals'
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -38,7 +40,7 @@ export default function CalendarView() {
 
   function handleCheckIn(event: CalendarEvent) {
     if (isCheckedIn(event.id)) return
-    checkIn(event.id, event.title)
+    void checkIn(event.id, event.title)
   }
 
   // RSVP-state — lagras i S.checkIns med type: 'rsvp'
@@ -55,6 +57,8 @@ export default function CalendarView() {
   }
 
   function handleRSVP(event: CalendarEvent) {
+    if (!S.me) return
+
     if (hasRSVP(event.id)) {
       // Ta bort RSVP
       S.checkIns = (S.checkIns ?? []).filter(
@@ -68,39 +72,59 @@ export default function CalendarView() {
         eventTitle: event.title,
         memberKey: S.me,
         type: 'rsvp',
+        eventStart: event.start,
         ts: Date.now(),
+      })
+
+      const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
+      void notifyMembersSignal({
+        targetMemberKeys: getBandmateKeys(S.me),
+        type: 'calendar_rsvp',
+        title: `${memberName} kommer`,
+        body: event.title,
+        dedupeKey: `calendar-rsvp:${S.me}:${event.id}`,
+        payload: {
+          memberId: S.me,
+          eventId: event.id,
+          eventTitle: event.title,
+          eventStart: event.start,
+        },
+        push: {
+          title: '📅 Någon kommer',
+          body: `${memberName} kommer till ${event.title}`,
+          excludeMember: S.me,
+          url: '/',
+        },
       })
     }
     save()
   }
 
-  // Påminnelse via localStorage
+  // Påminnelser sparas i medlemdata via S.reminders
   function hasReminder(eventId: string): boolean {
-    const reminders = JSON.parse(localStorage.getItem('hq_reminders') || '[]')
-    return reminders.some((r: any) => r.eventId === eventId && r.memberKey === S.me)
+    return (S.reminders ?? []).some((r: any) => r.eventId === eventId && r.memberKey === S.me)
   }
 
   function handleReminder(event: CalendarEvent) {
-    const reminders = JSON.parse(localStorage.getItem('hq_reminders') || '[]')
+    if (!S.me) return
 
     if (hasReminder(event.id)) {
       // Ta bort påminnelse
-      const updated = reminders.filter(
+      S.reminders = (S.reminders ?? []).filter(
         (r: any) => !(r.eventId === event.id && r.memberKey === S.me)
       )
-      localStorage.setItem('hq_reminders', JSON.stringify(updated))
     } else {
       // Lägg till påminnelse
-      reminders.push({
+      if (!S.reminders) S.reminders = []
+      S.reminders.push({
         eventId: event.id,
         eventTitle: event.title,
         memberKey: S.me,
         eventStart: event.start,
         ts: Date.now(),
       })
-      localStorage.setItem('hq_reminders', JSON.stringify(reminders))
-
     }
+    save()
   }
 
   if (loading) return (

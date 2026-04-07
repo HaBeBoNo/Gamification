@@ -20,6 +20,14 @@ export interface Notification {
   payload?:  Record<string, unknown>;
 }
 
+export interface Reminder {
+  eventId: string;
+  eventTitle: string;
+  memberKey: string;
+  eventStart: string;
+  ts: number;
+}
+
 // ── Karaktärsdata ────────────────────────────────────────────────
 
 export interface CharStats {

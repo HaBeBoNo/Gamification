@@ -58,7 +58,7 @@ import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
 import { STORAGE_KEY, SEASON_DEFAULTS, SYNC_CONFIG, DEFAULT_METRICS } from '../lib/config';
 import { clearRuntimeIssue, setRuntimeIssue } from '../lib/runtimeHealth';
-import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification } from '../types/game';
+import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification, Reminder } from '../types/game';
 
 // ── Zustand store ────────────────────────────────────────────────
 
@@ -175,6 +175,7 @@ export function defChar(id: string): CharData {
 
 interface SState {
   checkIns:       unknown[];
+  reminders:      Reminder[];
   me:             string | null;
   onboarded:      boolean;
   chars:          Record<string, CharData>;
@@ -200,12 +201,24 @@ const RAW = (() => {
   catch { return null; }
 })();
 
+const LEGACY_REMINDERS_KEY = 'hq_reminders';
+
+function loadLegacyReminders(): Reminder[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LEGACY_REMINDERS_KEY) || '[]');
+    return Array.isArray(raw) ? raw as Reminder[] : [];
+  } catch {
+    return [];
+  }
+}
+
 useGameStore.setState({
   notifications: ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit),
 });
 
 export const S: SState = {
   checkIns:       (RAW?.checkIns as unknown[])  || [],
+  reminders:      (RAW?.reminders as Reminder[]) || loadLegacyReminders(),
   me:             (RAW?.me as string | null)     || null,
   onboarded:      (RAW?.onboarded as boolean)    || false,
   chars: (() => {
@@ -245,12 +258,14 @@ export function save(): void {
     metrics:         S.metrics,
     prev:            S.prev,
     checkIns:        S.checkIns,
+    reminders:       S.reminders,
     operationName:   S.operationName,
     weeklyCheckouts: S.weeklyCheckouts,
     notifications,
     seasonStart:     S.seasonStart,
     seasonEnd:       S.seasonEnd,
   }));
+  localStorage.removeItem(LEGACY_REMINDERS_KEY);
 
   // Trigga Zustand-reaktivitet
   notify();

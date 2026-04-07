@@ -1,5 +1,7 @@
 import { S, save } from '../state/store';
 import { awardXP } from './useXP';
+import { MEMBERS } from '@/data/members';
+import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals';
 
 /**
  * checkIn — registrerar närvaro på ett kalenderevent.
@@ -9,7 +11,7 @@ import { awardXP } from './useXP';
  * @param eventId    Google Calendar event id
  * @param eventTitle Evenemangets titel
  */
-export function checkIn(eventId: string, eventTitle: string): void {
+export async function checkIn(eventId: string, eventTitle: string): Promise<void> {
   if (!S.me) return;
 
   // Lazy-init: om store.js ännu inte har checkIns-arrayen
@@ -59,4 +61,24 @@ export function checkIn(eventId: string, eventTitle: string): void {
   void awardXP(quest, 40, null, undefined, undefined, undefined, undefined);
 
   save();
+
+  const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me;
+  await notifyMembersSignal({
+    targetMemberKeys: getBandmateKeys(S.me),
+    type: 'calendar_check_in',
+    title: `${memberName} checkade in`,
+    body: eventTitle,
+    dedupeKey: `calendar-check-in:${S.me}:${eventId}`,
+    payload: {
+      memberId: S.me,
+      eventId,
+      eventTitle,
+    },
+    push: {
+      title: '📍 Någon är på plats',
+      body: `${memberName} checkade in på ${eventTitle}`,
+      excludeMember: S.me,
+      url: '/',
+    },
+  });
 }

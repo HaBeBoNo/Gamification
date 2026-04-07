@@ -2,7 +2,7 @@ import { MEMBERS } from '@/data/members';
 import type { Notification } from '@/types/game';
 import type { FeedIntent } from '@/lib/feedIntent';
 
-export type NotificationTarget = 'activity' | 'quests' | 'coach' | 'profile' | 'notifications';
+export type NotificationTarget = 'activity' | 'quests' | 'coach' | 'profile' | 'bandhub' | 'notifications';
 
 function memberNameFromPayload(notification: Notification): string {
   const memberId = notification.payload?.memberId as string | undefined;
@@ -65,6 +65,16 @@ export function getNotificationText(notification: Notification): { title: string
         title: notification.title || `${memberName || 'Någon'} såg din aktivitet`,
         subtitle: notification.body || '',
       };
+    case 'calendar_rsvp':
+      return {
+        title: notification.title || `${memberName || 'Någon'} kommer`,
+        subtitle: notification.body || '',
+      };
+    case 'calendar_check_in':
+      return {
+        title: notification.title || `${memberName || 'Någon'} checkade in`,
+        subtitle: notification.body || '',
+      };
     default:
       return { title: notification.title || 'Notifikation', subtitle: notification.body || '' };
   }
@@ -92,6 +102,9 @@ export function getNotificationTarget(notification: Notification): NotificationT
       return 'profile';
     case 'goal_milestone':
       return 'activity';
+    case 'calendar_rsvp':
+    case 'calendar_check_in':
+      return 'bandhub';
     default:
       return 'notifications';
   }
@@ -105,6 +118,8 @@ export function getNotificationActionLabel(notification: Notification): string {
       return 'Öppna uppdrag';
     case 'profile':
       return 'Visa profil';
+    case 'bandhub':
+      return 'Öppna kalender';
     case 'coach':
       return 'Öppna coach';
     default:
@@ -122,6 +137,10 @@ export function getNotificationPriority(notification: Notification): number {
       return 90;
     case 'feed_reaction':
       return 80;
+    case 'calendar_rsvp':
+      return 88;
+    case 'calendar_check_in':
+      return 86;
     case 'feed_witness':
       return 70;
     default:
