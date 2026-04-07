@@ -1,8 +1,7 @@
+import { supabase } from './supabase';
 import { clearRuntimeIssue, setRuntimeIssue } from './runtimeHealth';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -11,49 +10,105 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
 }
 
+async function getPushRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null
+  await navigator.serviceWorker.register('/sw.js')
+  return navigator.serviceWorker.ready
+}
+
+function getSubscriptionPayload(subscription: PushSubscription) {
+  const { endpoint, keys } = subscription.toJSON() as {
+    endpoint?: string;
+    keys?: { p256dh?: string; auth?: string };
+  }
+
+  if (!endpoint || !keys?.p256dh || !keys.auth) return null
+  return {
+    endpoint,
+    p256dh: keys.p256dh,
+    auth: keys.auth,
+  }
+}
+
 export async function registerPush(memberKey: string): Promise<boolean> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
-  if (!VAPID_PUBLIC_KEY || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    setRuntimeIssue('push', 'Push-signaler ar inte fullt aktiverade just nu.', 'info');
+  if (!supabase || !('serviceWorker' in navigator) || !('PushManager' in window)) return false
+  if (!VAPID_PUBLIC_KEY) {
+    setRuntimeIssue('push', 'Push-signaler är inte fullt aktiverade just nu.', 'info');
     return false
   }
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js')
-    const permission = await Notification.requestPermission()
+    const registration = await getPushRegistration()
+    if (!registration) return false
+
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission()
     if (permission !== 'granted') {
       clearRuntimeIssue('push')
       return false
     }
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    })
-    const { endpoint, keys } = subscription.toJSON() as {
-      endpoint?: string;
-      keys?: { p256dh?: string; auth?: string };
+
+    let subscription = await registration.pushManager.getSubscription()
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      })
     }
-    if (!endpoint || !keys?.p256dh || !keys.auth) return false
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({
+
+    const payload = getSubscriptionPayload(subscription)
+    if (!payload) return false
+
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .upsert({
         member_key: memberKey,
-        endpoint,
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-      }),
-    })
-    if (!response.ok) throw new Error(`Push subscription save failed: ${response.status}`)
+        endpoint: payload.endpoint,
+        p256dh: payload.p256dh,
+        auth: payload.auth,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'endpoint',
+      })
+
+    if (error) throw error
     clearRuntimeIssue('push')
     return true
   } catch (err) {
-    setRuntimeIssue('push', 'Push-signaler kunde inte aktiveras pa den har enheten.', 'warn')
+    setRuntimeIssue('push', 'Push-signaler kunde inte aktiveras på den här enheten.', 'warn')
     console.error('Push registration failed:', err)
     return false
+  }
+}
+
+export async function unregisterPush(memberKey?: string | null): Promise<void> {
+  if (!supabase || !('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+  try {
+    const registration = await navigator.serviceWorker.ready
+    const subscription = await registration.pushManager.getSubscription()
+    if (!subscription) {
+      clearRuntimeIssue('push')
+      return
+    }
+
+    const endpoint = subscription.endpoint
+    await subscription.unsubscribe().catch(() => false)
+
+    let query = supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', endpoint)
+
+    if (memberKey) {
+      query = query.eq('member_key', memberKey)
+    }
+
+    const { error } = await query
+    if (error) throw error
+
+    clearRuntimeIssue('push')
+  } catch (err) {
+    console.warn('Push unregister failed:', err)
   }
 }

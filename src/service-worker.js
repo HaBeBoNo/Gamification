@@ -54,5 +54,28 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow(event.notification.data.url));
+  const rawUrl = event.notification.data?.url || '/';
+  const notificationUrl = String(rawUrl).startsWith('http')
+    ? String(rawUrl)
+    : `${self.location.origin}${String(rawUrl).startsWith('/') ? '' : '/'}${rawUrl}`;
+
+  event.waitUntil((async () => {
+    const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+
+    for (const client of windowClients) {
+      if ('focus' in client) {
+        try {
+          await client.focus();
+          if ('navigate' in client) {
+            await client.navigate(notificationUrl);
+          }
+          return;
+        } catch {
+          // Fallback to opening a new window below.
+        }
+      }
+    }
+
+    await clients.openWindow(notificationUrl);
+  })());
 });

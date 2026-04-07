@@ -36,6 +36,7 @@ import { useSocialNotifications } from '@/hooks/useSocialNotifications';
 import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
+import { unregisterPush } from '@/lib/webPush';
 
 // Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
 const BandHub = lazy(() => import('@/components/game/BandHub'));
@@ -210,6 +211,9 @@ export default function Index() {
     setShowMore(false);
     if (id === 'logout') {
       const currentMember = S.me;
+      if (currentMember) {
+        await unregisterPush(currentMember);
+      }
       if (supabase) await supabase.auth.signOut();
       localStorage.removeItem(STORAGE_KEY);
       if (currentMember) clearSocialSignalSync(currentMember);
