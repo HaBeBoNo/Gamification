@@ -4,7 +4,6 @@ import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
 } from '@/lib/googleCalendar'
 import { S, save } from '@/state/store'
-import { sendPush } from '@/lib/sendPush'
 import { checkIn } from '@/hooks/useCheckIn'
 
 export default function CalendarView() {
@@ -101,13 +100,6 @@ export default function CalendarView() {
       })
       localStorage.setItem('hq_reminders', JSON.stringify(reminders))
 
-      // Skicka bekräftelse-notis direkt
-      sendPush(
-        '🔔 Påminnelse satt',
-        `Du får en påminnelse dagen innan ${event.title}`,
-        undefined,
-        '/'
-      )
     }
   }
 

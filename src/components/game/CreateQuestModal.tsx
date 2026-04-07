@@ -103,18 +103,6 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       }
 
       S.quests.push(newQuest);
-
-      // Push-notis: nytt uppdrag skapas
-      const ownerNameForPush = (S.me && (MEMBERS as any)[S.me]?.name) || S.me;
-      if (S.me) {
-        sendPush(
-          `${ownerNameForPush} skapade ett nytt uppdrag`,
-          `"${newQuest.title}"`,
-          S.me,
-          '/'
-        );
-      }
-
       save();
     }
 

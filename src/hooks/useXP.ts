@@ -19,7 +19,6 @@
 import { S, save } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { createLevelUpNotif, createStreakNotif, addNotifToAll } from '../state/notifications';
-import { sendPush } from '../lib/sendPush';
 import { pushFeedEntry } from '../lib/feed';
 import { getBandmateKeys, notifyMembersSignal } from '../lib/notificationSignals';
 import { getQuestCycleKey } from '../lib/questUtils';
@@ -298,11 +297,6 @@ export function awardXP(
         memberId: S.me,
         level: c.level,
       },
-      push: {
-        title: `${memberName} gick upp till Level ${c.level}`,
-        body: 'Nytt level uppnått i Sektionen HQ',
-        excludeMember: S.me || undefined,
-      },
     });
   }
 
@@ -375,14 +369,6 @@ export function awardXP(
       type: 'level_up',
     });
   }
-
-  // Push-notis: quest slutfört
-  sendPush(
-    `${m.name || S.me} slutförde ett uppdrag`,
-    `"${liveQuest.title}" — +${totalXP} XP`,
-    S.me!,
-    '/'
-  );
 
   // Belöning (valfri)
   if (rollReward) {
