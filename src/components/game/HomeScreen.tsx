@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
+import { Zap, CalendarDays, Trophy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
@@ -23,6 +24,25 @@ const CARD_PAD_COMPACT = 'var(--card-padding-compact)';
 const CARD_PAD_ROOM = 'var(--card-padding-room)';
 const CONTROL_HEIGHT = 'var(--control-height)';
 const ICON_BUTTON_SIZE = 'var(--icon-button-size)';
+
+function startOfLocalDay(date: Date): Date {
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+  return day;
+}
+
+function getRelativeCalendarLabel(dateStr: string): string {
+  const eventDate = new Date(dateStr);
+  if (Number.isNaN(eventDate.getTime())) return '';
+
+  const today = startOfLocalDay(new Date());
+  const target = startOfLocalDay(eventDate);
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+
+  if (diffDays === 0) return 'Idag';
+  if (diffDays === 1) return 'Imorgon';
+  return eventDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+}
 
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
@@ -194,15 +214,7 @@ function BandStatusRow() {
         const events = await getUpcomingEvents(1);
         const ev = events?.[0];
         if (!ev) return;
-        const d = new Date(ev.start);
-        const now = new Date();
-        const diffMs = d.getTime() - now.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const label =
-          diffDays <= 0 && diffMs > 0 ? 'Idag' :
-          diffDays === 0 ? 'Idag' :
-          diffDays === 1 ? 'Imorgon' :
-          d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+        const label = getRelativeCalendarLabel(ev.start);
         setNextEvent({ title: ev.title, date: label });
       } catch {}
     }
@@ -256,29 +268,29 @@ function BandStatusRow() {
 
   const cards = [
     {
-      icon: '⚡',
+      icon: Zap,
       value: `${activeToday}/8`,
       label: 'Aktiva idag',
       sub: activeNow !== null ? `${activeNow} live nu · ${xp48h} XP / 48h` : `${xp48h} XP · 48h`,
     },
     nextEvent ? {
-      icon: '📅',
+      icon: CalendarDays,
       value: nextEvent.date,
       label: nextEvent.title,
       sub: 'Nästa event',
     } : {
-      icon: '📅',
+      icon: CalendarDays,
       value: '—',
       label: 'Inga events',
       sub: 'Lägg till i kalendern',
     },
     myRank ? {
-      icon: '🏆',
+      icon: Trophy,
       value: `#${myRank.pos}`,
       label: myRank.pos === 1 ? 'Du leder!' : `${myRank.gap} XP till #${myRank.pos - 1}`,
       sub: myRank.pos === 1 ? 'Håll positionen' : myRank.above,
     } : {
-      icon: '🏆',
+      icon: Trophy,
       value: '—',
       label: 'Ranking',
       sub: 'Slutför quests för XP',
@@ -292,44 +304,57 @@ function BandStatusRow() {
       gap: SECTION_GAP_COMPACT,
       padding: `0 ${MOBILE_GUTTER}`,
     }}>
-      {cards.map((card, i) => (
-        <div key={i} style={{
-          background: 'var(--color-surface-elevated)',
-          borderRadius: 'var(--radius-card)',
-          padding: CARD_PAD_COMPACT,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-        }}>
-          <span style={{ fontSize: 16, marginBottom: 2 }}>{card.icon}</span>
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-subheading)',
-            color: 'var(--color-text)',
-            fontWeight: 700,
-            lineHeight: 1,
+      {cards.map((card, i) => {
+        const Icon = card.icon;
+        return (
+          <div key={i} style={{
+            background: 'var(--color-surface-elevated)',
+            borderRadius: 'var(--radius-card)',
+            padding: CARD_PAD_COMPACT,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
           }}>
-            {card.value}
-          </span>
-          <span style={{
-            fontSize: 'var(--text-caption)',
-            color: 'var(--color-text)',
-            marginTop: 2,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {card.label}
-          </span>
-          <span style={{
-            fontSize: 'var(--text-micro)',
-            color: 'var(--color-text-muted)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {card.sub}
-          </span>
-        </div>
-      ))}
+            <div style={{
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-secondary)',
+              marginBottom: 2,
+            }}>
+              <Icon size={16} strokeWidth={1.9} />
+            </div>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-subheading)',
+              color: 'var(--color-text)',
+              fontWeight: 700,
+              lineHeight: 1,
+            }}>
+              {card.value}
+            </span>
+            <span style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text)',
+              marginTop: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {card.label}
+            </span>
+            <span style={{
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-text-muted)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {card.sub}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

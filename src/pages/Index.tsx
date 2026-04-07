@@ -15,6 +15,7 @@ import ActivityFeed from '@/components/game/ActivityFeed';
 import AICoach from '@/components/game/AICoach';
 import CoachChat from '@/components/game/CoachChat';
 import IdeasView from '@/components/game/IdeasView';
+import QuestHistory from '@/components/game/QuestHistory';
 import InstallPrompt from '@/components/game/InstallPrompt';
 import OfflineBanner from '@/components/game/OfflineBanner';
 import NetworkToast from '@/components/game/NetworkToast';
@@ -115,7 +116,6 @@ export default function Index() {
   const currentSurface = activeView === 'home' ? 'home' : activeTab;
 
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
-  const [showHistory, setShowHistory] = useState(false);
   const { refreshing, handlePullStart, handlePullMove, handlePullEnd } = usePullToRefresh(S.me);
 
   // Google OAuth auth gate
@@ -234,7 +234,6 @@ export default function Index() {
       window.location.reload();
       return;
     }
-    if (id === 'history') { setShowHistory(true); return; }
     if (id === 'home') { setActiveView('home'); return; }
     setActiveView('tab');
     setMobileTab(id);
@@ -275,6 +274,7 @@ export default function Index() {
       case 'ideas': return <IdeasView onOpenCoach={handleOpenCoach} onNavigate={handleTabTap} />;
       case 'bandhub': return <Suspense fallback={BandHubFallback}><BandHub /></Suspense>;
       case 'profile': return <ProfileView />;
+      case 'history': return <QuestHistory />;
       case 'season': return <div style={{ padding: 'var(--space-lg)' }}><SeasonView /></div>;
       default: return (
         <QuestGrid
@@ -514,7 +514,6 @@ export default function Index() {
         showMetrics={showMetrics} setShowMetrics={setShowMetrics}
         showNotifications={showNotifications} setShowNotifications={setShowNotifications}
         detailQuest={detailQuest} setDetailQuest={setDetailQuest}
-        showHistory={showHistory} setShowHistory={setShowHistory}
         showShortcutsOverlay={showShortcutsOverlay} setShowShortcutsOverlay={setShowShortcutsOverlay}
         coachInsight={coachInsight} setCoachInsight={setCoachInsight}
         rerender={rerender}

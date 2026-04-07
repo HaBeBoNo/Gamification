@@ -1,9 +1,7 @@
 import React from 'react';
-import { X } from 'lucide-react';
 
 import NotificationPanel from './NotificationPanel';
 import QuestDetail from './QuestDetail';
-import QuestHistory from './QuestHistory';
 import SeasonView from './SeasonView';
 import ShortcutsOverlay from './ShortcutsOverlay';
 import CoachInsightModal from './CoachInsightModal';
@@ -37,8 +35,6 @@ interface OverlayLayerProps {
   setShowNotifications: (v: boolean) => void;
   detailQuest: any | null;
   setDetailQuest: (v: any) => void;
-  showHistory: boolean;
-  setShowHistory: (v: boolean) => void;
   showShortcutsOverlay: boolean;
   setShowShortcutsOverlay: (v: boolean) => void;
   coachInsight: string | undefined;
@@ -61,7 +57,6 @@ export default function OverlayLayer(props: OverlayLayerProps) {
     showMetrics, setShowMetrics,
     showNotifications, setShowNotifications,
     detailQuest, setDetailQuest,
-    showHistory, setShowHistory,
     showShortcutsOverlay, setShowShortcutsOverlay,
     coachInsight, setCoachInsight,
     rerender,
@@ -162,47 +157,6 @@ export default function OverlayLayer(props: OverlayLayerProps) {
           insight={coachInsight}
           onClose={() => setCoachInsight(undefined)}
         />
-      )}
-
-      {/* Quest history full-screen */}
-      {showHistory && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'var(--color-bg)',
-          zIndex: 300,
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px',
-            borderBottom: '1px solid var(--color-border)',
-            background: 'var(--color-bg)',
-          }}>
-            <div style={{
-              fontSize: 11, letterSpacing: '0.1em',
-              color: 'var(--color-text-muted)',
-              fontFamily: 'var(--font-ui)',
-            }}>
-              UPPDRAGSHISTORIK
-            </div>
-            <button
-              onClick={() => setShowHistory(false)}
-              style={{
-                background: 'none', border: 'none',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer', padding: 4,
-                touchAction: 'manipulation',
-              }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <QuestHistory />
-          </div>
-        </div>
       )}
     </>
   );
