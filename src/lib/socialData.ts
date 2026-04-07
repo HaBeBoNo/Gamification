@@ -72,6 +72,37 @@ function normalizePayload(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? { ...(value as Record<string, unknown>) } : {};
 }
 
+function normalizeFeedDedupTimestamp(value: unknown): string {
+  if (!value) return '';
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toISOString().slice(0, 19);
+}
+
+function getFeedDedupKey(item: Record<string, any>): string {
+  return [
+    item?.who || item?.member_key || item?.memberKey || '',
+    item?.action || '',
+    normalizeFeedDedupTimestamp(item?.created_at || item?.ts || item?.time || ''),
+    item?.interaction_type || 'activity',
+    Number(item?.xp || 0),
+  ].join('|');
+}
+
+export function dedupeFeedItems<T extends Record<string, any>>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+
+  for (const item of items || []) {
+    const key = getFeedDedupKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
 function mergeReactionMaps(
   left: Record<string, string[]>,
   right: Record<string, string[]>
@@ -118,10 +149,11 @@ function mapWitnessRows(rows: FeedWitnessRow[]): Map<string, string[]> {
 }
 
 export async function hydrateFeedItems<T extends Record<string, any>>(feedItems: T[]): Promise<T[]> {
-  if (!supabase || feedItems.length === 0) return feedItems;
+  const uniqueFeedItems = dedupeFeedItems(feedItems);
+  if (!supabase || uniqueFeedItems.length === 0) return uniqueFeedItems;
 
-  const itemIds = [...new Set(feedItems.map((item) => String(item.id || '')).filter(Boolean))];
-  if (itemIds.length === 0) return feedItems;
+  const itemIds = [...new Set(uniqueFeedItems.map((item) => String(item.id || '')).filter(Boolean))];
+  if (itemIds.length === 0) return uniqueFeedItems;
 
   const reactionsSupported = getCapability('feed_reactions') !== false;
   const witnessesSupported = getCapability('feed_witnesses') !== false;
@@ -164,7 +196,7 @@ export async function hydrateFeedItems<T extends Record<string, any>>(feedItems:
   const reactionsByItem = mapReactionRows((reactionsResult.data as FeedReactionRow[]) || []);
   const witnessesByItem = mapWitnessRows((witnessesResult.data as FeedWitnessRow[]) || []);
 
-  return feedItems.map((item) => {
+  return uniqueFeedItems.map((item) => {
     const itemId = String(item.id || '');
     const mergedReactions = mergeReactionMaps(item.reactions ?? {}, reactionsByItem.get(itemId) || {});
     const mergedWitnesses = [...new Set([...(item.witnesses ?? []), ...(witnessesByItem.get(itemId) || [])].filter(Boolean))];
@@ -504,15 +536,16 @@ export async function fetchBandActivitySnapshot(
     };
   }
 
+  const uniqueRows = dedupeFeedItems((data || []) as Record<string, any>[]);
   const todayStr = new Date().toDateString();
   const activeToday = new Set(
-    (data || [])
+    uniqueRows
       .filter((item: any) => new Date(item.created_at).toDateString() === todayStr)
       .map((item: any) => item.who)
       .filter(Boolean)
   ).size;
 
-  const xp48h = (data || []).reduce(
+  const xp48h = uniqueRows.reduce(
     (sum: number, item: any) => sum + extractActivityXPValue(item),
     0,
   );
