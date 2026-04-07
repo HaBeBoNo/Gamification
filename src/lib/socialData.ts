@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Notification } from '@/types/game';
+import { getFeedCommentMeta } from '@/lib/feed';
 
 type SocialCapability =
   | 'notifications'
@@ -76,10 +77,23 @@ function normalizeFeedDedupTimestamp(value: unknown): string {
   if (!value) return '';
   const parsed = new Date(String(value));
   if (Number.isNaN(parsed.getTime())) return String(value);
-  return parsed.toISOString().slice(0, 19);
+  const bucketMs = 5_000;
+  const bucket = Math.floor(parsed.getTime() / bucketMs) * bucketMs;
+  return new Date(bucket).toISOString().slice(0, 19);
 }
 
 function getFeedDedupKey(item: Record<string, any>): string {
+  const commentMeta = getFeedCommentMeta(item);
+  if (commentMeta) {
+    return [
+      item?.who || item?.member_key || item?.memberKey || '',
+      commentMeta.parentFeedItemId || '',
+      commentMeta.comment || '',
+      normalizeFeedDedupTimestamp(item?.created_at || item?.ts || item?.time || ''),
+      'comment',
+    ].join('|');
+  }
+
   return [
     item?.who || item?.member_key || item?.memberKey || '',
     item?.action || '',
@@ -502,12 +516,38 @@ export async function fetchPresenceSnapshot(
   return { supported: true, activeNow: (data || []).length };
 }
 
-function extractActivityXPValue(item: { xp?: number | null; action?: string | null }): number {
-  const explicit = Number(item?.xp || 0);
-  if (explicit > 0) return explicit;
+function getMemberRowChar(row: Record<string, any>): Record<string, any> | null {
+  const chars = row?.data?.chars;
+  if (!chars || typeof chars !== 'object') return null;
+  return chars[row.member_key] || Object.values(chars)[0] || null;
+}
 
-  const match = String(item?.action || '').match(/\(\+(\d+)\s*XP/i);
-  return match ? parseInt(match[1], 10) : 0;
+function isSameLocalDay(timestamp: number | null | undefined): boolean {
+  if (!timestamp) return false;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.toDateString() === new Date().toDateString();
+}
+
+function dedupeCompletedQuestEntries(entries: any[]): any[] {
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+
+  for (const entry of entries || []) {
+    const completedAt = Number(entry?.completedAt || 0);
+    const key = [
+      entry?.id || '',
+      entry?.title || '',
+      Number(entry?.xp || 0),
+      completedAt,
+    ].join('|');
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(entry);
+  }
+
+  return deduped;
 }
 
 export async function fetchBandActivitySnapshot(
@@ -518,12 +558,12 @@ export async function fetchBandActivitySnapshot(
     return { activeToday: 0, xp48h: 0, activeNow: null };
   }
 
-  const since = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+  const sinceMs = Date.now() - withinHours * 60 * 60 * 1000;
   const [{ data, error }, presence] = await Promise.all([
     supabase
-      .from('activity_feed')
-      .select('who, xp, action, created_at')
-      .gte('created_at', since),
+      .from('member_data')
+      .select('member_key, data')
+      .not('data', 'is', null),
     fetchPresenceSnapshot(presenceMinutes),
   ]);
 
@@ -536,23 +576,40 @@ export async function fetchBandActivitySnapshot(
     };
   }
 
-  const uniqueRows = dedupeFeedItems((data || []) as Record<string, any>[]);
-  const todayStr = new Date().toDateString();
-  const activeToday = new Set(
-    uniqueRows
-      .filter((item: any) => new Date(item.created_at).toDateString() === todayStr)
-      .map((item: any) => item.who)
-      .filter(Boolean)
-  ).size;
+  let activeToday = 0;
+  let xp48h = 0;
 
-  const xp48h = uniqueRows.reduce(
-    (sum: number, item: any) => sum + extractActivityXPValue(item),
-    0,
-  );
+  for (const row of (data || []) as Record<string, any>[]) {
+    const memberKey = String(row.member_key || '');
+    if (!memberKey) continue;
+
+    const char = getMemberRowChar(row);
+    const completedQuests = dedupeCompletedQuestEntries(char?.completedQuests || []);
+    const hasQuestToday = completedQuests.some((entry) => isSameLocalDay(Number(entry?.completedAt || 0)));
+    const lastSeen = Number(char?.lastSeen || char?.lastQuestDate || 0);
+    const isActiveToday = isSameLocalDay(lastSeen) || hasQuestToday;
+
+    if (isActiveToday) activeToday += 1;
+
+    xp48h += completedQuests.reduce((sum: number, entry: any) => {
+      const completedAt = Number(entry?.completedAt || 0);
+      if (!completedAt || completedAt < sinceMs) return sum;
+      return sum + Number(entry?.xp || 0);
+    }, 0);
+  }
+
+  const localMemberIsLive = typeof document !== 'undefined'
+    && document.visibilityState === 'visible'
+    && typeof navigator !== 'undefined'
+    && navigator.onLine;
+
+  const activeNow = presence.supported
+    ? Math.max(presence.activeNow, localMemberIsLive ? 1 : 0)
+    : (localMemberIsLive ? 1 : null);
 
   return {
     activeToday,
     xp48h,
-    activeNow: presence.supported ? presence.activeNow : null,
+    activeNow,
   };
 }

@@ -98,9 +98,13 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const baseVisible = getVisibleQuests();
   const visible = applyFilter(baseVisible);
   const active = visible.filter((q: any) => !isQuestDoneNow(q));
+  const shouldShowCollabSection = (filter === 'alla' || filter === 'collaborative') && collabQuests.length > 0;
+  const activeNonCollaborative = shouldShowCollabSection
+    ? active.filter((q: any) => !q.collaborative)
+    : active;
   const completed = visible.filter((q: any) => isQuestDoneNow(q));
   const allDone = visible.length > 0 && active.length === 0;
-  const relevantQuests = getRelevantActiveQuests(active, me || undefined, 2);
+  const relevantQuests = getRelevantActiveQuests(activeNonCollaborative, me || undefined, 2);
   const focusQuest = relevantQuests[0];
   const followUpQuest = relevantQuests[1];
 
@@ -165,9 +169,9 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         if (idx >= 0) {
           const next = [...prev]
           next[idx] = updatedQuest
-          return next.filter(q => !isQuestDoneNow(q))
+          return next.filter(q => !q.done && !isQuestDoneNow(q))
         }
-        return [...prev, updatedQuest]
+        return [...prev, updatedQuest].filter(q => !q.done && !isQuestDoneNow(q))
       })
     })
 
@@ -178,9 +182,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         schema: 'public',
         table: 'collaborative_quests',
       }, async () => {
-        await fetchMyCollaborativeQuests()
-        // Note: fetchMyCollaborativeQuests updates collabQuests state directly
-        // This callback is for side effects only
+        const latest = await fetchMyCollaborativeQuests()
+        setCollabQuests(latest)
       })
       .subscribe()
 
@@ -410,7 +413,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
               </div>
             </div>
           )}
-          {collabQuests.length > 0 && (
+          {shouldShowCollabSection && (
             <div style={{ marginBottom: SECTION_GAP_COMPACT }}>
               {collabQuests.map(q => (
                 <CollaborativeQuestCard
@@ -422,7 +425,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             </div>
           )}
           <SortableQuestList
-            quests={active}
+            quests={activeNonCollaborative}
             rerender={rerender}
             showLU={showLU}
             showRW={showRW}

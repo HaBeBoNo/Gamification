@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Check, Users } from 'lucide-react'
 import { MEMBERS } from '@/data/members'
 import { S } from '@/state/store'
@@ -6,6 +6,7 @@ import { completeMyPart } from '@/lib/collaborativeQuests'
 import { awardXP } from '@/hooks/useXP'
 import { sendPush } from '@/lib/sendPush'
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests'
+import QuestCompleteModal from './QuestCompleteModal'
 
 interface Props {
   key?: React.Key
@@ -15,16 +16,39 @@ interface Props {
 
 export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
   const { quest_data: q, completed_by, participants, initiator } = quest
-  const hasCompleted = S.me ? completed_by.includes(S.me) : false
+  const [localCompletedBy, setLocalCompletedBy] = useState<string[]>(completed_by ?? [])
+  const [localDone, setLocalDone] = useState<boolean>(quest.done ?? false)
+  const [completionXp, setCompletionXp] = useState(0)
+  const [showCompletion, setShowCompletion] = useState(false)
+  const hasCompleted = S.me ? localCompletedBy.includes(S.me) : false
   const initiatorMember = (MEMBERS as any)[initiator]
+
+  useEffect(() => {
+    setLocalCompletedBy(completed_by ?? [])
+    setLocalDone(quest.done ?? false)
+  }, [completed_by, quest.done])
 
   async function handleComplete() {
     if (hasCompleted) return
-    const result = await completeMyPart(quest.id, completed_by)
+    const result = await completeMyPart(quest.id, localCompletedBy)
     if (!result) return
+    setLocalCompletedBy(result.completedBy)
+    setLocalDone(result.allDone)
 
     // Ge XP till S.me
-    await awardXP(q, q.xp || 50, null)
+    const xpResult = awardXP({
+      ...q,
+      id: quest.quest_id,
+      collaborative: true,
+      participants,
+      cat: q.cat,
+    } as any, q.xp || 50, null)
+    if (xpResult) {
+      setCompletionXp(xpResult.totalXP)
+      setShowCompletion(true)
+    } else {
+      onUpdate()
+    }
 
     // Push-notis
     const memberName = (S.me && (MEMBERS as any)[S.me]?.name) || S.me || 'Unknown'
@@ -52,8 +76,6 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
         }
       )
     }
-
-    onUpdate()
   }
 
   return (
@@ -107,12 +129,12 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
             <div key={p} style={{
               width: 24, height: 24,
               borderRadius: '50%',
-              background: completed_by.includes(p)
+              background: localCompletedBy.includes(p)
                 ? ((MEMBERS as any)[p]?.xpColor || 'var(--color-accent)')
                 : 'var(--color-border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12,
-              opacity: completed_by.includes(p) ? 1 : 0.4,
+              opacity: localCompletedBy.includes(p) ? 1 : 0.4,
             }}>
               {(MEMBERS as any)[p]?.emoji || p[0]}
             </div>
@@ -123,7 +145,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           color: 'var(--color-text-muted)',
           fontFamily: 'var(--font-mono)',
         }}>
-          {completed_by.length}/{participants.length} klara
+          {localCompletedBy.length}/{participants.length} klara
         </div>
       </div>
 
@@ -160,12 +182,28 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,
             fontSize: 12,
-            color: 'var(--color-accent)',
+            color: localDone ? 'var(--color-green)' : 'var(--color-accent)',
           }}>
-            <Check size={14} /> Klar
+            <Check size={14} /> {localDone ? 'Alla klara' : 'Klar'}
           </div>
         )}
       </div>
+      {showCompletion && (
+        <QuestCompleteModal
+          quest={{
+            id: quest.quest_id,
+            title: q.title,
+            xp: q.xp || 0,
+            cat: q.cat,
+          }}
+          xpGained={completionXp}
+          onClose={() => {
+            setShowCompletion(false)
+            onUpdate()
+          }}
+          rerender={onUpdate}
+        />
+      )}
     </div>
   )
 }

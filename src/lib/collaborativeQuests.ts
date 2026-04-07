@@ -26,6 +26,8 @@ export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]
     return []
   }
 
+  const activeRows = data.filter((row) => !row.done)
+
   // Synka till S.quests
   for (const row of data) {
     const existing = S.quests.find((q: any) => q.id === row.quest_id)
@@ -55,7 +57,7 @@ export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]
     }
   }
 
-  return data
+  return activeRows
 }
 
 // Skapa ett nytt collaborative quest i Supabase

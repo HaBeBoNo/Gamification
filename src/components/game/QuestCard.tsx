@@ -387,7 +387,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
               fontSize: 11, color: 'var(--color-text-muted)',
               fontFamily: 'var(--font-ui)',
             }}>
-              {quest.participants.length + 1} members
+              {new Set(quest.participants).size} members
             </span>
             {quest.participants.map((p: string) => (
               <span key={p} style={{

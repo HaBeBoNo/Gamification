@@ -217,19 +217,36 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     [feedItems, threadItemId]
   );
 
+  function isSameIncomingFeedItem(existing: any, incoming: any) {
+    if (existing?.id && incoming?.id && String(existing.id) === String(incoming.id)) {
+      return true;
+    }
+
+    const existingComment = getFeedCommentMeta(existing);
+    const incomingComment = getFeedCommentMeta(incoming);
+    const timestampDelta = Math.abs(getFeedTimestampValue(existing) - getFeedTimestampValue(incoming));
+
+    if (existingComment && incomingComment) {
+      return (
+        existing?.who === incoming?.who &&
+        existingComment.parentFeedItemId === incomingComment.parentFeedItemId &&
+        existingComment.comment === incomingComment.comment &&
+        timestampDelta < 5000
+      );
+    }
+
+    return (
+      existing?.who === incoming?.who &&
+      existing?.action === incoming?.action &&
+      Number(existing?.xp || 0) === Number(incoming?.xp || 0) &&
+      timestampDelta < 5000
+    );
+  }
+
   function mergeIncomingFeedItem(prev: any[], incoming: any) {
-    const incomingCreatedAt = incoming?.created_at || incoming?.ts || incoming?.time;
     return [
       incoming,
-      ...prev.filter(item => {
-        const sameId = item.id && incoming.id && item.id === incoming.id;
-        const sameOptimisticComment =
-          String(item.id || '').startsWith('local-comment-') &&
-          item.who === incoming.who &&
-          item.action === incoming.action &&
-          (item.created_at || item.ts || item.time) === incomingCreatedAt;
-        return !sameId && !sameOptimisticComment;
-      }),
+      ...prev.filter((item) => !isSameIncomingFeedItem(item, incoming)),
     ].slice(0, 50);
   }
 
@@ -797,6 +814,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     if (!activeThreadItem) return null;
 
     const itemId = String(activeThreadItem.id || '');
+    const fullscreenThread = typeof window !== 'undefined' && window.innerWidth < 768;
     const member = (MEMBERS as any)[activeThreadItem.who] || null;
     const actionText = activeThreadItem.action || '';
     const questMatch = actionText.match(/[""]([^""]+)[""]/);
@@ -822,19 +840,22 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
           className="overlay-card"
           onClick={(e) => e.stopPropagation()}
           style={{
-            maxWidth: 720,
-            width: 'min(720px, calc(100vw - 24px))',
-            maxHeight: '90vh',
+            maxWidth: fullscreenThread ? '100vw' : 720,
+            width: fullscreenThread ? '100vw' : 'min(720px, calc(100vw - 24px))',
+            height: fullscreenThread ? '100dvh' : 'auto',
+            maxHeight: fullscreenThread ? '100dvh' : '90vh',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
+            borderRadius: fullscreenThread ? 0 : 'var(--radius-card)',
+            border: fullscreenThread ? 'none' : undefined,
           }}
         >
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px',
+            padding: fullscreenThread ? '20px 16px 16px' : '16px',
             borderBottom: '1px solid var(--color-border)',
           }}>
             <div style={{
@@ -865,7 +886,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
           </div>
 
           <div style={{
-            padding: 'var(--space-lg)',
+            padding: fullscreenThread ? 'var(--card-padding-room)' : 'var(--space-lg)',
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
