@@ -131,6 +131,34 @@ export function now(): string {
   return new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
 }
 
+function normalizeFeedTimestampForDedup(value: unknown): string {
+  if (!value) return '';
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toISOString().slice(0, 19);
+}
+
+function dedupeLocalFeed(feed: FeedEntry[]): FeedEntry[] {
+  const seen = new Set<string>();
+  const deduped: FeedEntry[] = [];
+
+  for (const item of feed || []) {
+    const key = [
+      item?.who || '',
+      item?.action || '',
+      normalizeFeedTimestampForDedup(item?.created_at || item?.ts || item?.time || ''),
+      item?.type || item?.interaction_type || 'activity',
+      Number(item?.xp || 0),
+    ].join('|');
+
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
 export function defChar(id: string): CharData {
   const rt = (MEMBERS as Record<string, { roleType?: string }>)[id]?.roleType || 'amplifier';
   return {
@@ -192,7 +220,7 @@ export const S: SState = {
   })) as Quest[],
   metrics:        (RAW?.metrics as Metrics) || DEFAULT_METRICS,
   prev:           (RAW?.prev    as Metrics) || DEFAULT_METRICS,
-  feed:           (RAW?.feed as FeedEntry[]) || [],
+  feed:           dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []),
   tab:            'personal',
   coachText:      '',
   weekNum:        calcWeekNum(),
@@ -206,6 +234,7 @@ export const S: SState = {
 // ── Persist + notify ─────────────────────────────────────────────
 
 export function save(): void {
+  S.feed = dedupeLocalFeed(S.feed || []);
   const notifications = useGameStore.getState().notifications;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     me:              S.me,

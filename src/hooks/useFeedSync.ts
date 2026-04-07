@@ -62,23 +62,33 @@ export function useFeedSync() {
     async function syncItems() {
       for (const item of [...newItems].reverse()) {
         const createdAt = resolveFeedCreatedAt(item);
+        const syncId = item.syncId || null;
 
         const fingerprint = getFeedFingerprint({ ...item, ts: createdAt });
         if (syncedFingerprints.current.has(fingerprint)) continue;
         const commentMeta = getFeedCommentMeta(item);
         const contextLabel = item.context_label || getFeedContextLabel(item);
-        const metadata = item.metadata && typeof item.metadata === 'object'
-          ? item.metadata
-          : {};
+        const metadata = {
+          ...(item.metadata && typeof item.metadata === 'object' ? item.metadata : {}),
+          ...(syncId ? { syncId } : {}),
+        };
 
-        const { data: existing, error: selectError } = await supabase
-          .from('activity_feed')
-          .select('id')
-          .eq('who', item.who ?? S.me)
-          .eq('action', item.action)
-          .eq('xp', item.xp ?? 0)
-          .eq('created_at', createdAt)
-          .limit(1);
+        const existingQuery = syncId
+          ? supabase
+              .from('activity_feed')
+              .select('id')
+              .contains('metadata', { syncId })
+              .limit(1)
+          : supabase
+              .from('activity_feed')
+              .select('id')
+              .eq('who', item.who ?? S.me)
+              .eq('action', item.action)
+              .eq('xp', item.xp ?? 0)
+              .eq('created_at', createdAt)
+              .limit(1);
+
+        const { data: existing, error: selectError } = await existingQuery;
 
         if (selectError) {
           console.error('[FeedSync] select error:', selectError);

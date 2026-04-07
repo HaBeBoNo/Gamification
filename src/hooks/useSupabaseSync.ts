@@ -10,7 +10,6 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
   const data = {
     chars: { [memberKey]: S.chars[memberKey] }, // Bara inloggad members char — övriga hämtas lazily
     quests: S.quests,
-    feed: S.feed.slice(0, 50), // max 50 feed-items
     metrics: S.metrics,
     prev: S.prev,
     checkIns: S.checkIns,
@@ -101,7 +100,6 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   }
   if (remote.chars) Object.assign(S.chars, remote.chars);
   if (remote.quests?.length) S.quests = remote.quests;
-  if (remote.feed?.length) S.feed = remote.feed;
   if (remote.operationName) S.operationName = remote.operationName;
   if (remote.weeklyCheckouts) S.weeklyCheckouts = remote.weeklyCheckouts;
   if (remote.metrics) S.metrics = remote.metrics;
