@@ -1628,10 +1628,23 @@ button, input, textarea {
   flex-direction: column;
   gap: 1px;
   padding: var(--space-xs);
-  max-height: 340px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: hsla(0,0%,100%,0.04) transparent;
+}
+.activity-panel {
+  display: flex;
+  flex-direction: column;
+}
+.activity-panel-compact .panel-header {
+  padding-bottom: var(--space-sm);
+}
+.feed-list-roomy {
+  max-height: none;
+  min-height: min(62vh, 720px);
+}
+.feed-list-compact {
+  max-height: 340px;
 }
 .feed-list-flat { gap: 0; padding: 0; }
 .feed-item {
@@ -1661,25 +1674,42 @@ button, input, textarea {
 
 /* ── Band-status rad ── */
 .feed-band-status {
-  background: var(--color-surface-elevated);
-  border-radius: var(--radius-md);
-  padding: var(--card-padding-compact);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin: var(--space-sm) var(--layout-gutter-mobile) 0;
-  font-size: var(--text-caption);
-  color: var(--color-text-secondary);
+}
+.feed-band-status.is-compact {
+  grid-template-columns: 1fr;
+}
+.feed-band-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 68px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+}
+.feed-band-chip-icon {
+  width: 16px;
+  height: 16px;
   display: flex;
   align-items: center;
-  gap: 0;
-  flex-wrap: wrap;
+  justify-content: center;
+  color: var(--color-text-secondary);
 }
-.feed-band-sep {
-  color: var(--color-text-muted);
-  margin: 0 2px;
-}
-.feed-band-xp {
+.feed-band-chip-value {
   font-family: var(--font-mono);
-  color: var(--color-accent);
   font-size: var(--text-caption);
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+.feed-band-chip-label {
+  font-size: var(--text-micro);
+  color: var(--color-text-muted);
+  line-height: 1.35;
 }
 
 /* ── Feed row (ny layout med avatar) ── */
@@ -1687,7 +1717,7 @@ button, input, textarea {
   display: flex;
   align-items: flex-start;
   gap: var(--section-gap-compact);
-  padding: 14px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--color-border);
   margin: 0 var(--layout-gutter-mobile);
   transition: background var(--duration-fast) var(--ease-out);
@@ -1713,7 +1743,7 @@ button, input, textarea {
   flex: 1;
   font-size: var(--text-body);
   color: var(--color-text-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
   min-width: 0;
 }
 
@@ -1851,37 +1881,75 @@ button, input, textarea {
    ══════════════════════════════════════ */
 .coach-bar {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
+  flex-direction: column;
+  gap: var(--space-sm);
   padding: var(--space-lg);
   background: var(--color-surface);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
+.coach-bar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+.coach-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
 .coach-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--color-surface-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
+.coach-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.coach-label {
+  font-family: var(--font-heading);
+  font-size: var(--text-caption);
+  color: var(--color-text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.coach-caption {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .coach-icon { font-size: 1.125rem; flex-shrink: 0; margin-top: 2px; }
 .coach-text {
-  flex: 1;
-  font-style: italic;
   font-size: var(--text-caption);
   color: var(--color-text-secondary);
   line-height: 1.5;
+  min-width: 0;
+}
+.coach-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  color: var(--color-text-muted);
 }
 .coach-refresh {
-  padding: var(--space-xs) var(--space-md);
-  background: transparent;
+  min-height: 34px;
+  padding: 0 var(--space-md);
+  background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-btn);
+  border-radius: var(--radius-pill);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-micro);
@@ -5189,6 +5257,10 @@ button, input, textarea {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  padding: var(--card-padding-room);
+  background: linear-gradient(180deg, var(--color-surface-elevated), color-mix(in srgb, var(--color-surface-elevated) 92%, transparent));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
 }
 .sv-season-name {
   font-family: var(--font-heading);
@@ -5220,6 +5292,20 @@ button, input, textarea {
 }
 
 /* Timeline */
+.sv-section-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--card-padding);
+}
+.sv-section-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
 .sv-timeline {
   position: relative;
   padding-left: 36px;
@@ -5292,12 +5378,13 @@ button, input, textarea {
 
 /* Chart */
 .sv-chart-wrap {
-  background: var(--color-surface-elevated);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  padding: var(--card-padding);
 }
 
 /* Podium */
+.sv-podium-wrap {
+  padding-bottom: var(--space-lg);
+}
 .sv-podium {
   display: flex;
   align-items: flex-end;
@@ -5335,6 +5422,9 @@ button, input, textarea {
 }
 
 /* Rankings */
+.sv-rankings-wrap {
+  padding-bottom: var(--space-sm);
+}
 .sv-rankings {
   display: flex;
   flex-direction: column;
@@ -5371,6 +5461,25 @@ button, input, textarea {
   font-size: var(--text-caption);
   color: var(--color-accent);
   font-weight: 700;
+}
+@media (max-width: 640px) {
+  .sv-header {
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .sv-days-active {
+    align-items: flex-start;
+  }
+
+  .sv-podium {
+    gap: 6px;
+  }
+
+  .sv-podium-name,
+  .sv-podium-xp {
+    font-size: var(--text-micro);
+  }
 }
 
   /* ══════════════════════════════════════

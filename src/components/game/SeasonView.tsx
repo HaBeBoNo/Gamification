@@ -67,11 +67,13 @@ export default function SeasonView() {
 
       {/* Timeline */}
       <motion.div
-        className="sv-timeline"
+        className="sv-section-card sv-timeline-card"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
+        <div className="sv-section-label">Milstolpar</div>
+        <div className="sv-timeline">
         <div className="sv-timeline-line" />
         {MILESTONES.map((m, i) => {
           const isPast = m.date <= now;
@@ -91,15 +93,17 @@ export default function SeasonView() {
             <span className="sv-milestone-name sv-today-label">Idag</span>
           </div>
         </div>
+        </div>
       </motion.div>
 
       {/* XP Curve */}
       <motion.div
-        className="sv-chart-wrap"
+        className="sv-section-card sv-chart-wrap"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
+        <div className="sv-section-label">Säsongskurva</div>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={curveData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
             <defs>
@@ -145,11 +149,13 @@ export default function SeasonView() {
 
       {/* Podium */}
       <motion.div
-        className="sv-podium"
+        className="sv-section-card sv-podium-wrap"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
       >
+        <div className="sv-section-label">Topplista</div>
+        <div className="sv-podium">
         {podiumOrder.map((entry, i) => {
           if (!entry) return null;
           const rank = i === 1 ? 0 : i === 0 ? 1 : 2; // center=1st, left=2nd, right=3rd
@@ -170,15 +176,18 @@ export default function SeasonView() {
             </div>
           );
         })}
+        </div>
       </motion.div>
 
       {/* Full rankings */}
       <motion.div
-        className="sv-rankings"
+        className="sv-section-card sv-rankings-wrap"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
+        <div className="sv-section-label">Alla placeringar</div>
+        <div className="sv-rankings">
         {sorted.map(({ id, char, member }, i) => (
           <div
             key={id}
@@ -191,6 +200,7 @@ export default function SeasonView() {
             <span className="sv-rank-xp">{char.totalXp || 0} XP</span>
           </div>
         ))}
+        </div>
       </motion.div>
     </div>
   );

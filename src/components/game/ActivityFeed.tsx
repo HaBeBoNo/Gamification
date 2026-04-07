@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { S } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import { ScrollText, Activity, MessageCircle, X } from 'lucide-react';
+import { ScrollText, Activity, MessageCircle, X, Zap, Radio, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { sendPush } from '@/lib/sendPush';
@@ -186,7 +186,7 @@ function sanitizeReactionDraft(rawDraft: string): string {
 }
 
 // ── Komponent ─────────────────────────────────────────────────────
-function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
+function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1027,7 +1027,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // ── Render ─────────────────────────────────────────────────────
   return (
     <>
-    <div className="panel">
+    <div className={`panel activity-panel${compact ? ' activity-panel-compact' : ''}`}>
       {!hideHeader && (
         <div className="panel-header">
           <div className="panel-title">
@@ -1039,19 +1039,25 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
       {/* ── Bandstatus-rad ─────────────────────────────────────── */}
       {(bandSnapshot.activeToday > 0 || bandSnapshot.xp48h > 0 || bandSnapshot.activeNow !== null) && (
-        <div className="feed-band-status">
-          <span>⚡ {bandSnapshot.activeToday} aktiva idag</span>
+        <div className={`feed-band-status${compact ? ' is-compact' : ''}`}>
+          <div className="feed-band-chip">
+            <span className="feed-band-chip-icon"><Zap size={13} strokeWidth={2} /></span>
+            <span className="feed-band-chip-value">{bandSnapshot.activeToday}</span>
+            <span className="feed-band-chip-label">aktiva idag</span>
+          </div>
           {bandSnapshot.activeNow !== null && (
-            <>
-              <span className="feed-band-sep"> · </span>
-              <span className="feed-band-xp">{bandSnapshot.activeNow} live nu</span>
-            </>
+            <div className="feed-band-chip">
+              <span className="feed-band-chip-icon"><Radio size={13} strokeWidth={2} /></span>
+              <span className="feed-band-chip-value">{bandSnapshot.activeNow}</span>
+              <span className="feed-band-chip-label">live nu</span>
+            </div>
           )}
           {bandSnapshot.xp48h > 0 && (
-            <>
-              <span className="feed-band-sep"> · </span>
-              <span className="feed-band-xp">{bandSnapshot.xp48h} XP / 48h</span>
-            </>
+            <div className="feed-band-chip">
+              <span className="feed-band-chip-icon"><BarChart3 size={13} strokeWidth={2} /></span>
+              <span className="feed-band-chip-value">{bandSnapshot.xp48h}</span>
+              <span className="feed-band-chip-label">XP / 48h</span>
+            </div>
           )}
         </div>
       )}
@@ -1095,7 +1101,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
           <div className="empty-text">Ingen aktivitet ännu. Första steget är ditt.</div>
         </div>
       ) : (
-        <div className="feed-list feed-list-flat">
+        <div className={`feed-list feed-list-flat ${compact ? 'feed-list-compact' : 'feed-list-roomy'}`}>
           {feedItems.map((item: any, i: number) => {
             const itemId = String(item.id || '');
             const parsedComment = getFeedCommentMeta(item);

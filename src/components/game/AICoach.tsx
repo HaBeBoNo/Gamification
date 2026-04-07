@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { S } from '@/state/store';
 import { refreshCoach, DEFAULT_COACH_NAMES } from '@/hooks/useAI';
-import { RefreshCw, Bot, MessageCircle, FileText } from 'lucide-react';
+import { RefreshCw, Bot, MessageCircle } from 'lucide-react';
 import CoachSkeleton from './skeletons/CoachSkeleton';
 
 export default function AICoach({ rerender }: { rerender: () => void }) {
@@ -33,30 +33,33 @@ export default function AICoach({ rerender }: { rerender: () => void }) {
 
   return (
     <div className="coach-bar">
-      <span className="coach-icon-wrap" title={coachName} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <Bot size={20} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--color-accent)', lineHeight: 1 }}>{coachName}</span>
-      </span>
+      <div className="coach-bar-top">
+        <div className="coach-identity">
+          <span className="coach-icon-wrap" title={coachName}>
+            <Bot size={18} />
+          </span>
+          <div className="coach-meta">
+            <span className="coach-label">{coachName}</span>
+            <span className="coach-caption">Scout</span>
+          </div>
+        </div>
+        <button className="coach-refresh" onClick={handleRefresh} disabled={loading || cooldown > 0} style={{ opacity: (loading || cooldown > 0) ? 0.5 : 1 }}>
+          <RefreshCw size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
+          {loading ? '...' : cooldown > 0 ? `${cooldown}s` : 'UPPDATERA'}
+        </button>
+      </div>
       <div className="coach-text">
         {loading ? (
           <CoachSkeleton />
         ) : S.coachText ? (
           S.coachText
         ) : (
-          <div className="empty-state" style={{ padding: 'var(--space-lg) 0' }}>
-            <MessageCircle size={48} strokeWidth={1} />
-            <div className="empty-text">Din coach är redo. Skriv något.</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-sm)' }}>
-              <FileText size={14} style={{ color: 'var(--color-text-muted)' }} />
-              <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>Relevanta dokument: Presskit, EP-plan</span>
-            </div>
+          <div className="coach-empty">
+            <MessageCircle size={16} strokeWidth={1.8} />
+            <span>Scout är redo när du vill be om nästa steg.</span>
           </div>
         )}
       </div>
-      <button className="coach-refresh" onClick={handleRefresh} disabled={loading || cooldown > 0} style={{ opacity: (loading || cooldown > 0) ? 0.5 : 1 }}>
-        <RefreshCw size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
-        {loading ? '...' : cooldown > 0 ? `${cooldown}s` : 'UPPDATERA'}
-      </button>
     </div>
   );
 }

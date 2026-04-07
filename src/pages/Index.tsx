@@ -432,7 +432,7 @@ export default function Index() {
         </div>
 
         <div className="sidebar-r">
-          <div className="stagger-2"><ActivityFeed /></div>
+          <div className="stagger-2"><ActivityFeed compact /></div>
         </div>
       </div>
 
