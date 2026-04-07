@@ -1,98 +1,40 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, LogOut, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import Onboarding from '@/components/game/Onboarding';
-import AuthScreen from '@/components/game/AuthScreen';
 import Topbar from '@/components/game/Topbar';
-import { HomeScreen } from '@/components/game/HomeScreen';
-import QuestGrid from '@/components/game/QuestGrid';
-import Scoreboard from '@/components/game/Scoreboard';
-import LeaderboardView from '@/components/game/LeaderboardView';
 import ActivityFeed from '@/components/game/ActivityFeed';
 import AICoach from '@/components/game/AICoach';
-import CoachChat from '@/components/game/CoachChat';
-import IdeasView from '@/components/game/IdeasView';
-import QuestHistory from '@/components/game/QuestHistory';
 import InstallPrompt from '@/components/game/InstallPrompt';
 import OfflineBanner from '@/components/game/OfflineBanner';
 import NetworkToast from '@/components/game/NetworkToast';
-import SeasonView from '@/components/game/SeasonView';
-import ProfileView from '@/components/game/ProfileView';
 import OverlayLayer from '@/components/game/OverlayLayer';
 import { BottomNav } from '@/components/game/BottomNav';
+import { AuthGate } from '@/components/app/AuthGate';
+import { OverflowSheet, type OverflowItem } from '@/components/app/OverflowSheet';
+import { SecondaryTabShell } from '@/components/app/SecondaryTabShell';
+import { TabContentRouter } from '@/components/app/TabContentRouter';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useOverlays } from '@/hooks/useOverlays';
 import { markAllRead } from '@/state/notifications';
-import { useSupabaseData } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import { supabase } from '@/lib/supabase';
-import { useFeedSync } from '@/hooks/useFeedSync';
-import { useSocialNotifications } from '@/hooks/useSocialNotifications';
-import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { unregisterPush } from '@/lib/webPush';
-
-// Lazy-load BandHub to prevent Google OAuth import errors from crashing the whole app
-const BandHub = lazy(() => import('@/components/game/BandHub'));
-
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
-const sheetSpring = { type: 'spring' as const, stiffness: 400, damping: 35 };
-
-const BandHubFallback = (
-  <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-3xl)', color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
-    Laddar Band Hub…
-  </div>
-);
 
 const PRIMARY_TAB_IDS = new Set(['quests', 'bandhub', 'leaderboard']);
-
-type OverflowItem = {
-  id: string;
-  icon: React.ElementType;
-  label: string;
-  section: string;
-};
-
-function SecondaryTabShell({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: React.ElementType;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="secondary-view-shell">
-      <div className="secondary-view-header">
-        <div className="secondary-view-title-row">
-          <div className="secondary-view-icon">
-            <Icon size={18} />
-          </div>
-          <div>
-            <div className="secondary-view-title">{label}</div>
-          </div>
-        </div>
-      </div>
-      <div className="secondary-view-body">
-        {children}
-      </div>
-    </div>
-  );
-}
 
 export default function Index() {
   // Zustand-driven reactivity: alla save()/notify() triggar re-render
   useGameStore(s => s.tick);
   const rerender = notify;
-  useFeedSync();
-  useSocialNotifications();
 
   const [activeView, setActiveView] = useState<'home' | 'tab'>('home');
   const [activeTab, setActiveTab] = useState('quests');
@@ -120,10 +62,7 @@ export default function Index() {
 
   // Google OAuth auth gate
   const { user, synced } = useAuth();
-  usePresenceSync(currentSurface);
-
-  // Sync from Supabase on app start
-  useSupabaseData(S.me);
+  useAppBootstrap(currentSurface, S.me);
 
   const isCurl  = S.me === 'carl';
 
@@ -201,23 +140,7 @@ export default function Index() {
     });
   }, []);
 
-  // ── Auth & loading gates ──────────────────────────────────────────
-
-  if (!synced) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: 'var(--color-bg)',
-      color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)',
-      fontFamily: 'var(--font-ui)', letterSpacing: '0.1em'
-    }}>
-      SEKTIONEN HQ
-    </div>
-  );
-
-  if (!user) return <AuthScreen />;
-
   const shouldOnboard = synced && !S.onboarded && !S.chars[S.me!]?.onboarded;
-  if (shouldOnboard) return <Onboarding rerender={rerender} />;
 
   // ── Handlers ──────────────────────────────────────────────────────
 
@@ -238,56 +161,6 @@ export default function Index() {
     setActiveView('tab');
     setMobileTab(id);
     setActiveTab(id);
-  }
-
-  // ── Content renderers ─────────────────────────────────────────────
-
-  function renderContent(tab: string) {
-    if (activeView === 'home') {
-      return (
-        <HomeScreen
-          rerender={rerender}
-          onMetricClick={() => setShowMetrics(true)}
-          onNavigate={handleTabTap}
-          onOpenCoach={handleOpenCoach}
-          onOpenNotifications={openNotifications}
-        />
-      );
-    }
-
-    switch (tab) {
-      case 'quests': return (
-        <QuestGrid
-          rerender={rerender}
-          showLU={showLU}
-          showRW={showRW}
-          showXP={showXP}
-          showSidequestNudge={showSidequestNudge}
-          onQuestTap={handleQuestTap}
-          onOpenCoach={handleOpenCoach}
-        />
-      );
-      case 'skilltree': return <Scoreboard />;
-      case 'leaderboard': return <LeaderboardView />;
-      case 'coach': return <CoachChat rerender={rerender} />;
-      case 'activity': return <ActivityFeed />;
-      case 'ideas': return <IdeasView onOpenCoach={handleOpenCoach} onNavigate={handleTabTap} />;
-      case 'bandhub': return <Suspense fallback={BandHubFallback}><BandHub /></Suspense>;
-      case 'profile': return <ProfileView />;
-      case 'history': return <QuestHistory />;
-      case 'season': return <div style={{ padding: 'var(--space-lg)' }}><SeasonView /></div>;
-      default: return (
-        <QuestGrid
-          rerender={rerender}
-          showLU={showLU}
-          showRW={showRW}
-          showXP={showXP}
-          showSidequestNudge={showSidequestNudge}
-          onQuestTap={handleQuestTap}
-          onOpenCoach={handleOpenCoach}
-        />
-      );
-    }
   }
 
   const COACH_NAMES_INDEX: Record<string, string> = { hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
@@ -351,7 +224,22 @@ export default function Index() {
 
   // ── Render ────────────────────────────────────────────────────────
 
-  const content = renderContent(activeTab);
+  const content = (
+    <TabContentRouter
+      activeView={activeView}
+      tab={activeTab}
+      rerender={rerender}
+      showLU={showLU}
+      showRW={showRW}
+      showXP={showXP}
+      showSidequestNudge={showSidequestNudge}
+      onQuestTap={handleQuestTap}
+      onOpenCoach={handleOpenCoach}
+      onMetricClick={() => setShowMetrics(true)}
+      onNavigate={handleTabTap}
+      onOpenNotifications={openNotifications}
+    />
+  );
   const secondaryTab = activeView === 'tab' ? overflowItemById[activeTab] : undefined;
   const framedContent = secondaryTab && secondaryTab.id !== 'home'
     ? (
@@ -364,7 +252,22 @@ export default function Index() {
     )
     : content;
 
-  const mobileContent = renderContent(mobileTab);
+  const mobileContent = (
+    <TabContentRouter
+      activeView={activeView}
+      tab={mobileTab}
+      rerender={rerender}
+      showLU={showLU}
+      showRW={showRW}
+      showXP={showXP}
+      showSidequestNudge={showSidequestNudge}
+      onQuestTap={handleQuestTap}
+      onOpenCoach={handleOpenCoach}
+      onMetricClick={() => setShowMetrics(true)}
+      onNavigate={handleTabTap}
+      onOpenNotifications={openNotifications}
+    />
+  );
   const mobileSecondaryTab = activeView === 'tab' ? overflowItemById[mobileTab] : undefined;
   const framedMobileContent = mobileSecondaryTab && mobileSecondaryTab.id !== 'home'
     ? (
@@ -378,6 +281,7 @@ export default function Index() {
     : mobileContent;
 
   return (
+    <AuthGate synced={synced} user={user} shouldOnboard={shouldOnboard} rerender={rerender}>
     <div className="app-shell">
       <OfflineBanner />
       <InstallPrompt />
@@ -447,61 +351,15 @@ export default function Index() {
         unreadCount={unreadCount}
       />
 
-      {/* Overflow bottom sheet */}
-      <AnimatePresence>
-        {showMore && (
-          <>
-            <motion.div
-              className="overflow-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowMore(false)}
-            />
-            <motion.div
-              className="overflow-sheet"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={sheetSpring}
-            >
-              <div className="overflow-handle" />
-              {overflowItems.map((item, i) => {
-                const Icon = item.icon;
-                const previous = overflowItems[i - 1];
-                const active = activeView === 'tab' ? activeTab === item.id : item.id === 'home' && activeView === 'home';
-                const showSection = !previous || previous.section !== item.section;
-                return (
-                  <React.Fragment key={item.id}>
-                    {showSection ? (
-                      <div className="overflow-section-title">{item.section}</div>
-                    ) : (
-                      <div className="overflow-sep" />
-                    )}
-                    <button
-                      className={`overflow-row ${active ? 'is-active' : ''}`}
-                      onClick={() => handleOverflowSelect(item.id)}
-                    >
-                      <Icon
-                        size={20}
-                        className="overflow-row-icon"
-                        style={item.id === 'coach' ? { color: coachIconColor } : undefined}
-                      />
-                      <div className="overflow-row-text">
-                        <span className="overflow-row-label">{item.label}</span>
-                      </div>
-                      <div className="overflow-row-meta">
-                        {active ? <span className="overflow-row-active">Här nu</span> : null}
-                        <ChevronRight size={16} className="overflow-row-chevron" />
-                      </div>
-                    </button>
-                  </React.Fragment>
-                );
-              })}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <OverflowSheet
+        show={showMore}
+        items={overflowItems}
+        activeView={activeView}
+        activeTab={activeTab}
+        coachIconColor={coachIconColor}
+        onClose={() => setShowMore(false)}
+        onSelect={handleOverflowSelect}
+      />
 
       {/* All overlays & modals */}
       <OverlayLayer
@@ -521,5 +379,6 @@ export default function Index() {
         onOpenCoach={handleOpenCoach}
       />
     </div>
+    </AuthGate>
   );
 }

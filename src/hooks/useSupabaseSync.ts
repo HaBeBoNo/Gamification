@@ -3,7 +3,37 @@ import { S, save, useGameStore } from '@/state/store';
 import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
 import { fetchRemoteNotifications } from '@/lib/socialData';
 import { upsertNotifications } from '@/state/notifications';
-import type { Reminder } from '@/types/game';
+import type { Notification, Reminder } from '@/types/game';
+
+export const MEMBER_DATA_PAYLOAD_KEYS = [
+  'chars',
+  'quests',
+  'metrics',
+  'prev',
+  'checkIns',
+  'reminders',
+  'onboarded',
+  'operationName',
+  'weeklyCheckouts',
+  'notifications',
+  'seasonStart',
+  'seasonEnd',
+] as const;
+
+export type MemberDataPayload = {
+  chars: Record<string, unknown>;
+  quests: unknown[];
+  metrics: unknown;
+  prev: unknown;
+  checkIns: unknown[];
+  reminders: Reminder[];
+  onboarded: boolean;
+  operationName: string;
+  weeklyCheckouts: Record<string, unknown>;
+  notifications: Notification[];
+  seasonStart: string;
+  seasonEnd: string;
+};
 
 function mergeReminders(localReminders: Reminder[] = [], remoteReminders: Reminder[] = []): Reminder[] {
   const merged = new Map<string, Reminder>();
@@ -19,20 +49,7 @@ function mergeReminders(localReminders: Reminder[] = [], remoteReminders: Remind
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
 
-  const data = {
-    chars: { [memberKey]: S.chars[memberKey] }, // Bara inloggad members char — övriga hämtas lazily
-    quests: S.quests,
-    metrics: S.metrics,
-    prev: S.prev,
-    checkIns: S.checkIns,
-    reminders: S.reminders,
-    onboarded: S.onboarded,
-    operationName: S.operationName,
-    weeklyCheckouts: S.weeklyCheckouts,
-    notifications: useGameStore.getState().notifications.filter((notification) => notification.source !== 'supabase'),
-    seasonStart: S.seasonStart,
-    seasonEnd: S.seasonEnd,
-  };
+  const data = buildMemberDataPayload(memberKey, useGameStore.getState().notifications);
 
   const { error } = await supabase
     .from('member_data')
@@ -50,6 +67,23 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
   }
 
   clearRuntimeIssue('sync');
+}
+
+export function buildMemberDataPayload(memberKey: string, notifications: Notification[]): MemberDataPayload {
+  return {
+    chars: { [memberKey]: S.chars[memberKey] }, // Bara inloggad members char — övriga hämtas lazily
+    quests: S.quests,
+    metrics: S.metrics,
+    prev: S.prev,
+    checkIns: S.checkIns,
+    reminders: S.reminders,
+    onboarded: S.onboarded,
+    operationName: S.operationName,
+    weeklyCheckouts: S.weeklyCheckouts,
+    notifications: notifications.filter((notification) => notification.source !== 'supabase'),
+    seasonStart: S.seasonStart,
+    seasonEnd: S.seasonEnd,
+  };
 }
 
 // Minimala fält som behövs för leaderboard
