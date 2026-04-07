@@ -835,29 +835,12 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     const witnessNames = (activeThreadItem.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
 
     return (
-      <div className="overlay-backdrop" onClick={closeThread}>
+      <div className={`overlay-backdrop activity-thread-backdrop${fullscreenThread ? ' is-mobile' : ''}`} onClick={closeThread}>
         <div
-          className="overlay-card"
+          className={`overlay-card activity-thread-card${fullscreenThread ? ' is-mobile' : ''}`}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            maxWidth: fullscreenThread ? '100vw' : 720,
-            width: fullscreenThread ? '100vw' : 'min(720px, calc(100vw - 24px))',
-            height: fullscreenThread ? '100dvh' : 'auto',
-            maxHeight: fullscreenThread ? '100dvh' : '90vh',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: fullscreenThread ? 0 : 'var(--radius-card)',
-            border: fullscreenThread ? 'none' : undefined,
-          }}
         >
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: fullscreenThread ? '20px 16px 16px' : '16px',
-            borderBottom: '1px solid var(--color-border)',
-          }}>
+          <div className="activity-thread-header">
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -885,13 +868,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             </button>
           </div>
 
-          <div style={{
-            padding: fullscreenThread ? 'var(--card-padding-room)' : 'var(--space-lg)',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-md)',
-          }}>
+          <div className="activity-thread-scroll">
             <div style={{
               background: 'var(--color-surface-elevated)',
               border: '1px solid var(--color-border)',
@@ -1037,7 +1014,9 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                 {threadComments.map((commentItem: any) => renderCommentCard(commentItem, activeThreadItem))}
               </div>
             )}
+          </div>
 
+          <div className="activity-thread-composer-shell">
             {renderCommentComposer(activeThreadItem, true)}
           </div>
         </div>
