@@ -3,17 +3,15 @@ import { S } from '@/state/store';
 import { Bell } from 'lucide-react';
 
 interface TopbarProps {
-  onAdmin: () => void;
   logoRef?: (node: HTMLButtonElement | null) => void;
   onNotifications?: () => void;
   onLogoClick?: () => void;
 }
 
-export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick }: TopbarProps) {
+export default function Topbar({ logoRef, onNotifications, onLogoClick }: TopbarProps) {
   const me = S.me;
   const char = me ? S.chars[me] : null;
   const streak = char?.streak ?? 0;
-  const isAdmin = me === 'hannes';
   const operationLabel = S.operationName;
   const weekNumber = S.weekNum;
 
@@ -58,7 +56,7 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
           </span>
         </button>
 
-        {/* Höger — streak + notis + admin */}
+        {/* Höger — streak + notis */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexShrink: 0 }}>
           {/* Streak */}
           {streak > 0 && (
@@ -96,23 +94,6 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
               }}
             >
               <Bell size={18} />
-            </button>
-          )}
-          {/* Admin — bara för Hannes */}
-          {isAdmin && (
-            <button onClick={onAdmin} style={{
-              background: 'none',
-              border: '1px solid var(--color-accent)',
-              borderRadius: 'var(--radius-pill)',
-              minHeight: '32px',
-              padding: '0 10px',
-              fontSize: 'var(--text-micro)',
-              color: 'var(--color-accent)',
-              fontFamily: 'var(--font-mono)',
-              cursor: 'pointer',
-              letterSpacing: '0.06em',
-            }}>
-              ADMIN
             </button>
           )}
         </div>

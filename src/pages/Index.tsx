@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, Settings, LogOut, Clock } from 'lucide-react';
+import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, LogOut, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Onboarding from '@/components/game/Onboarding';
@@ -28,7 +28,6 @@ import { markAllRead } from '@/state/notifications';
 import { useSupabaseData } from '@/hooks/useAuth';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import { useLongPress } from '@/hooks/useLongPress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useFeedSync } from '@/hooks/useFeedSync';
@@ -119,9 +118,6 @@ export default function Index() {
   } = useOverlays();
 
   const [showMetrics, setShowMetrics] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showCmd, setShowCmd] = useState(false);
-  const [showAdminCenter, setShowAdminCenter] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
   const unreadCount = useGameStore(s => s.notifications.filter((n: any) => !n.read).length);
@@ -138,7 +134,6 @@ export default function Index() {
   // Sync from Supabase on app start
   useSupabaseData(S.me);
 
-  const isAdmin = S.me === 'hannes';
   const isCurl  = S.me === 'carl';
 
   const handleTabTap = useCallback((tabId: string) => {
@@ -170,11 +165,8 @@ export default function Index() {
   }
 
   const closeAll = useCallback(() => {
-    setShowCmd(false);
-    setShowAdminCenter(false);
     setShowNotifications(false);
     setDetailQuest(null);
-    setShowAdmin(false);
     setShowMetrics(false);
     setShowMore(false);
     closeOverlays();
@@ -189,24 +181,11 @@ export default function Index() {
   const keyboardHandlers = useMemo(() => ({
     setMobileTab,
     setActiveTab,
-    setShowCmd,
     closeAll,
     isCurl,
   }), [closeAll, isCurl]);
 
   const { showShortcutsOverlay, setShowShortcutsOverlay } = useKeyboardShortcuts(keyboardHandlers);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowCmd(v => !v);
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isAdmin]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -230,8 +209,6 @@ export default function Index() {
       window.location.reload();
     });
   }, []);
-
-  const logoLongPressRef = useLongPress(() => setShowAdminCenter(true), isAdmin);
 
   // ── Auth & loading gates ──────────────────────────────────────────
 
@@ -266,7 +243,6 @@ export default function Index() {
       window.location.reload();
       return;
     }
-    if (id === 'admin') { setShowAdmin(true); return; }
     if (id === 'history') { setShowHistory(true); return; }
     if (id === 'home') { setActiveView('home'); return; }
     setActiveView('tab');
@@ -382,13 +358,6 @@ export default function Index() {
       section: 'Verktyg',
       intro: 'Här ska idéer få landa snabbt utan att kännas som en tung process.',
     }] : []),
-    ...(isAdmin ? [{
-      id: 'admin',
-      icon: Settings,
-      label: 'Admin',
-      subtitle: 'Systemkontroller',
-      section: 'Verktyg',
-    }] : []),
     {
       id: 'logout',
       icon: LogOut,
@@ -440,8 +409,6 @@ export default function Index() {
       <InstallPrompt />
       <NetworkToast />
       <Topbar
-        onAdmin={() => setShowAdmin(true)}
-        logoRef={logoLongPressRef}
         onNotifications={openNotifications}
         onLogoClick={() => setActiveView('home')}
       />
@@ -586,9 +553,6 @@ export default function Index() {
         sidequestNudge={sidequestNudge} setSidequestNudge={setSidequestNudge}
         showLU={showLU} showRW={showRW} showXP={showXP}
         showMetrics={showMetrics} setShowMetrics={setShowMetrics}
-        showAdmin={showAdmin} setShowAdmin={setShowAdmin}
-        showCmd={showCmd} setShowCmd={setShowCmd}
-        showAdminCenter={showAdminCenter} setShowAdminCenter={setShowAdminCenter}
         showNotifications={showNotifications} setShowNotifications={setShowNotifications}
         detailQuest={detailQuest} setDetailQuest={setDetailQuest}
         showHistory={showHistory} setShowHistory={setShowHistory}

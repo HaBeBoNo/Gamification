@@ -1,9 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-import AdminPanel from './AdminPanel';
-import AdminCenter from './AdminCenter';
-import CommandPalette from './CommandPalette';
 import NotificationPanel from './NotificationPanel';
 import QuestDetail from './QuestDetail';
 import QuestHistory from './QuestHistory';
@@ -36,12 +33,6 @@ interface OverlayLayerProps {
   // Modal states
   showMetrics: boolean;
   setShowMetrics: (v: boolean) => void;
-  showAdmin: boolean;
-  setShowAdmin: (v: boolean) => void;
-  showCmd: boolean;
-  setShowCmd: (v: boolean) => void;
-  showAdminCenter: boolean;
-  setShowAdminCenter: (v: boolean) => void;
   showNotifications: boolean;
   setShowNotifications: (v: boolean) => void;
   detailQuest: any | null;
@@ -68,9 +59,6 @@ export default function OverlayLayer(props: OverlayLayerProps) {
     sidequestNudge, setSidequestNudge,
     showLU, showRW, showXP,
     showMetrics, setShowMetrics,
-    showAdmin, setShowAdmin,
-    showCmd, setShowCmd,
-    showAdminCenter, setShowAdminCenter,
     showNotifications, setShowNotifications,
     detailQuest, setDetailQuest,
     showHistory, setShowHistory,
@@ -108,27 +96,6 @@ export default function OverlayLayer(props: OverlayLayerProps) {
         <SidequestNudge
           quests={sidequestNudge}
           onClose={() => setSidequestNudge(null)}
-          rerender={rerender}
-        />
-      )}
-
-      {/* Admin panels */}
-      {showAdmin && (
-        <AdminPanel
-          rerender={rerender}
-          onClose={() => setShowAdmin(false)}
-        />
-      )}
-      {showCmd && (
-        <CommandPalette
-          onClose={() => setShowCmd(false)}
-          isMobile={window.innerWidth < 768}
-          onOpenAdminCenter={() => { setShowCmd(false); setShowAdminCenter(true); }}
-        />
-      )}
-      {showAdminCenter && (
-        <AdminCenter
-          onClose={() => setShowAdminCenter(false)}
           rerender={rerender}
         />
       )}
