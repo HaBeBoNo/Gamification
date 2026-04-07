@@ -14,6 +14,16 @@ import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
+const MOBILE_GUTTER = 'var(--layout-gutter-mobile)';
+const ROOM_GUTTER = 'var(--layout-gutter-room)';
+const SECTION_GAP = 'var(--section-gap)';
+const SECTION_GAP_COMPACT = 'var(--section-gap-compact)';
+const CARD_PAD = 'var(--card-padding)';
+const CARD_PAD_COMPACT = 'var(--card-padding-compact)';
+const CARD_PAD_ROOM = 'var(--card-padding-room)';
+const CONTROL_HEIGHT = 'var(--control-height)';
+const ICON_BUTTON_SIZE = 'var(--icon-button-size)';
+
 // ── HeroCard ────────────────────────────────────────────────────────
 function HeroCard() {
   const memberKey = S.me!;
@@ -26,10 +36,10 @@ function HeroCard() {
       <div style={{
         background: 'linear-gradient(160deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
         borderBottom: '1px solid var(--color-border)',
-        padding: 'var(--space-xl) var(--space-lg) var(--space-lg)',
+        padding: `${CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
         display: 'flex',
         alignItems: 'center',
-        gap: 'var(--space-lg)',
+        gap: SECTION_GAP,
         animation: 'pulse 2s ease-in-out infinite',
       }}>
         <div style={{
@@ -75,10 +85,10 @@ function HeroCard() {
     <div style={{
       background: 'linear-gradient(160deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
       borderBottom: '1px solid var(--color-border)',
-      padding: 'var(--space-xl) var(--space-lg) var(--space-lg)',
+      padding: `${CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
       display: 'flex',
       alignItems: 'center',
-      gap: 'var(--space-lg)',
+      gap: SECTION_GAP,
     }}>
       {/* Progress ring med avatar inuti */}
       <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 }}>
@@ -279,19 +289,19 @@ function BandStatusRow() {
     <div style={{
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr',
-      gap: 'var(--space-sm)',
-      padding: '0 var(--space-md)',
+      gap: SECTION_GAP_COMPACT,
+      padding: `0 ${MOBILE_GUTTER}`,
     }}>
       {cards.map((card, i) => (
         <div key={i} style={{
           background: 'var(--color-surface-elevated)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-md)',
+          borderRadius: 'var(--radius-card)',
+          padding: CARD_PAD_COMPACT,
           display: 'flex',
           flexDirection: 'column',
-          gap: 2,
+          gap: 4,
         }}>
-          <span style={{ fontSize: 18, marginBottom: 2 }}>{card.icon}</span>
+          <span style={{ fontSize: 16, marginBottom: 2 }}>{card.icon}</span>
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-subheading)',
@@ -409,14 +419,14 @@ function DailyCoachCard({
   const latestSocial = (S.feed || []).find((item: any) => item.who && item.who !== me);
 
   return (
-    <div style={{ padding: '0 var(--space-md)' }}>
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
       <p style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 'var(--text-micro)',
         color: 'var(--color-text-muted)',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        margin: '0 0 var(--space-sm)',
+        margin: `0 0 ${SECTION_GAP_COMPACT}`,
       }}>
         Läget just nu
       </p>
@@ -424,8 +434,8 @@ function DailyCoachCard({
         onClick={() => onOpenCoach?.(message)}
         style={{
           background: 'linear-gradient(145deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-lg)',
+          borderRadius: 'var(--radius-card)',
+          padding: CARD_PAD_ROOM,
           border: '1px solid var(--color-border)',
           cursor: 'pointer',
         }}
@@ -435,7 +445,7 @@ function DailyCoachCard({
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 'var(--space-sm)',
-          marginBottom: 'var(--space-md)',
+          marginBottom: SECTION_GAP_COMPACT,
         }}>
           <div>
             <div style={{
@@ -456,8 +466,9 @@ function DailyCoachCard({
             </div>
           </div>
           <div style={{
-            minWidth: 40,
-            height: 40,
+          minWidth: 40,
+            height: ICON_BUTTON_SIZE,
+            width: ICON_BUTTON_SIZE,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
@@ -474,7 +485,7 @@ function DailyCoachCard({
           fontSize: 'var(--text-body)',
           color: 'var(--color-text)',
           lineHeight: 1.55,
-          marginBottom: 'var(--space-lg)',
+          marginBottom: SECTION_GAP,
           minHeight: 52,
         }}>
           {loading ? 'Coach kalibrerar läget...' : message}
@@ -484,9 +495,9 @@ function DailyCoachCard({
           <div style={{
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-md)',
-            marginBottom: 'var(--space-md)',
+            borderRadius: 'var(--radius-card)',
+            padding: CARD_PAD,
+            marginBottom: SECTION_GAP_COMPACT,
           }}>
             <div style={{
               fontFamily: 'var(--font-mono)',
@@ -515,7 +526,7 @@ function DailyCoachCard({
             </div>
             {followUpQuest && (
               <div style={{
-                marginTop: 'var(--space-sm)',
+                marginTop: SECTION_GAP_COMPACT,
                 fontSize: 'var(--text-micro)',
                 color: 'var(--color-text-muted)',
               }}>
@@ -529,7 +540,7 @@ function DailyCoachCard({
           <div style={{
             fontSize: 'var(--text-micro)',
             color: 'var(--color-text-muted)',
-            marginBottom: 'var(--space-md)',
+            marginBottom: SECTION_GAP_COMPACT,
           }}>
             Senaste puls: {(MEMBERS as Record<string, any>)[latestSocial.who]?.name || latestSocial.who} {latestSocial.action}
           </div>
@@ -547,7 +558,8 @@ function DailyCoachCard({
               color: 'var(--color-surface)',
               border: 'none',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-sm) var(--space-md)',
+              minHeight: CONTROL_HEIGHT,
+              padding: '0 var(--space-md)',
               fontFamily: 'var(--font-mono)',
               fontSize: 'var(--text-caption)',
               textTransform: 'uppercase',
@@ -568,7 +580,8 @@ function DailyCoachCard({
               color: 'var(--color-text)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-sm) var(--space-md)',
+              minHeight: CONTROL_HEIGHT,
+              padding: '0 var(--space-md)',
               fontFamily: 'var(--font-mono)',
               fontSize: 'var(--text-caption)',
               textTransform: 'uppercase',
@@ -773,26 +786,26 @@ function WaitingOnYouCard({
   if (!me || (!loading && signals.length === 0)) return null;
 
   return (
-    <div style={{ padding: '0 var(--space-md)' }}>
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
       <p style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 'var(--text-micro)',
         color: 'var(--color-text-muted)',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        margin: '0 0 var(--space-sm)',
+        margin: `0 0 ${SECTION_GAP_COMPACT}`,
       }}>
         Väntar på dig
       </p>
       <div style={{
         background: 'var(--color-surface-elevated)',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: 'var(--radius-card)',
         border: '1px solid var(--color-border)',
         overflow: 'hidden',
       }}>
         {loading ? (
           <div style={{
-            padding: 'var(--space-lg)',
+            padding: CARD_PAD_ROOM,
             color: 'var(--color-text-muted)',
             fontSize: 'var(--text-caption)',
           }}>
@@ -825,8 +838,8 @@ function WaitingOnYouCard({
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 'var(--space-md)',
-                padding: 'var(--space-md) var(--space-lg)',
+                gap: SECTION_GAP_COMPACT,
+                padding: `${CARD_PAD} ${CARD_PAD_ROOM}`,
                 background: 'transparent',
                 border: 'none',
                 borderTop: index === 0 ? 'none' : '1px solid var(--color-border)',
@@ -835,8 +848,8 @@ function WaitingOnYouCard({
               }}
             >
               <div style={{
-                width: 36,
-                height: 36,
+                width: ICON_BUTTON_SIZE,
+                height: ICON_BUTTON_SIZE,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -944,26 +957,26 @@ function HomeBandEcho({
   }, [me]);
 
   return (
-    <div style={{ padding: '0 var(--space-md)' }}>
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
       <p style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 'var(--text-micro)',
         color: 'var(--color-text-muted)',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        margin: '0 0 var(--space-sm)',
+        margin: `0 0 ${SECTION_GAP_COMPACT}`,
       }}>
         Från bandet
       </p>
       <div style={{
         background: 'var(--color-surface-elevated)',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: 'var(--radius-card)',
         border: '1px solid var(--color-border)',
         overflow: 'hidden',
       }}>
         {loading ? (
           <div style={{
-            padding: 'var(--space-lg)',
+            padding: CARD_PAD_ROOM,
             color: 'var(--color-text-muted)',
             fontSize: 'var(--text-caption)',
           }}>
@@ -971,10 +984,10 @@ function HomeBandEcho({
           </div>
         ) : items.length === 0 ? (
           <div style={{
-            padding: 'var(--space-lg)',
+            padding: CARD_PAD_ROOM,
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--space-sm)',
+            gap: SECTION_GAP_COMPACT,
           }}>
             <div style={{
               fontSize: 'var(--text-caption)',
@@ -999,7 +1012,8 @@ function HomeBandEcho({
                 color: 'var(--color-primary)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-pill)',
-                padding: '10px 14px',
+                minHeight: CONTROL_HEIGHT,
+                padding: '0 14px',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 'var(--text-micro)',
                 letterSpacing: '0.08em',
@@ -1023,8 +1037,8 @@ function HomeBandEcho({
                     width: '100%',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: 'var(--space-md)',
-                    padding: 'var(--space-md) var(--space-lg)',
+                    gap: SECTION_GAP_COMPACT,
+                    padding: `${CARD_PAD} ${CARD_PAD_ROOM}`,
                     background: 'transparent',
                     border: 'none',
                     borderTop: index === 0 ? 'none' : '1px solid var(--color-border)',
@@ -1072,7 +1086,7 @@ function HomeBandEcho({
               );
             })}
             <div style={{
-              padding: '0 var(--space-lg) var(--space-lg)',
+              padding: `0 ${CARD_PAD_ROOM} ${CARD_PAD_ROOM}`,
             }}>
               <button
                 onClick={() => onNavigate?.('activity')}
@@ -1082,7 +1096,8 @@ function HomeBandEcho({
                   color: 'var(--color-primary)',
                   border: '1px solid var(--color-border)',
                   borderRadius: 'var(--radius-pill)',
-                  padding: '10px 14px',
+                  minHeight: CONTROL_HEIGHT,
+                  padding: '0 14px',
                   fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--text-micro)',
                   letterSpacing: '0.08em',
@@ -1114,8 +1129,8 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: 'var(--space-md)',
-      paddingBottom: 'calc(var(--nav-height, 80px) + var(--space-xl))',
+      gap: SECTION_GAP,
+      paddingBottom: 'calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--space-xl))',
     }}>
       <HeroCard />
       <BandStatusRow />

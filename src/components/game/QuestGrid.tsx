@@ -17,6 +17,12 @@ import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { getQuestOrigin, isQuestDoneNow, refreshRecurringQuestStates } from '@/lib/questUtils';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
+const SECTION_GAP = 'var(--section-gap)';
+const SECTION_GAP_COMPACT = 'var(--section-gap-compact)';
+const CARD_PAD = 'var(--card-padding)';
+const CARD_PAD_ROOM = 'var(--card-padding-room)';
+const CONTROL_HEIGHT = 'var(--control-height)';
+
 const TABS = [
   { id: 'personal', label: 'MINA' },
   { id: 'daily', label: 'DAGLIGA' },
@@ -214,8 +220,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-card)',
-            padding: '18px 16px',
-            marginBottom: 16,
+            padding: CARD_PAD_ROOM,
+            marginBottom: SECTION_GAP_COMPACT,
             cursor: 'pointer',
             touchAction: 'manipulation',
             position: 'relative',
@@ -241,11 +247,11 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
           {focusQuest && (
             <div style={{
-              marginTop: 'var(--space-md)',
-              padding: 'var(--space-md)',
+              marginTop: SECTION_GAP_COMPACT,
+              padding: CARD_PAD,
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-card)',
             }}>
               <div style={{
                 fontFamily: 'var(--font-mono)',
@@ -290,10 +296,10 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         background: 'var(--color-surface)',
         border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-card)',
-        padding: 'var(--space-md)',
+        padding: CARD_PAD,
         display: 'flex',
         flexDirection: 'column',
-        gap: 'var(--space-md)',
+        gap: SECTION_GAP_COMPACT,
       }}>
         {/* Minimal header */}
         <div className="qv-header" style={{ padding: 0 }}>
@@ -381,8 +387,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             <div style={{
               background: 'var(--color-surface-elevated)',
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-md) var(--space-lg)',
+              borderRadius: 'var(--radius-card)',
+              padding: `${CARD_PAD} ${CARD_PAD}`,
             }}>
               <div className="qf-section-header" style={{ padding: 0, marginBottom: 6 }}>
                 Börja här
@@ -405,7 +411,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             </div>
           )}
           {collabQuests.length > 0 && (
-            <div style={{ marginBottom: 'var(--space-md)' }}>
+            <div style={{ marginBottom: SECTION_GAP_COMPACT }}>
               {collabQuests.map(q => (
                 <CollaborativeQuestCard
                   key={q.id}
@@ -434,14 +440,15 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
           background: 'transparent',
           border: '1px dashed var(--color-border)',
           borderRadius: 'var(--radius-card)',
-          padding: '14px',
-          fontSize: 13,
+          minHeight: CONTROL_HEIGHT,
+          padding: '0 14px',
+          fontSize: 'var(--text-caption)',
           color: 'var(--color-text-muted)',
           fontFamily: 'var(--font-ui)',
           letterSpacing: '0.08em',
           cursor: 'pointer',
           touchAction: 'manipulation',
-          marginTop: 8,
+          marginTop: SECTION_GAP_COMPACT,
         }}
       >
         + SKAPA UPPDRAG

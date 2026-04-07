@@ -24,34 +24,42 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
       zIndex: 100,
       background: 'var(--color-surface)',
       borderBottom: '1px solid var(--color-border)',
-      paddingTop: 'max(8px, env(safe-area-inset-top))',
+      paddingTop: 'max(var(--space-sm), env(safe-area-inset-top))',
     }}>
       {/* Huvudrad */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 'var(--space-sm) var(--space-md)',
-        height: 48,
+        padding: 'var(--space-sm) var(--layout-gutter-mobile)',
+        minHeight: 'var(--topbar-height)',
+        gap: 'var(--space-md)',
       }}>
         {/* Vänster — logotyp */}
         <button
           ref={logoRef}
           onClick={onLogoClick}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}
         >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '0.08em' }}>
-              SEKTIONEN
-            </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', letterSpacing: '0.06em' }}>
-              HQ · {operationLabel} · V{weekNumber}
-            </span>
-          </div>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '0.08em' }}>
+            SEKTIONEN
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-micro)',
+            color: 'var(--color-text-muted)',
+            letterSpacing: '0.06em',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
+          }}>
+            HQ · {operationLabel} · V{weekNumber}
+          </span>
         </button>
 
         {/* Höger — streak + notis + admin */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', flexShrink: 0 }}>
           {/* Streak */}
           {streak > 0 && (
             <div
@@ -60,7 +68,8 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
                 display: 'flex', alignItems: 'center', gap: 4,
                 background: 'var(--color-surface-elevated)',
                 borderRadius: 'var(--radius-pill)',
-                padding: '3px 8px',
+                minHeight: '32px',
+                padding: '0 10px',
                 fontSize: 'var(--text-micro)',
                 color: 'var(--color-text-muted)',
                 fontFamily: 'var(--font-mono)',
@@ -70,7 +79,22 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
           )}
           {/* Notis-klocka */}
           {onNotifications && (
-            <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-muted)' }}>
+            <button
+              onClick={onNotifications}
+              style={{
+                width: 'var(--icon-button-size)',
+                height: 'var(--icon-button-size)',
+                background: 'var(--color-surface-elevated)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '999px',
+                cursor: 'pointer',
+                padding: 0,
+                color: 'var(--color-text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Bell size={18} />
             </button>
           )}
@@ -80,7 +104,8 @@ export default function Topbar({ onAdmin, logoRef, onNotifications, onLogoClick 
               background: 'none',
               border: '1px solid var(--color-accent)',
               borderRadius: 'var(--radius-pill)',
-              padding: '3px 10px',
+              minHeight: '32px',
+              padding: '0 10px',
               fontSize: 'var(--text-micro)',
               color: 'var(--color-accent)',
               fontFamily: 'var(--font-mono)',
