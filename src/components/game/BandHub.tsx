@@ -142,8 +142,11 @@ export default function BandHub() {
       await uploadFile(file);
       setUploadSuccess(`${file.name} uppladdad!`);
       await loadFiles();
-    } catch {
-      setError('Uppladdning misslyckades.');
+    } catch (err: any) {
+      const message = typeof err?.message === 'string' && err.message
+        ? err.message
+        : 'Uppladdning misslyckades.';
+      setError(message);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -291,37 +294,6 @@ export default function BandHub() {
 
       {activeTab === 'kalender' && (
         <div style={{ padding: 'var(--section-gap) var(--layout-gutter-room) 0' }}>
-          <div
-            style={{
-              background: 'linear-gradient(180deg, var(--color-surface-elevated), color-mix(in srgb, var(--color-surface-elevated) 84%, transparent))',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-card)',
-              padding: 'var(--card-padding-room)',
-              marginBottom: 'var(--section-gap)',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 'var(--text-micro)',
-                color: 'var(--color-text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: 10,
-              }}
-            >
-              Kalender
-            </div>
-            <div
-              style={{
-                fontSize: 'var(--text-body)',
-                color: 'var(--color-text)',
-                lineHeight: 1.55,
-              }}
-            >
-              Här ska det vara enkelt att känna vad som är på väg, vad som kräver respons och vad som faktiskt är live just nu.
-            </div>
-          </div>
           <CalendarView />
         </div>
       )}

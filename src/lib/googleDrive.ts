@@ -7,6 +7,16 @@ export interface DriveFile {
   size?: string;
 }
 
+async function readErrorMessage(res: Response): Promise<string> {
+  try {
+    const payload = await res.json();
+    const message = payload?.error || payload?.details?.error?.message || payload?.details?.message;
+    return typeof message === 'string' && message ? message : 'Okänt Drive-fel';
+  } catch {
+    return 'Okänt Drive-fel';
+  }
+}
+
 export function getCategory(file: DriveFile): 'inspelningar' | 'dokument' | 'bilder' | 'ovrigt' {
   const { mimeType, name } = file;
   if (
@@ -30,7 +40,10 @@ export function getCategory(file: DriveFile): 'inspelningar' | 'dokument' | 'bil
 // Fetches via service account proxy — no OAuth token required
 export async function getDriveFiles(): Promise<DriveFile[]> {
   const res = await fetch('/api/drive');
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const message = await readErrorMessage(res);
+    throw new Error(message);
+  }
   return res.json();
 }
 
@@ -38,23 +51,29 @@ export async function getRecentFiles(): Promise<DriveFile[]> {
   return getDriveFiles();
 }
 
-// kept for BandHub upload button
 export async function uploadFile(file: File): Promise<void> {
-  const { getGoogleAccessToken } = await import('./googleAuth');
-  const token = await getGoogleAccessToken();
-  if (!token) throw new Error('Inte inloggad');
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
 
-  const FOLDER_ID = '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
-  const metadata = { name: file.name, parents: [FOLDER_ID] };
-  const form = new FormData();
-  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-  form.append('file', file);
+  const res = await fetch('/api/drive', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      dataBase64: btoa(binary),
+    }),
+  });
 
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-    { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
-  );
-  if (!res.ok) throw new Error('Uppladdning misslyckades');
+  if (!res.ok) {
+    const message = await readErrorMessage(res);
+    throw new Error(message);
+  }
 }
 
 export function getMimeTypeLabel(mimeType: string): string {
