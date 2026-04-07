@@ -469,3 +469,57 @@ export async function fetchPresenceSnapshot(
   setCapability('member_presence', true);
   return { supported: true, activeNow: (data || []).length };
 }
+
+function extractActivityXPValue(item: { xp?: number | null; action?: string | null }): number {
+  const explicit = Number(item?.xp || 0);
+  if (explicit > 0) return explicit;
+
+  const match = String(item?.action || '').match(/\(\+(\d+)\s*XP/i);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+export async function fetchBandActivitySnapshot(
+  withinHours = 48,
+  presenceMinutes = 5,
+): Promise<{ activeToday: number; xp48h: number; activeNow: number | null }> {
+  if (!supabase) {
+    return { activeToday: 0, xp48h: 0, activeNow: null };
+  }
+
+  const since = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+  const [{ data, error }, presence] = await Promise.all([
+    supabase
+      .from('activity_feed')
+      .select('who, xp, action, created_at')
+      .gte('created_at', since),
+    fetchPresenceSnapshot(presenceMinutes),
+  ]);
+
+  if (error) {
+    console.warn('[SocialData] band snapshot failed:', error.message);
+    return {
+      activeToday: 0,
+      xp48h: 0,
+      activeNow: presence.supported ? presence.activeNow : null,
+    };
+  }
+
+  const todayStr = new Date().toDateString();
+  const activeToday = new Set(
+    (data || [])
+      .filter((item: any) => new Date(item.created_at).toDateString() === todayStr)
+      .map((item: any) => item.who)
+      .filter(Boolean)
+  ).size;
+
+  const xp48h = (data || []).reduce(
+    (sum: number, item: any) => sum + extractActivityXPValue(item),
+    0,
+  );
+
+  return {
+    activeToday,
+    xp48h,
+    activeNow: presence.supported ? presence.activeNow : null,
+  };
+}

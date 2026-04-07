@@ -9,7 +9,7 @@ import { sendPush } from '@/lib/sendPush';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
 import { createFeedCommentAction, getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
-import { hydrateFeedItems, insertFeedCommentActivity, toggleStructuredReaction, toggleStructuredWitness } from '@/lib/socialData';
+import { fetchBandActivitySnapshot, hydrateFeedItems, insertFeedCommentActivity, toggleStructuredReaction, toggleStructuredWitness } from '@/lib/socialData';
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -183,6 +183,11 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
   const [feedItems, setFeedItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bandSnapshot, setBandSnapshot] = useState<{ activeToday: number; activeNow: number | null; xp48h: number }>({
+    activeToday: 0,
+    activeNow: null,
+    xp48h: 0,
+  });
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
@@ -459,7 +464,13 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       setLoading(false);
     }
 
+    async function loadBandSnapshot() {
+      const snapshot = await fetchBandActivitySnapshot();
+      setBandSnapshot(snapshot);
+    }
+
     loadFeed();
+    void loadBandSnapshot();
 
     const channel = supabase
       .channel('activity-feed-global')
@@ -469,6 +480,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         table: 'activity_feed',
       }, payload => {
         setFeedItems(prev => mergeIncomingFeedItem(prev, payload.new as any));
+        void loadBandSnapshot();
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -478,6 +490,14 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         setFeedItems(prev =>
           prev.map(item => item.id === (payload.new as any).id ? payload.new as any : item)
         );
+        void loadBandSnapshot();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'member_presence',
+      }, () => {
+        void loadBandSnapshot();
       })
       .subscribe();
 
@@ -542,19 +562,6 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       window.clearTimeout(timeoutId);
     };
   }, [feedItems, intentVersion]);
-
-  // ── Bandstatus ─────────────────────────────────────────────────
-  const activeMemberKeys = [...new Set(
-    feedItems
-      .map((e: any) => e.who || e.memberKey || e.member_key)
-      .filter(Boolean)
-  )];
-  const weeklyXP = feedItems.reduce((sum: number, e: any) => {
-    const explicit = e.xp || 0;
-    // useXP.js bäddar in XP i action-texten istället för ett separat fält
-    const fromText = explicit === 0 ? (extractXPFromText(e.action || '') ?? 0) : 0;
-    return sum + explicit + fromText;
-  }, 0);
 
   // ── Synergy-hjälpare ───────────────────────────────────────────
   function isSynergy(item: any) {
@@ -977,13 +984,19 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       )}
 
       {/* ── Bandstatus-rad ─────────────────────────────────────── */}
-      {feedItems.length > 0 && (
+      {(bandSnapshot.activeToday > 0 || bandSnapshot.xp48h > 0 || bandSnapshot.activeNow !== null) && (
         <div className="feed-band-status">
-          <span>⚡ {activeMemberKeys.length} members aktiva denna vecka</span>
-          {weeklyXP > 0 && (
+          <span>⚡ {bandSnapshot.activeToday} aktiva idag</span>
+          {bandSnapshot.activeNow !== null && (
             <>
               <span className="feed-band-sep"> · </span>
-              <span className="feed-band-xp">{weeklyXP} XP totalt</span>
+              <span className="feed-band-xp">{bandSnapshot.activeNow} live nu</span>
+            </>
+          )}
+          {bandSnapshot.xp48h > 0 && (
+            <>
+              <span className="feed-band-sep"> · </span>
+              <span className="feed-band-xp">{bandSnapshot.xp48h} XP / 48h</span>
             </>
           )}
         </div>

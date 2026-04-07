@@ -10,7 +10,7 @@ import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { markRead, type Notification } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
-import { fetchPresenceSnapshot, hydrateFeedItems } from '@/lib/socialData';
+import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
@@ -172,22 +172,10 @@ function BandStatusRow() {
   useEffect(() => {
     async function loadPulse() {
       try {
-        const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-        const [{ data }, presence] = await Promise.all([
-          supabase
-            .from('activity_feed')
-            .select('who, xp, created_at')
-            .gte('created_at', since),
-          fetchPresenceSnapshot(),
-        ]);
-        if (!data) return;
-        const todayStr = new Date().toDateString();
-        const active = new Set(
-          data.filter((i: any) => new Date(i.created_at).toDateString() === todayStr).map((i: any) => i.who)
-        );
-        setActiveToday(active.size);
-        setXp48h(data.reduce((s: number, i: any) => s + (i.xp ?? 0), 0));
-        setActiveNow(presence.supported ? presence.activeNow : null);
+        const snapshot = await fetchBandActivitySnapshot();
+        setActiveToday(snapshot.activeToday);
+        setXp48h(snapshot.xp48h);
+        setActiveNow(snapshot.activeNow);
       } catch {}
     }
 
