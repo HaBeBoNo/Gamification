@@ -281,7 +281,7 @@ export default function Index() {
       case 'leaderboard': return <LeaderboardView />;
       case 'coach': return <CoachChat rerender={rerender} />;
       case 'activity': return <ActivityFeed />;
-      case 'ideas': return <IdeasView />;
+      case 'ideas': return <IdeasView onOpenCoach={handleOpenCoach} onNavigate={handleTabTap} />;
       case 'bandhub': return <Suspense fallback={BandHubFallback}><BandHub /></Suspense>;
       case 'profile': return <ProfileView />;
       case 'season': return <div style={{ padding: 'var(--space-lg)' }}><SeasonView /></div>;

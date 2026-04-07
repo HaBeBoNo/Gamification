@@ -28,6 +28,17 @@ export interface Reminder {
   ts: number;
 }
 
+export interface IdeaEntry {
+  id: number;
+  text: string;
+  createdAt: number;
+  status: 'captured' | 'shaping' | 'shared' | 'activated';
+  aiNote?: string;
+  aiLoading?: boolean;
+  questId?: number;
+  sharedAt?: number;
+}
+
 // ── Karaktärsdata ────────────────────────────────────────────────
 
 export interface CharStats {
@@ -75,6 +86,7 @@ export interface CharData {
   temporalBehavior?:  TemporalBehavior;
   generatedHistory?:  string[];
   coachLog?:          Array<{ user?: string; coach?: string; ts: number }>;
+  ideaInbox?:         IdeaEntry[];
   completedQuests?:   unknown[];
   deletedQuests?:     unknown[];
   responseProfile?:   ResponseProfile;
