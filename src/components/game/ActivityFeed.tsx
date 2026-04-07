@@ -151,7 +151,8 @@ const itemVariants = {
   hidden:  { opacity: 0, x: -16 },
   visible: { opacity: 1, x: 0 },
 };
-const INLINE_COMMENT_PREVIEW_COUNT = 3;
+const INLINE_COMMENT_PREVIEW_COUNT = 2;
+const QUICK_REACTIONS = ['👏', '🔥', '❤️', '🎯'] as const;
 
 type ReplyTarget = {
   memberKey?: string;
@@ -178,6 +179,12 @@ function sortFeedItemsByTimeAsc(items: any[]): any[] {
   return [...items].sort((a, b) => getFeedTimestampValue(a) - getFeedTimestampValue(b));
 }
 
+function sanitizeReactionDraft(rawDraft: string): string {
+  const trimmed = rawDraft.trim();
+  if (!trimmed) return '';
+  return trimmed.split(/\s+/)[0] || '';
+}
+
 // ── Komponent ─────────────────────────────────────────────────────
 function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   // feedItems hämtas direkt från Supabase för stabila UUID:n (reaktioner kräver item.id)
@@ -195,10 +202,14 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
   const [replyTargets, setReplyTargets] = useState<Record<string, ReplyTarget | undefined>>({});
   const [expandedCommentGroups, setExpandedCommentGroups] = useState<Record<string, boolean>>({});
   const [threadItemId, setThreadItemId] = useState<string | null>(null);
+  const [openReactionPickerId, setOpenReactionPickerId] = useState<string | null>(null);
+  const [customReactionInputId, setCustomReactionInputId] = useState<string | null>(null);
+  const [customReactionDrafts, setCustomReactionDrafts] = useState<Record<string, string>>({});
   const [intentVersion, setIntentVersion] = useState(0);
   const hasLoaded = useRef(false);
   const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const customReactionInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const lastHandledIntentId = useRef<string | null>(null);
   const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
   const activeThreadItem = useMemo(
@@ -239,11 +250,31 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     setExpandedCommentGroups(prev => ({ ...prev, [itemId]: !prev[itemId] }));
   }
 
+  function toggleReactionPicker(item: any) {
+    const itemId = String(item.id || '');
+    if (!itemId) return;
+
+    setOpenReactionPickerId((current) => current === itemId ? null : itemId);
+    setCustomReactionInputId(null);
+    setOpenCommentId((current) => current === itemId ? current : null);
+  }
+
+  function closeReactionPicker(itemId?: string) {
+    if (!itemId) {
+      setOpenReactionPickerId(null);
+      setCustomReactionInputId(null);
+      return;
+    }
+    setOpenReactionPickerId((current) => current === itemId ? null : current);
+    setCustomReactionInputId((current) => current === itemId ? null : current);
+  }
+
   function openThread(item: any, replyTarget?: ReplyTarget) {
     const itemId = String(item.id || '');
     if (!itemId) return;
 
     setThreadItemId(itemId);
+    closeReactionPicker(itemId);
     if (replyTarget) {
       openCommentComposer(item, replyTarget);
     }
@@ -267,6 +298,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
     if (!itemId) return;
 
     setOpenCommentId(itemId);
+    closeReactionPicker(itemId);
 
     if (replyTarget) {
       setReplyTargets(prev => ({ ...prev, [itemId]: replyTarget }));
@@ -321,6 +353,17 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
       console.warn('toggleReaction failed:', error?.message || error);
       updateFeedItemLocal(item.id, current => ({ ...current, reactions: currentReactions }));
     }
+  }
+
+  async function handleSubmitCustomReaction(item: any) {
+    const itemId = String(item.id || '');
+    const emoji = sanitizeReactionDraft(customReactionDrafts[itemId] ?? '');
+    if (!emoji) return;
+
+    await handleToggleReaction(item, emoji);
+    setCustomReactionDrafts(prev => ({ ...prev, [itemId]: '' }));
+    setCustomReactionInputId(null);
+    setOpenReactionPickerId(null);
   }
 
   async function handleToggleWitness(item: any) {
@@ -617,11 +660,14 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
           {commentItem.parsedComment?.comment || ''}
         </div>
         <button
-          onClick={() => openThread(parentItem, {
+          onClick={(e) => {
+            e.stopPropagation();
+            openThread(parentItem, {
             memberKey: commentItem.who,
             memberName: commenter?.name || commentItem.who || 'Någon',
             commentId: String(commentItem.id || ''),
-          })}
+            });
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -655,7 +701,9 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
         flexDirection: 'column',
         gap: 'var(--space-xs)',
         marginTop: 'var(--space-xs)',
-      }}>
+      }}
+      onClick={(e) => e.stopPropagation()}
+      >
         {replyTarget && (
           <div style={{
             display: 'flex',
@@ -704,6 +752,12 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             maxLength={160}
             value={commentDraft}
             onChange={(e) => setCommentDrafts(prev => ({ ...prev, [itemId]: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void handleSubmitComment(item);
+              }
+            }}
             placeholder={replyTarget
               ? `Svara ${replyTarget.memberName.split(' ')[0]}...`
               : `Svara ${getMemberName(item.who).split(' ')[0]}...`}
@@ -719,7 +773,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
             }}
           />
           <button
-            onClick={() => handleSubmitComment(item)}
+            onClick={() => { void handleSubmitComment(item); }}
             disabled={!canSubmitComment || submittingCommentId === itemId}
             style={{
               padding: '8px 12px',
@@ -1052,7 +1106,6 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
               : inlineComments.slice(0, INLINE_COMMENT_PREVIEW_COUNT);
             const latestComment = inlineComments[0];
             const latestCommentTs = latestComment ? getFeedTimestampValue(latestComment) : 0;
-            const latestCommenterName = latestComment ? getMemberName(latestComment.who) : '';
             const hasRecentExternalThreadActivity = inlineComments.some((commentItem: any) =>
               commentItem.who &&
               commentItem.who !== S.me &&
@@ -1191,19 +1244,17 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
 
             // Reaktioner för detta item
             const itemReactions: Record<string, string[]> = item.reactions ?? {};
-            const hasOpenComment = openCommentId === item.id;
-            const replyTarget = replyTargets[item.id];
-            const witnessNames = (item.witnesses ?? []).map((memberId: string) => getMemberName(memberId));
-            const feedbackReactionLabels = Object.entries(itemReactions)
-              .flatMap(([emoji, memberIds]) =>
-                (memberIds as string[])
-                  .filter((memberId: string) => memberId && memberId !== item.who)
-                  .map((memberId: string) => `${emoji} ${getMemberName(memberId)}`)
-              );
-            const feedbackWitnessLabels = (item.witnesses ?? [])
-              .filter((memberId: string) => memberId && memberId !== item.who)
-              .map((memberId: string) => `✍️ ${getMemberName(memberId)}`);
-            const socialFeedback = [...feedbackReactionLabels, ...feedbackWitnessLabels].slice(0, 4);
+            const hasOpenComment = openCommentId === itemId;
+            const replyTarget = replyTargets[itemId];
+            const reactionSummary = Object.entries(itemReactions)
+              .filter(([, memberIds]) => (memberIds as string[]).length > 0)
+              .map(([emoji, memberIds]) => `${emoji} ${(memberIds as string[]).length}`)
+              .slice(0, 4);
+            const witnessCount = (item.witnesses ?? []).length;
+            const isReactionPickerOpen = openReactionPickerId === itemId;
+            const isCustomReactionInputOpen = customReactionInputId === itemId;
+            const customReactionDraft = customReactionDrafts[itemId] ?? '';
+            const canSubmitCustomReaction = Boolean(sanitizeReactionDraft(customReactionDraft));
 
             return (
               <motion.div
@@ -1216,12 +1267,22 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                 ref={(node) => {
                   itemRefs.current[String(item.id || i)] = node;
                 }}
+                role="button"
+                tabIndex={0}
+                onClick={() => openThread(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openThread(item);
+                  }
+                }}
                 style={highlightedItemId === String(item.id || i)
                   ? {
                       boxShadow: '0 0 0 1px var(--color-primary), 0 0 0 4px var(--color-primary-muted)',
                       borderRadius: 'var(--radius-lg)',
+                      cursor: 'pointer',
                     }
-                  : undefined}
+                  : { cursor: 'pointer' }}
               >
                 {/* Vänster: avatar */}
                 <div
@@ -1242,34 +1303,30 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                     <span className="feed-quest"> "{questTitle}"</span>
                   )}
 
-                  {(socialFeedback.length > 0 || inlineComments.length > 0) && (
+                  {(reactionSummary.length > 0 || witnessCount > 0 || inlineComments.length > 0) && (
                     <div style={{
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 'var(--space-xs)',
                       marginTop: 'var(--space-xs)',
                     }}>
-                      {socialFeedback.length > 0 && (
+                      {(reactionSummary.length > 0 || witnessCount > 0) && (
                         <div style={{
                           display: 'flex',
                           flexWrap: 'wrap',
-                          gap: 6,
+                          gap: 8,
+                          fontSize: 'var(--text-micro)',
+                          color: 'var(--color-text-muted)',
                         }}>
-                          {socialFeedback.map((label, idx) => (
-                            <span
-                              key={`${label}-${idx}`}
-                              style={{
-                                fontSize: 'var(--text-micro)',
-                                color: 'var(--color-text-muted)',
-                                background: 'var(--color-surface-elevated)',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-pill)',
-                                padding: '2px 8px',
-                              }}
-                            >
-                              {label}
-                            </span>
+                          {reactionSummary.map((label) => (
+                            <span key={label}>{label}</span>
                           ))}
+                          {witnessCount > 0 && (
+                            <span>✍️ {witnessCount}</span>
+                          )}
+                          {threadSignalLabel && (
+                            <span style={{ color: 'var(--color-primary)' }}>{threadSignalLabel}</span>
+                          )}
                         </div>
                       )}
 
@@ -1309,63 +1366,44 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                                   Senast aktiv {formatRelativeActivity(latestCommentTs)}
                                 </span>
                               )}
-                              {latestCommenterName && (
-                                <span style={{
-                                  fontSize: 'var(--text-micro)',
-                                  color: 'var(--color-text-muted)',
-                                }}>
-                                  {latestCommenterName}
-                                </span>
-                              )}
                             </div>
-                            {threadSignalLabel && (
-                              <span style={{
-                                fontSize: 'var(--text-micro)',
-                                color: 'var(--color-primary)',
-                                background: 'var(--color-primary-muted)',
-                                border: '1px solid var(--color-primary)',
-                                borderRadius: 'var(--radius-pill)',
-                                padding: '2px 8px',
-                                fontFamily: 'var(--font-mono)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                              }}>
-                                {threadSignalLabel}
-                              </span>
-                            )}
                           </div>
 
                           {visibleInlineComments.map((commentItem: any) => renderCommentCard(commentItem, item))}
 
-                          {(inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT || areCommentsExpanded) && (
+                          {inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT && (
                             <div style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 'var(--space-md)',
+                              gap: 'var(--space-sm)',
                               flexWrap: 'wrap',
                             }}>
-                              {inlineComments.length > INLINE_COMMENT_PREVIEW_COUNT && (
-                                <button
-                                  onClick={() => toggleCommentExpansion(itemId)}
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'var(--color-primary)',
-                                    padding: 0,
-                                    fontSize: 'var(--text-micro)',
-                                    fontFamily: 'var(--font-mono)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.08em',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  {areCommentsExpanded
-                                    ? 'Dölj svar'
-                                    : `Visa ${inlineComments.length - INLINE_COMMENT_PREVIEW_COUNT} till`}
-                                </button>
-                              )}
                               <button
-                                onClick={() => openThread(item)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCommentExpansion(itemId);
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--color-primary)',
+                                  padding: 0,
+                                  fontSize: 'var(--text-micro)',
+                                  fontFamily: 'var(--font-mono)',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.08em',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {areCommentsExpanded
+                                  ? 'Dölj svar'
+                                  : `Visa ${inlineComments.length - INLINE_COMMENT_PREVIEW_COUNT} till`}
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openThread(item);
+                                }}
                                 style={{
                                   background: 'transparent',
                                   border: 'none',
@@ -1378,7 +1416,7 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                                   cursor: 'pointer',
                                 }}
                               >
-                                Öppna tråd
+                                Öppna aktivitet
                               </button>
                             </div>
                           )}
@@ -1387,32 +1425,33 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                     </div>
                   )}
 
-                  {/* ── Reaktionsknappar ───────────────────────── */}
-                  <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
-                    {(['🔥', '👏', '💀'] as const).map(emoji => {
-                      const reactors = itemReactions[emoji] ?? [];
-                      const hasReacted = S.me ? reactors.includes(S.me) : false;
-                      return (
-                        <button
-                          key={emoji}
-                          onClick={() => handleToggleReaction(item, emoji)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '2px 8px',
-                            borderRadius: 'var(--radius-pill)',
-                            border: `1px solid ${hasReacted ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            background: hasReacted ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
-                            cursor: 'pointer',
-                            fontSize: 'var(--text-caption)',
-                            color: hasReacted ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          }}
-                        >
-                          {emoji} {reactors.length > 0 && <span>{reactors.length}</span>}
-                        </button>
-                      );
-                    })}
+                  <div
+                    style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)', flexWrap: 'wrap' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => {
+                        if (isReactionPickerOpen) {
+                          closeReactionPicker(itemId);
+                          return;
+                        }
+                        toggleReactionPicker(item);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-pill)',
+                        border: `1px solid ${isReactionPickerOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        background: isReactionPickerOpen ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                        cursor: 'pointer',
+                        fontSize: 'var(--text-caption)',
+                        color: isReactionPickerOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      }}
+                    >
+                      Reagera
+                    </button>
                     <button
                       onClick={() => {
                         if (hasOpenComment && !replyTarget) {
@@ -1424,8 +1463,8 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4,
-                        padding: '2px 8px',
+                        gap: 6,
+                        padding: '6px 10px',
                         borderRadius: 'var(--radius-pill)',
                         border: `1px solid ${hasOpenComment ? 'var(--color-primary)' : 'var(--color-border)'}`,
                         background: hasOpenComment ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
@@ -1434,56 +1473,147 @@ function ActivityFeed({ hideHeader }: { hideHeader?: boolean }) {
                         color: hasOpenComment ? 'var(--color-primary)' : 'var(--color-text-muted)',
                       }}
                     >
-                      💬 Kommentera
-                    </button>
-                    <button
-                      onClick={() => openThread(item)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-pill)',
-                        border: `1px solid ${hasRecentExternalThreadActivity ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                        background: hasRecentExternalThreadActivity ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
-                        cursor: 'pointer',
-                        fontSize: 'var(--text-caption)',
-                        color: hasRecentExternalThreadActivity ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      }}
-                    >
-                      🧵 Tråd {inlineComments.length > 0 && <span>{inlineComments.length}</span>}
+                      Kommentera {inlineComments.length > 0 && <span>· {inlineComments.length}</span>}
                     </button>
                   </div>
 
-                  {renderCommentComposer(item)}
+                  {isReactionPickerOpen && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 'var(--space-xs)',
+                        marginTop: 'var(--space-xs)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 'var(--space-xs)',
+                      }}>
+                        {QUICK_REACTIONS.map((emoji) => {
+                          const reactors = itemReactions[emoji] ?? [];
+                          const hasReacted = S.me ? reactors.includes(S.me) : false;
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                void handleToggleReaction(item, emoji);
+                                closeReactionPicker(itemId);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '4px 10px',
+                                borderRadius: 'var(--radius-pill)',
+                                border: `1px solid ${hasReacted ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                background: hasReacted ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                                cursor: 'pointer',
+                                fontSize: 'var(--text-caption)',
+                                color: hasReacted ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                              }}
+                            >
+                              {emoji} {reactors.length > 0 && <span>{reactors.length}</span>}
+                            </button>
+                          );
+                        })}
+                        <button
+                          onClick={() => {
+                            void handleToggleWitness(item);
+                            closeReactionPicker(itemId);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: `1px solid ${(item.witnesses ?? []).includes(S.me!) ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                            cursor: 'pointer',
+                            fontSize: 'var(--text-caption)',
+                            color: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          }}
+                        >
+                          ✍️ Var där {witnessCount > 0 && <span>{witnessCount}</span>}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCustomReactionInputId((current) => current === itemId ? null : itemId);
+                            window.setTimeout(() => {
+                              customReactionInputRefs.current[itemId]?.focus();
+                            }, 40);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: `1px solid ${isCustomReactionInputOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: isCustomReactionInputOpen ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                            cursor: 'pointer',
+                            fontSize: 'var(--text-caption)',
+                            color: isCustomReactionInputOpen ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          }}
+                        >
+                          Egen emoji
+                        </button>
+                      </div>
 
-                  {/* ── Witness-rad (för item.xp >= 50) ────────────────── */}
-                  {(item.xp ?? 0) >= 50 && (
-                    <div style={{ marginTop: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                      <button
-                        onClick={() => handleToggleWitness(item)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '2px 10px',
-                          borderRadius: 'var(--radius-pill)',
-                          border: `1px solid ${(item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                          background: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent-muted)' : 'var(--color-surface-elevated)',
-                          cursor: 'pointer',
-                          fontSize: 'var(--text-caption)',
-                          color: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                        }}
-                      >
-                        ✍️ Jag var där {(item.witnesses ?? []).length > 0 && `· ${item.witnesses.length}`}
-                      </button>
-                      {(item.witnesses ?? []).length > 0 && (
-                        <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>
-                          {witnessNames.join(', ')}
-                        </span>
+                      {isCustomReactionInputOpen && (
+                        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                          <input
+                            ref={(node) => {
+                              customReactionInputRefs.current[itemId] = node;
+                            }}
+                            type="text"
+                            inputMode="text"
+                            maxLength={8}
+                            value={customReactionDraft}
+                            onChange={(e) => setCustomReactionDrafts((prev) => ({ ...prev, [itemId]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                void handleSubmitCustomReaction(item);
+                              }
+                            }}
+                            placeholder="😀"
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              background: 'var(--color-surface-elevated)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-pill)',
+                              padding: '8px 12px',
+                              color: 'var(--color-text)',
+                              fontSize: 'var(--text-caption)',
+                            }}
+                          />
+                          <button
+                            onClick={() => { void handleSubmitCustomReaction(item); }}
+                            disabled={!canSubmitCustomReaction}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: 'var(--radius-pill)',
+                              border: 'none',
+                              background: canSubmitCustomReaction ? 'var(--color-primary)' : 'var(--color-border)',
+                              color: canSubmitCustomReaction ? '#fff' : 'var(--color-text-muted)',
+                              cursor: canSubmitCustomReaction ? 'pointer' : 'not-allowed',
+                              fontSize: 'var(--text-caption)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Lägg till
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
+
+                  {renderCommentComposer(item)}
                 </div>
 
                 {/* Höger: XP + tid */}
