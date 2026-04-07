@@ -13,11 +13,20 @@ type SortKey = 'xp' | 'week' | 'streak';
 
 const cardSpring = { type: 'spring' as const, stiffness: 300, damping: 35 };
 
-function getWeekCompletions(memberId: string): number {
+function getMemberCharFromData(memberId: string, memberDataMap: Record<string, any>) {
+  return memberDataMap[memberId]?.chars?.[memberId] || S.chars[memberId] || null;
+}
+
+function getCompletedQuestHistory(char: any): any[] {
+  const completedQuests = Array.isArray(char?.completedQuests) ? char.completedQuests : [];
+  return [...completedQuests]
+    .filter((entry: any) => entry?.completedAt)
+    .sort((a: any, b: any) => Number(b.completedAt || 0) - Number(a.completedAt || 0));
+}
+
+function getWeekCompletionsFromChar(char: any): number {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  return (S.quests || []).filter(
-    (q: any) => wasQuestCompletedByMember(q, memberId) && (q.completedAt || 0) > weekAgo
-  ).length;
+  return getCompletedQuestHistory(char).filter((entry: any) => Number(entry.completedAt || 0) > weekAgo).length;
 }
 
 function getSynergyCount(memberId: string): number {
@@ -26,10 +35,8 @@ function getSynergyCount(memberId: string): number {
   ).length;
 }
 
-function getFormDots(memberId: string): boolean[] {
-  const completed = (S.quests || [])
-    .filter((q: any) => wasQuestCompletedByMember(q, memberId))
-    .slice(-5);
+function getFormDotsFromChar(char: any): boolean[] {
+  const completed = getCompletedQuestHistory(char).slice(0, 5);
   const dots: boolean[] = [];
   for (let i = 0; i < 5; i++) {
     dots.push(i < completed.length);
@@ -37,11 +44,11 @@ function getFormDots(memberId: string): boolean[] {
   return dots;
 }
 
-function getRecentCompletions(memberId: string): string[] {
-  return (S.quests || [])
-    .filter((q: any) => wasQuestCompletedByMember(q, memberId))
-    .slice(-3)
-    .map((q: any) => q.title);
+function getRecentCompletionsFromChar(char: any): string[] {
+  return getCompletedQuestHistory(char)
+    .slice(0, 3)
+    .map((entry: any) => String(entry.title || ''))
+    .filter(Boolean);
 }
 
 interface MemberRow {
@@ -63,26 +70,24 @@ const SORT_PILLS: { key: SortKey; label: string }[] = [
   { key: 'streak', label: 'Streak' },
 ];
 
-// Avgör om en member är aktiv idag baserat på deras feed
-function isActiveToday(memberData: any): boolean {
-  const feed = memberData?.feed ?? [];
+function isActiveTodayFromChar(char: any): boolean {
   const today = new Date().toDateString();
-  return feed.some((item: any) => {
-    const ts = item.ts ?? item.time;
-    if (!ts) return false;
-    return new Date(ts).toDateString() === today;
+  const lastSeen = Number(char?.lastSeen || char?.lastQuestDate || 0);
+  if (lastSeen && new Date(lastSeen).toDateString() === today) return true;
+
+  return getCompletedQuestHistory(char).some((entry: any) => {
+    const completedAt = Number(entry?.completedAt || 0);
+    return completedAt > 0 && new Date(completedAt).toDateString() === today;
   });
 }
 
 function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [, forceUpdate] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
   const [memberDataMap, setMemberDataMap] = useState<Record<string, any>>({});
   const [endorsementsMap, setEndorsementsMap] = useState<Record<string, Record<string, string[]>>>({});
   const [expandedEndorse, setExpandedEndorse] = useState<string | null>(null);
-  const rerender = () => forceUpdate(n => n + 1);
 
   useEffect(() => {
     if (!supabase) return;
@@ -132,6 +137,10 @@ function LeaderboardView() {
               };
               notify();
             }
+            setMemberDataMap(prev => ({
+              ...prev,
+              [remote.member_key]: remote.data,
+            }));
           }
         }
       )
@@ -181,26 +190,25 @@ function LeaderboardView() {
     setEndorsementsMap(prev => ({ ...prev, [targetKey]: updated }));
   }
 
-  const rows: MemberRow[] = useMemo(() => {
-    return Object.entries(S.chars)
-      .map(([id, char]) => {
+  const rows: MemberRow[] = Object.entries(S.chars)
+      .map(([id]) => {
         const member = MEMBERS[id];
         if (!member) return null;
+        const char = getMemberCharFromData(id, memberDataMap);
         return {
           id,
           name: member.name,
           role: member.role,
           roleType: member.roleType,
           xpColor: member.xpColor,
-          totalXp: char.totalXp || 0,
-          streak: char.streak || 0,
-          weekCount: getWeekCompletions(id),
+          totalXp: char?.totalXp || 0,
+          streak: char?.streak || 0,
+          weekCount: getWeekCompletionsFromChar(char),
           synergyCount: getSynergyCount(id),
-          formDots: getFormDots(id),
+          formDots: getFormDotsFromChar(char),
         };
       })
       .filter(Boolean) as MemberRow[];
-  }, []);
 
   const sorted = useMemo(() => {
     const compare = (a: MemberRow, b: MemberRow) => {
@@ -253,19 +261,15 @@ function LeaderboardView() {
           {sorted.map((row, i) => {
             const isMe = S.me === row.id;
             const isExpanded = expandedId === row.id;
-            const recentQuests = getRecentCompletions(row.id);
+            const memberChar = getMemberCharFromData(row.id, memberDataMap);
+            const recentQuests = getRecentCompletionsFromChar(memberChar);
             const roleInfo = ROLE_TYPE_LABEL[row.roleType];
-            const char = S.chars[row.id];
-            const questsDone = char?.questsDone || 0;
-            const streak = S.chars[row.id]?.streak || 0;
+            const char = memberChar;
+            const questsDone = char?.questsDone || getCompletedQuestHistory(char).length || 0;
+            const streak = char?.streak || 0;
             const longestStreak = (char?.longestStreak || streak) as number;
-            const weeklyQuests = (S.quests || []).filter(
-              (q: any) => wasQuestCompletedByMember(q, row.id) &&
-              q.completedAt && Date.now() - q.completedAt < 7 * 24 * 60 * 60 * 1000
-            ).length;
-            const hasActivity = (S.quests || []).some(
-              (q: any) => wasQuestCompletedByMember(q, row.id)
-            );
+            const weeklyQuests = getWeekCompletionsFromChar(char);
+            const hasActivity = getCompletedQuestHistory(char).length > 0;
 
             return (
               <motion.div
@@ -281,7 +285,7 @@ function LeaderboardView() {
                     <div className="lbv-avatar" style={{ position: 'relative' }}>
                       <MemberIcon id={row.id} size={28} color={row.xpColor} />
                       <MemberStatusDot memberId={row.id} size={28} />
-                      {isActiveToday(memberDataMap[row.id]) && (
+                      {isActiveTodayFromChar(memberChar) && (
                         <span style={{
                           position: 'absolute',
                           bottom: 0,
