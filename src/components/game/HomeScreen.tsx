@@ -4,7 +4,7 @@ import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { Zap, CalendarDays, Trophy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { getUpcomingEvents } from '@/lib/googleCalendar';
+import { getUpcomingEvents, isEventActive, isEventSoon } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
 import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
@@ -14,6 +14,7 @@ import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationT
 import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
+import { getDaysSinceActivity, getReengagementStage, isCalendarResponseNeeded } from '@/lib/reengagement';
 
 const MOBILE_GUTTER = 'var(--layout-gutter-mobile)';
 const ROOM_GUTTER = 'var(--layout-gutter-room)';
@@ -42,6 +43,47 @@ function getRelativeCalendarLabel(dateStr: string): string {
   if (diffDays === 0) return 'Idag';
   if (diffDays === 1) return 'Imorgon';
   return eventDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+}
+
+function hasEventRSVP(eventId: string, memberKey?: string): boolean {
+  if (!eventId || !memberKey) return false;
+  return (S.checkIns ?? []).some(
+    (entry: any) => entry?.eventId === eventId && entry?.type === 'rsvp' && entry?.memberKey === memberKey
+  );
+}
+
+function getEventRSVPCount(eventId: string): number {
+  return (S.checkIns ?? []).filter((entry: any) => entry?.eventId === eventId && entry?.type === 'rsvp').length;
+}
+
+function getEventCheckInCount(eventId: string): number {
+  return (S.checkIns ?? []).filter((entry: any) => entry?.eventId === eventId && entry?.type !== 'rsvp').length;
+}
+
+function getReengagementEyebrow(stage: ReturnType<typeof getReengagementStage>): string {
+  switch (stage) {
+    case 'quiet_14':
+      return 'Plocka upp tråden igen';
+    case 'quiet_7':
+      return 'Tillbaka in i rytmen';
+    case 'quiet_3':
+      return 'Hitta tillbaka snabbt';
+    default:
+      return 'Läget just nu';
+  }
+}
+
+function getReengagementContext(daysSinceActivity: number, stage: ReturnType<typeof getReengagementStage>): string {
+  switch (stage) {
+    case 'quiet_14':
+      return `Det har varit lugnt i ungefär ${daysSinceActivity} dagar. Börja med det som återkopplar dig till bandets rytm.`;
+    case 'quiet_7':
+      return `Det har varit tyst i ungefär en vecka. Ett tydligt nästa steg räcker för att komma tillbaka in i rörelsen.`;
+    case 'quiet_3':
+      return 'Du har varit borta några dagar. Ta den kortaste vägen tillbaka in i flödet.';
+    default:
+      return '';
+  }
 }
 
 // ── HeroCard ────────────────────────────────────────────────────────
@@ -622,6 +664,227 @@ function DailyCoachCard({
   );
 }
 
+function ReengagementCard({
+  onNavigate,
+  onOpenCoach,
+  onOpenNotifications,
+}: {
+  onNavigate?: (tab: string) => void;
+  onOpenCoach?: (initialMessage?: string) => void;
+  onOpenNotifications?: () => void;
+}) {
+  const me = S.me;
+  const notifications = useGameStore((state) => state.notifications);
+  const tick = useGameStore((state) => state.tick);
+  const [loading, setLoading] = useState(true);
+  const [plan, setPlan] = useState<{
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    cta: string;
+    target: NotificationTarget | 'notifications';
+  } | null>(null);
+
+  useEffect(() => {
+    if (!me) return;
+
+    const char = (S.chars as Record<string, any>)?.[me];
+    const daysSinceActivity = getDaysSinceActivity(char?.lastSeen, char?.lastQuestDate);
+    const stage = getReengagementStage(daysSinceActivity);
+
+    if (stage === 'active') {
+      setPlan(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPlan() {
+      setLoading(true);
+
+      const focusQuest = getRelevantActiveQuests(S.quests || [], me || undefined, 1)[0];
+      const unreadActionable = sortNotificationsForAttention(notifications)
+        .find((notification) => !notification.read && getNotificationTarget(notification) !== 'notifications');
+
+      try {
+        const [events, collabs] = await Promise.all([
+          getUpcomingEvents(2).catch(() => []),
+          fetchMyCollaborativeQuests().catch(() => []),
+        ]);
+
+        const nextEvent = events?.[0] || null;
+        const eventLive = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
+        const eventSoon = nextEvent ? isEventSoon(nextEvent.start) : false;
+        const eventNeedsResponse = nextEvent
+          ? isCalendarResponseNeeded(nextEvent.start, hasEventRSVP(nextEvent.id, me || undefined))
+          : false;
+
+        const collabWaiting = (collabs || []).find((quest: any) =>
+          quest?.participants?.includes(me) &&
+          !(quest?.completed_by ?? []).includes(me) &&
+          (quest?.completed_by ?? []).length > 0
+        );
+
+        let nextPlan: typeof plan = null;
+
+        if (nextEvent && (eventLive || eventNeedsResponse || eventSoon)) {
+          nextPlan = {
+            eyebrow: getReengagementEyebrow(stage),
+            title: eventLive
+              ? 'Bandet är live nu'
+              : eventNeedsResponse
+                ? 'Kom tillbaka via nästa rep'
+                : 'Nästa bandpunkt är nära',
+            subtitle: eventLive
+              ? `${nextEvent.title} · ${getEventCheckInCount(nextEvent.id)} incheckad${getEventCheckInCount(nextEvent.id) === 1 ? '' : 'e'} hittills`
+              : eventNeedsResponse
+                ? `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)} · ${getEventRSVPCount(nextEvent.id)} kommer hittills`
+                : `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
+            cta: 'Öppna kalendern',
+            target: 'bandhub',
+          };
+        } else if (collabWaiting) {
+          nextPlan = {
+            eyebrow: getReengagementEyebrow(stage),
+            title: 'Bandet väntar på din del',
+            subtitle: collabWaiting.quest_data?.title || 'Ett gemensamt uppdrag rör sig vidare',
+            cta: 'Öppna uppdrag',
+            target: 'quests',
+          };
+        } else if (unreadActionable) {
+          nextPlan = {
+            eyebrow: getReengagementEyebrow(stage),
+            title: getNotificationText(unreadActionable).title,
+            subtitle: getNotificationText(unreadActionable).subtitle || getReengagementContext(daysSinceActivity, stage),
+            cta: getNotificationActionLabel(unreadActionable),
+            target: getNotificationTarget(unreadActionable),
+          };
+        } else if (focusQuest) {
+          nextPlan = {
+            eyebrow: getReengagementEyebrow(stage),
+            title: 'Börja med ett litet nästa steg',
+            subtitle: focusQuest.title,
+            cta: 'Fortsätt i Quests',
+            target: 'quests',
+          };
+        } else {
+          nextPlan = {
+            eyebrow: getReengagementEyebrow(stage),
+            title: 'Plocka upp tråden med coachen',
+            subtitle: getReengagementContext(daysSinceActivity, stage),
+            cta: 'Öppna coach',
+            target: 'coach',
+          };
+        }
+
+        if (!cancelled) {
+          setPlan(nextPlan);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlan({
+            eyebrow: getReengagementEyebrow(stage),
+            title: 'Kom tillbaka med ett tydligt nästa steg',
+            subtitle: getReengagementContext(daysSinceActivity, stage),
+            cta: 'Öppna coach',
+            target: 'coach',
+          });
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [me, notifications, tick]);
+
+  if (!me) return null;
+  if (!loading && !plan) return null;
+
+  return (
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
+      <div style={{
+        background: 'color-mix(in srgb, var(--color-primary-muted) 38%, var(--color-surface-elevated))',
+        borderRadius: 'var(--radius-card)',
+        border: '1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border))',
+        padding: CARD_PAD_ROOM,
+      }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-micro)',
+          color: 'var(--color-primary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          marginBottom: 8,
+        }}>
+          {plan?.eyebrow || 'Tillbaka in'}
+        </div>
+        {loading ? (
+          <div style={{
+            fontSize: 'var(--text-caption)',
+            color: 'var(--color-text-muted)',
+          }}>
+            Kalibrerar den kortaste vägen tillbaka in i bandets rytm...
+          </div>
+        ) : (
+          <>
+            <div style={{
+              fontSize: 'var(--text-body)',
+              color: 'var(--color-text)',
+              fontWeight: 600,
+              marginBottom: 6,
+            }}>
+              {plan?.title}
+            </div>
+            <div style={{
+              fontSize: 'var(--text-caption)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.5,
+              marginBottom: SECTION_GAP_COMPACT,
+            }}>
+              {plan?.subtitle}
+            </div>
+            <button
+              onClick={() => {
+                if (!plan) return;
+                if (plan.target === 'notifications') {
+                  onOpenNotifications?.();
+                  return;
+                }
+                if (plan.target === 'coach') {
+                  onOpenCoach?.();
+                  return;
+                }
+                onNavigate?.(plan.target);
+              }}
+              style={{
+                background: 'var(--color-primary)',
+                color: 'var(--color-surface)',
+                border: 'none',
+                borderRadius: 'var(--radius-pill)',
+                minHeight: CONTROL_HEIGHT,
+                padding: '0 16px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-micro)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              {plan?.cta}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function getSignalIcon(notification: Notification): string {
   switch (notification.type) {
     case 'feed_comment':
@@ -659,6 +922,7 @@ function WaitingOnYouCard({
   const me = S.me;
   const notifications = useGameStore(s => s.notifications);
   const unreadCount = useGameStore(s => s.notifications.filter(n => !n.read).length);
+  const tick = useGameStore(s => s.tick);
   const [signals, setSignals] = useState<AttentionSignal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -688,6 +952,38 @@ function WaitingOnYouCard({
           notification,
         });
       });
+
+      try {
+        const nextEvent = (await getUpcomingEvents(1))?.[0];
+        if (nextEvent && nextSignals.length < 3) {
+          const live = isEventActive(nextEvent.start, nextEvent.end);
+          const soon = isEventSoon(nextEvent.start);
+          const hasRsvp = hasEventRSVP(nextEvent.id, me || undefined);
+          const needsResponse = isCalendarResponseNeeded(nextEvent.start, hasRsvp);
+
+          if (live || needsResponse) {
+            nextSignals.push({
+              id: 'calendar-focus',
+              icon: live ? '📍' : '📅',
+              title: live ? 'Bandet är live nu' : `Svara på ${nextEvent.title}`,
+              subtitle: live
+                ? `${getEventCheckInCount(nextEvent.id)} incheckad${getEventCheckInCount(nextEvent.id) === 1 ? '' : 'e'} · öppna kalendern och checka in`
+                : `${getRelativeCalendarLabel(nextEvent.start)} · ${getEventRSVPCount(nextEvent.id)} kommer hittills`,
+              target: 'bandhub',
+              cta: live ? 'Checka in' : 'Svara nu',
+            });
+          } else if (soon && nextSignals.length < 2) {
+            nextSignals.push({
+              id: 'calendar-upcoming',
+              icon: '📅',
+              title: `${nextEvent.title} är snart här`,
+              subtitle: `${getRelativeCalendarLabel(nextEvent.start)} · håll rytmen levande i kalendern`,
+              target: 'bandhub',
+              cta: 'Öppna kalender',
+            });
+          }
+        }
+      } catch {}
 
       const delegated = (S.quests || []).filter(
         (q: any) => q.delegatedTo === me && !q.delegationHandled
@@ -810,7 +1106,7 @@ function WaitingOnYouCard({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [me, notifications, unreadCount]);
+  }, [me, notifications, unreadCount, tick]);
 
   if (!me || (!loading && signals.length === 0)) return null;
 
@@ -1164,6 +1460,11 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
       <HeroCard />
       <BandStatusRow />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
+      <ReengagementCard
+        onNavigate={onNavigate}
+        onOpenCoach={onOpenCoach}
+        onOpenNotifications={onOpenNotifications}
+      />
       <WaitingOnYouCard
         onNavigate={onNavigate}
         onOpenNotifications={onOpenNotifications}
