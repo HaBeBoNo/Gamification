@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { getGoogleAccessToken } from './googleAuth';
+import { getAccessToken, getGoogleAccessToken } from './googleAuth';
 
 export interface DriveFile {
   id: string;
@@ -14,6 +14,16 @@ type PinSource = 'shared' | 'local';
 
 const LEGACY_PINNED_IDS_KEY = 'sektionen_pinned_files';
 const DRIVE_FOLDER_ID = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
+
+async function getDriveUploadAccessToken(): Promise<string> {
+  const localToken = getAccessToken();
+  if (localToken) return localToken;
+
+  const providerToken = await getGoogleAccessToken();
+  if (providerToken) return providerToken;
+
+  throw new Error('Anslut Google i Band Hub för att kunna ladda upp filer.');
+}
 
 async function readErrorMessage(res: Response): Promise<string> {
   try {
@@ -91,10 +101,7 @@ export async function uploadFile(file: File): Promise<DriveFile> {
     throw new Error('Drive-mappen är inte konfigurerad.');
   }
 
-  const accessToken = await getGoogleAccessToken();
-  if (!accessToken) {
-    throw new Error('Logga in igen med Google för att kunna ladda upp filer.');
-  }
+  const accessToken = await getDriveUploadAccessToken();
 
   const metadata = {
     name: file.name,

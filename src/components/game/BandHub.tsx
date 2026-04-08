@@ -22,6 +22,8 @@ import { S } from '@/state/store';
 import CalendarView from './CalendarView';
 import { getUpcomingEvents, isEventActive, isEventSoon } from '@/lib/googleCalendar';
 import { isCalendarResponseNeeded } from '@/lib/reengagement';
+import GoogleConnectButton from './GoogleConnectButton';
+import { loadToken, type GoogleTokenData } from '@/lib/googleAuth';
 
 const TABS = [
   {
@@ -89,6 +91,7 @@ function formatFileSize(size?: string): string {
 }
 
 export default function BandHub() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [activeTab, setActiveTab] = useState<BandHubTabId>('kalender');
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,6 +101,7 @@ export default function BandHub() {
   const [driveFilter, setDriveFilter] = useState<DriveFilterId>('alla');
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [pinMode, setPinMode] = useState<'shared' | 'local'>('local');
+  const [googleToken, setGoogleToken] = useState<GoogleTokenData | null>(() => loadToken());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeTabMeta = TABS.find((tab) => tab.id === activeTab) || TABS[0];
 
@@ -105,6 +109,20 @@ export default function BandHub() {
     if (activeTab === 'drive') {
       void loadDriveSurface();
     }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'drive') return;
+
+    const syncGoogleToken = () => {
+      setGoogleToken(loadToken());
+    };
+
+    syncGoogleToken();
+    window.addEventListener('focus', syncGoogleToken);
+    return () => {
+      window.removeEventListener('focus', syncGoogleToken);
+    };
   }, [activeTab]);
 
   useEffect(() => {
@@ -172,9 +190,12 @@ export default function BandHub() {
       setUploadSuccess(`${file.name} uppladdad!`);
       await loadDriveSurface();
     } catch (err: any) {
-      const message = typeof err?.message === 'string' && err.message
+      const rawMessage = typeof err?.message === 'string' && err.message
         ? err.message
         : 'Uppladdning misslyckades.';
+      const message = /google|token|auth|permission|scope|login|logga in/i.test(rawMessage)
+        ? `${rawMessage} Anslut Google ovanför och försök igen.`
+        : rawMessage;
       setError(message);
     } finally {
       setUploading(false);
@@ -427,6 +448,59 @@ export default function BandHub() {
               />
             </div>
           </div>
+
+          {googleClientId && (
+            <div
+              style={{
+                background: 'var(--color-surface-elevated)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                padding: '14px 14px',
+                marginBottom: 'var(--section-gap)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 'var(--text-micro)',
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    marginBottom: 4,
+                  }}
+                >
+                  Google för uppladdning
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--text-caption)',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {googleToken
+                    ? 'Drive-uppladdning använder din egen Google-behörighet, så att vem som helst i bandet kan lägga in filer härifrån.'
+                    : 'Anslut Google här om uppladdning inte fungerar direkt. Listningen fortsätter fungera även utan det.'}
+                </div>
+              </div>
+              <GoogleConnectButton
+                tokenData={googleToken}
+                onConnect={(token) => {
+                  setGoogleToken(token);
+                  setError('');
+                }}
+                onDisconnect={() => {
+                  setGoogleToken(null);
+                }}
+              />
+            </div>
+          )}
 
           <div
             style={{
