@@ -131,7 +131,7 @@ async function removeStaleEndpoints(memberKey: string, endpoints: string[]): Pro
 
 export async function registerPush(
   memberKey: string,
-  options: { forceRefresh?: boolean; promptIfNeeded?: boolean } = {}
+  options: { forceRefresh?: boolean; promptIfNeeded?: boolean; pruneMemberSubscriptions?: boolean } = {}
 ): Promise<boolean> {
   if (!supabase || !('serviceWorker' in navigator) || !('PushManager' in window)) return false
   if (!VAPID_PUBLIC_KEY) {
@@ -201,6 +201,17 @@ export async function registerPush(
       endpoint: payload.endpoint,
       registeredAt: Date.now(),
     })
+    if (options.pruneMemberSubscriptions) {
+      const { error: pruneError } = await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('member_key', memberKey)
+        .neq('endpoint', payload.endpoint)
+
+      if (pruneError) {
+        console.warn('Failed to prune other push subscriptions for member:', pruneError)
+      }
+    }
     staleEndpoints.delete(payload.endpoint)
     await removeStaleEndpoints(memberKey, [...staleEndpoints])
     clearRuntimeIssue('push')
@@ -289,6 +300,7 @@ export async function ensurePushRegistration(
   return registerPush(memberKey, {
     forceRefresh: options.reason === 'manual' || ((options.reason === 'resume' || options.reason === 'online') && refreshDue),
     promptIfNeeded: options.promptIfNeeded,
+    pruneMemberSubscriptions: options.reason === 'manual',
   })
 }
 
