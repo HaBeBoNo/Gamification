@@ -2,6 +2,17 @@ import { MEMBER_IDS } from '@/data/members';
 import { createRemoteNotifications } from '@/lib/socialData';
 import { sendPush } from '@/lib/sendPush';
 
+const PUSH_SIGNAL_TYPES = new Set([
+  'feed_comment',
+  'collaborative_invite',
+  'collaborative_progress',
+  'collaborative_complete',
+  'high_five',
+  'calendar_rsvp',
+  'calendar_check_in',
+  'delegation_received',
+]);
+
 export function getBandmateKeys(memberKey?: string | null): string[] {
   return MEMBER_IDS.filter((candidate) => candidate !== memberKey);
 }
@@ -38,7 +49,7 @@ export async function notifyMembersSignal(params: {
     console.warn('notifyMembersSignal failed:', error?.message || error);
   }
 
-  if (params.push) {
+  if (params.push && PUSH_SIGNAL_TYPES.has(params.type)) {
     void sendPush(
       params.push.title,
       params.push.body,

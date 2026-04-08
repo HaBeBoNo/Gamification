@@ -458,19 +458,6 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
       !replyTarget?.memberKey ? item.who : undefined,
     ].filter((memberKey): memberKey is string => Boolean(memberKey) && memberKey !== me))];
 
-    if (shouldPushForSocialSignal('comment') && targetMemberKeys.length > 0) {
-      const commenterName = getMemberName(me);
-      void sendPush(
-        `${commenterName} kommenterade din aktivitet`,
-        comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
-        {
-          excludeMember: me,
-          targetMemberKeys,
-          url: '/',
-        }
-      );
-    }
-
     if (!supabase) {
       setSubmittingCommentId(null);
       return;
@@ -497,6 +484,19 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
       setCommentDrafts(prev => ({ ...prev, [itemId]: rawDraft }));
       setSubmittingCommentId(null);
       return;
+    }
+
+    if (shouldPushForSocialSignal('comment') && targetMemberKeys.length > 0) {
+      const commenterName = getMemberName(me);
+      void sendPush(
+        `${commenterName} kommenterade din aktivitet`,
+        comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
+        {
+          excludeMember: me,
+          targetMemberKeys,
+          url: '/',
+        }
+      );
     }
 
     if (data) {

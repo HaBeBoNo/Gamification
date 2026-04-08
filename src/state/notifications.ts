@@ -38,8 +38,12 @@ export const notificationTypes = {
 export const NOTIF_TYPES = {
   LEVEL_UP:               'level_up',
   HIGH_FIVE:              'high_five',
+  COLLABORATIVE_INVITE:   'collaborative_invite',
+  COLLABORATIVE_PROGRESS: 'collaborative_progress',
   COLLABORATIVE_COMPLETE: 'collaborative_complete',
   QUEST_COMPLETE:         'quest_complete',
+  CALENDAR_RSVP:          'calendar_rsvp',
+  CALENDAR_CHECK_IN:      'calendar_check_in',
   FIRST_LOGIN:            'first_login',
   STREAK:                 'streak',
   FEED_COMMENT:           'feed_comment',

@@ -18,6 +18,11 @@ export function getNotificationText(notification: Notification): { title: string
   const memberName = memberNameFromPayload(notification);
 
   switch (notification.type) {
+    case 'collaborative_invite':
+      return {
+        title: notification.title || `${memberName || 'Någon'} bjöd in dig till ett gemensamt uppdrag`,
+        subtitle: str(p.questTitle) || notification.body || '',
+      };
     case 'delegation_received':
       return { title: `${memberName} skickade dig ett uppdrag`, subtitle: str(p.questTitle) };
     case 'delegation_accepted':
@@ -46,6 +51,11 @@ export function getNotificationText(notification: Notification): { title: string
       return { title: notification.title || 'Level up!', subtitle: notification.body || '' };
     case 'high_five':
       return { title: notification.title || 'High five!', subtitle: notification.body || '' };
+    case 'collaborative_progress':
+      return {
+        title: notification.title || `${memberName || 'Någon'} slutförde sin del`,
+        subtitle: notification.body || str(p.questTitle) || '',
+      };
     case 'collaborative_complete':
       return { title: notification.title || 'Kollaborativt uppdrag klart', subtitle: notification.body || '' };
     case 'quest_complete':
@@ -88,9 +98,11 @@ export function getNotificationTarget(notification: Notification): NotificationT
     case 'high_five':
     case 'first_login':
       return 'activity';
+    case 'collaborative_invite':
     case 'delegation_received':
     case 'delegation_accepted':
     case 'delegation_declined':
+    case 'collaborative_progress':
     case 'collaborative_complete':
     case 'quest_complete':
     case 'quest_completed':
@@ -131,8 +143,12 @@ export function getNotificationPriority(notification: Notification): number {
   switch (notification.type) {
     case 'feed_comment':
       return 100;
+    case 'collaborative_invite':
+      return 96;
     case 'delegation_received':
       return 95;
+    case 'collaborative_progress':
+      return 92;
     case 'collaborative_complete':
       return 90;
     case 'feed_reaction':
@@ -146,6 +162,17 @@ export function getNotificationPriority(notification: Notification): number {
     default:
       return 50;
   }
+}
+
+export function sortNotificationsForAttention(notifications: Notification[]): Notification[] {
+  return [...notifications].sort((a, b) => {
+    if (a.read !== b.read) return a.read ? 1 : -1;
+
+    const priorityDelta = getNotificationPriority(b) - getNotificationPriority(a);
+    if (priorityDelta !== 0) return priorityDelta;
+
+    return b.ts - a.ts;
+  });
 }
 
 export function getNotificationFeedIntent(notification: Notification): Omit<FeedIntent, 'id' | 'createdAt'> | null {

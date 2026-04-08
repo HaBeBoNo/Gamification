@@ -106,12 +106,13 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         });
       } else {
         const memberName = (MEMBERS as any)[me]?.name || me;
-        const remaining = (q.participants as string[]).filter(
+        const remainingParticipants = (q.participants as string[]).filter(
           (id: string) => !completedBy.includes(id)
-        ).length;
+        );
+        const remaining = remainingParticipants.length;
         void notifyMembersSignal({
-          targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
-          type: 'quest_complete',
+          targetMemberKeys: remainingParticipants.filter((id: string) => id !== me),
+          type: 'collaborative_progress',
           title: `${memberName} slutförde sin del`,
           body: `"${quest.title}" — ${remaining} kvar`,
           dedupeKey: `collab-progress:${quest.id}:${me}`,
@@ -120,6 +121,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
             questId: quest.id,
             questTitle: quest.title,
             remaining,
+            questType: 'collaborative',
           },
           push: {
             title: `${memberName} slutförde sin del`,

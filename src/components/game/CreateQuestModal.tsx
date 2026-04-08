@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { addNotifToAll } from '@/state/notifications';
-import { sendPush } from '@/lib/sendPush';
 import { createCollaborativeQuest, fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
+import { notifyMembersSignal } from '@/lib/notificationSignals';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -66,17 +65,25 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       await createCollaborativeQuest(questData, participants);
       await fetchMyCollaborativeQuests();
 
-      // Push-notis till inbjudna
       const initiatorName = (MEMBERS as any)[S.me]?.name || S.me;
-      sendPush(
-        `${initiatorName} bjuder in dig till ett uppdrag`,
-        `"${title.trim()}"`,
-        {
+      void notifyMembersSignal({
+        targetMemberKeys: invitedMembers,
+        type: 'collaborative_invite',
+        title: `${initiatorName} bjöd in dig till ett gemensamt uppdrag`,
+        body: title.trim(),
+        dedupeKey: `collab-invite:${S.me}:${questData.id}:${[...invitedMembers].sort().join(',')}`,
+        payload: {
+          memberId: S.me,
+          questId: questData.id,
+          questTitle: title.trim(),
+        },
+        push: {
+          title: `${initiatorName} bjöd in dig till ett gemensamt uppdrag`,
+          body: `"${title.trim()}"`,
           excludeMember: S.me || undefined,
-          targetMemberKeys: invitedMembers,
           url: '/',
-        }
-      );
+        },
+      });
     } else {
       // Vanligt quest
       const newQuest: any = {

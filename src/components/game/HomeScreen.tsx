@@ -10,7 +10,7 @@ import { getDailyCoachMessage } from '@/hooks/useAI';
 import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { markRead, type Notification } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
-import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationPriority, getNotificationTarget, getNotificationText, type NotificationTarget } from '@/lib/notificationMeta';
+import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention, type NotificationTarget } from '@/lib/notificationMeta';
 import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
@@ -630,6 +630,10 @@ function getSignalIcon(notification: Notification): string {
       return '👏';
     case 'feed_witness':
       return '👀';
+    case 'collaborative_invite':
+      return '📥';
+    case 'collaborative_progress':
+      return '🤝';
     case 'delegation_received':
       return '📥';
     case 'collaborative_complete':
@@ -666,13 +670,9 @@ function WaitingOnYouCard({
       setLoading(true);
 
       const nextSignals: AttentionSignal[] = [];
-      const unreadActionable = notifications
+      const unreadActionable = sortNotificationsForAttention(notifications)
         .filter((notification) => !notification.read)
         .filter((notification) => getNotificationTarget(notification) !== 'notifications')
-        .sort((a, b) => (
-          getNotificationPriority(b) - getNotificationPriority(a) ||
-          b.ts - a.ts
-        ))
         .slice(0, 2);
 
       unreadActionable.forEach((notification) => {

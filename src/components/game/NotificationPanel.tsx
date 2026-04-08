@@ -2,9 +2,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
-import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin } from 'lucide-react';
+import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin, Users } from 'lucide-react';
 import { setFeedIntent } from '@/lib/feedIntent';
-import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText } from '@/lib/notificationMeta';
+import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention } from '@/lib/notificationMeta';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -18,6 +18,8 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   streak: Zap,
   level_up: Zap,
   high_five: Award,
+  collaborative_invite: Users,
+  collaborative_progress: Users,
   collaborative_complete: CheckCircle,
   quest_complete: CheckCircle,
   feed_comment: MessageCircle,
@@ -39,6 +41,8 @@ const TYPE_COLORS: Record<string, string> = {
   streak: 'var(--color-accent)',
   level_up: 'var(--color-accent)',
   high_five: 'var(--color-green)',
+  collaborative_invite: 'var(--color-primary)',
+  collaborative_progress: 'var(--color-accent)',
   collaborative_complete: 'var(--color-green)',
   quest_complete: 'var(--color-green)',
   feed_comment: 'var(--color-primary)',
@@ -68,6 +72,7 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: NotificationPanelProps) {
   // Reactive: re-renders whenever the notifications slice changes in Zustand
   const notifications = useGameStore(s => s.notifications);
+  const orderedNotifications = sortNotificationsForAttention(notifications);
 
   function handleNotificationPress(notification: Notification) {
     markRead(notification.id);
@@ -128,13 +133,13 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
 
       <div className="notif-list">
         <AnimatePresence initial={false}>
-          {notifications.length === 0 ? (
+          {orderedNotifications.length === 0 ? (
             <div className="notif-empty">
               <Bell size={48} strokeWidth={1} />
               <span>Inga notifikationer ännu.</span>
             </div>
           ) : (
-            notifications.map(n => {
+            orderedNotifications.map(n => {
               const Icon = TYPE_ICONS[n.type] || Bell;
               const color = TYPE_COLORS[n.type] || 'var(--color-text-muted)';
               const { title, subtitle } = getNotificationText(n);

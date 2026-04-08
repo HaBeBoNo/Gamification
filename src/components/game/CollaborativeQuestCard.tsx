@@ -71,12 +71,13 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
         },
       })
     } else {
-      const remaining = participants.filter(
+      const remainingParticipants = participants.filter(
         (p: string) => !result.completedBy.includes(p)
-      ).length
+      )
+      const remaining = remainingParticipants.length
       void notifyMembersSignal({
-        targetMemberKeys: participants.filter((p: string) => p !== S.me),
-        type: 'quest_complete',
+        targetMemberKeys: remainingParticipants.filter((p: string) => p !== S.me),
+        type: 'collaborative_progress',
         title: `${memberName} slutförde sin del`,
         body: `"${q.title}" — ${remaining} kvar`,
         dedupeKey: `collab-progress:${quest.id}:${S.me}`,
@@ -85,6 +86,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           questId: quest.quest_id,
           questTitle: q.title,
           remaining,
+          questType: 'collaborative',
         },
         push: {
           title: `${memberName} slutförde sin del`,
