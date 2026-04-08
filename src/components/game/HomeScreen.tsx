@@ -701,10 +701,12 @@ function PushActivationCard() {
     };
   }, [me]);
 
-  if (!me || loading || !state || state.state === 'active' || state.state === 'unsupported') return null;
+  if (!me || loading || !state || state.state === 'active') return null;
 
   const title = state.state === 'needs-install'
     ? 'Aktivera HQ som riktig app'
+    : state.state === 'unsupported'
+      ? 'Push är inte tillgängligt här'
     : 'Aktivera push för bandets signaler';
 
   const cta = state.state === 'needs-install'

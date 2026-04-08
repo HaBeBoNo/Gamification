@@ -186,18 +186,18 @@ export async function registerPush(
 }
 
 export async function getPushReadiness(memberKey?: string | null): Promise<PushReadinessState> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined') {
-    return {
-      state: 'unsupported',
-      message: 'Den här enheten stöder inte push för HQ.',
-      canActivate: false,
-    }
-  }
-
   if (isIOS() && !isStandaloneDisplayMode()) {
     return {
       state: 'needs-install',
       message: 'Installera HQ på hemskärmen för att iPhone ska kunna ta emot push.',
+      canActivate: false,
+    }
+  }
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined') {
+    return {
+      state: 'unsupported',
+      message: 'Push stöds inte fullt ut i den här miljön ännu. Öppna HQ som installerad app eller prova en annan enhet.',
       canActivate: false,
     }
   }
