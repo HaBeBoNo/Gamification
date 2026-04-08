@@ -27,6 +27,7 @@ interface ProductBaselineState {
 const STORAGE_KEY = 'sek-product-baseline-v1';
 const SESSION_PREFIX = 'sek-product-baseline-session';
 const PUSH_OPEN_PARAM = 'sek_push_open';
+const PUSH_PROOF_KEY = 'sek-push-proof-v1';
 const MAX_APP_OPEN_EVENTS = 180;
 const MAX_SOCIAL_RESPONSE_SAMPLES = 180;
 const MAX_SAMPLE_AGE_MS = 120 * 24 * 60 * 60 * 1000;
@@ -104,7 +105,22 @@ export function consumePushOpenMarker(): boolean {
 
     url.searchParams.delete(PUSH_OPEN_PARAM);
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    try {
+      window.localStorage.setItem(PUSH_PROOF_KEY, String(Date.now()));
+    } catch {
+      // Ignore proof persistence failures.
+    }
     return true;
+  } catch {
+    return false;
+  }
+}
+
+export function hasSeenPushProof(): boolean {
+  if (!hasStorage('localStorage')) return false;
+
+  try {
+    return Boolean(window.localStorage.getItem(PUSH_PROOF_KEY));
   } catch {
     return false;
   }
@@ -200,4 +216,3 @@ export function getProductBaselineSnapshot(memberKey?: string): ProductBaselineS
     socialResponseLatencies: state.socialResponseLatencies.filter((entry) => entry.memberKey === memberKey),
   };
 }
-

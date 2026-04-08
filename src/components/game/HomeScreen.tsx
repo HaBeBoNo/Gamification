@@ -16,6 +16,7 @@ import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 import { getDaysSinceActivity, getReengagementStage, isCalendarResponseNeeded } from '@/lib/reengagement';
 import { ensurePushRegistration, getPushReadiness, type PushReadinessState } from '@/lib/webPush';
+import { hasSeenPushProof } from '@/lib/productBaseline';
 
 const MOBILE_GUTTER = 'var(--layout-gutter-mobile)';
 const ROOM_GUTTER = 'var(--layout-gutter-room)';
@@ -672,6 +673,7 @@ function PushActivationCard() {
   const [state, setState] = useState<PushReadinessState | null>(null);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [hasProof, setHasProof] = useState(false);
 
   useEffect(() => {
     if (!me) return;
@@ -681,7 +683,10 @@ function PushActivationCard() {
       setLoading(true);
       try {
         const nextState = await getPushReadiness(me);
-        if (!cancelled) setState(nextState);
+        if (!cancelled) {
+          setState(nextState);
+          setHasProof(hasSeenPushProof());
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -701,19 +706,30 @@ function PushActivationCard() {
     };
   }, [me]);
 
-  if (!me || loading || !state || state.state === 'active') return null;
+  if (!me || loading || !state) return null;
+
+  const needsVerification = state.state === 'active' && !hasProof;
+  if (!needsVerification && state.state === 'active') return null;
 
   const title = state.state === 'needs-install'
     ? 'Aktivera HQ som riktig app'
     : state.state === 'unsupported'
       ? 'Push är inte tillgängligt här'
+    : needsVerification
+      ? 'Bekräfta push på den här enheten'
     : 'Aktivera push för bandets signaler';
 
   const cta = state.state === 'needs-install'
     ? 'Installera appen'
+    : needsVerification
+      ? (activating ? 'Aktiverar...' : 'Aktivera igen')
     : activating
       ? 'Aktiverar...'
       : 'Aktivera push';
+
+  const description = needsVerification
+    ? 'HQ tror att push är aktivt, men den här enheten har ännu inte bekräftat en mottagen signal. Återaktivera kopplingen innan vi testar igen.'
+    : state.message;
 
   return (
     <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
@@ -747,9 +763,9 @@ function PushActivationCard() {
           lineHeight: 1.5,
           marginBottom: SECTION_GAP_COMPACT,
         }}>
-          {state.message}
+          {description}
         </div>
-        {state.canActivate ? (
+        {state.canActivate || needsVerification ? (
           <button
             onClick={async () => {
               if (!me) return;
@@ -757,10 +773,11 @@ function PushActivationCard() {
               try {
                 await ensurePushRegistration(me, {
                   promptIfNeeded: true,
-                  reason: 'auth',
+                  reason: 'manual',
                 });
                 const nextState = await getPushReadiness(me);
                 setState(nextState);
+                setHasProof(hasSeenPushProof());
               } finally {
                 setActivating(false);
               }

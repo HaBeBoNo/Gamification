@@ -254,13 +254,13 @@ export async function getPushReadiness(memberKey?: string | null): Promise<PushR
 
 export async function ensurePushRegistration(
   memberKey: string,
-  options: { promptIfNeeded?: boolean; reason?: 'auth' | 'resume' | 'online' | 'bootstrap' } = {}
+  options: { promptIfNeeded?: boolean; reason?: 'auth' | 'resume' | 'online' | 'bootstrap' | 'manual' } = {}
 ): Promise<boolean> {
   const current = loadPushRegistrationState()
   const refreshDue = !current || current.memberKey !== memberKey || (Date.now() - current.registeredAt > PUSH_REFRESH_INTERVAL_MS)
 
   return registerPush(memberKey, {
-    forceRefresh: (options.reason === 'resume' || options.reason === 'online') && refreshDue,
+    forceRefresh: options.reason === 'manual' || ((options.reason === 'resume' || options.reason === 'online') && refreshDue),
     promptIfNeeded: options.promptIfNeeded,
   })
 }
