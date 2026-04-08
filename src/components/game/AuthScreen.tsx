@@ -24,7 +24,7 @@ export default function AuthScreen() {
       provider: 'google',
       options: {
         redirectTo: 'https://gamification-habebonos-projects.vercel.app',
-        scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+        scopes: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.readonly',
         queryParams: {
           access_type: 'offline',
           prompt: 'select_account consent',

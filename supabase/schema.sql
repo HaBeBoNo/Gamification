@@ -108,6 +108,12 @@ create table if not exists public.push_subscriptions (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.drive_pins (
+  file_id text primary key,
+  pinned_by text not null,
+  created_at timestamptz not null default now()
+);
+
 create unique index if not exists notifications_member_dedupe_idx
   on public.notifications (member_key, dedupe_key);
 create unique index if not exists feed_reactions_unique_idx
@@ -128,6 +134,8 @@ create index if not exists feed_witnesses_feed_item_idx
   on public.feed_witnesses (feed_item_id, created_at desc);
 create index if not exists member_presence_last_seen_idx
   on public.member_presence (last_seen_at desc);
+create index if not exists drive_pins_created_at_idx
+  on public.drive_pins (created_at desc);
 
 create or replace function public.sync_feed_comment_fields()
 returns trigger
@@ -446,6 +454,7 @@ alter table public.feed_reactions enable row level security;
 alter table public.feed_witnesses enable row level security;
 alter table public.member_presence enable row level security;
 alter table public.push_subscriptions enable row level security;
+alter table public.drive_pins enable row level security;
 
 drop policy if exists "Own profile only" on public.profiles;
 create policy "Own profile only" on public.profiles
@@ -515,6 +524,18 @@ drop policy if exists "Members can manage own push subscriptions" on public.push
 create policy "Members can manage own push subscriptions" on public.push_subscriptions
   for all using (member_key = public.current_member_key())
   with check (member_key = public.current_member_key());
+
+drop policy if exists "Authenticated can read drive pins" on public.drive_pins;
+create policy "Authenticated can read drive pins" on public.drive_pins
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists "Members can insert drive pins" on public.drive_pins;
+create policy "Members can insert drive pins" on public.drive_pins
+  for insert with check (pinned_by = public.current_member_key());
+
+drop policy if exists "Authenticated can remove drive pins" on public.drive_pins;
+create policy "Authenticated can remove drive pins" on public.drive_pins
+  for delete using (auth.role() = 'authenticated');
 
 grant execute on function public.create_member_notifications(
   text[],

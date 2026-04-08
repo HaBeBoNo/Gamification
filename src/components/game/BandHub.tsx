@@ -13,13 +13,12 @@ import {
   HardDrive,
   Pin,
   Clock3,
+  Mic2,
 } from 'lucide-react';
-import { getCategory, getDriveFiles, uploadFile, getMimeTypeLabel, formatDate, type DriveFile } from '@/lib/googleDrive';
+import { fetchPinnedFileIds, getCategory, getDriveFiles, uploadFile, getMimeTypeLabel, formatDate, subscribePinnedFiles, togglePinnedFile, type DriveFile } from '@/lib/googleDrive';
 import { supabase } from '@/lib/supabase';
 import { S } from '@/state/store';
 import CalendarView from './CalendarView';
-
-const PINNED_IDS_KEY = 'sektionen_pinned_files';
 
 const TABS = [
   {
@@ -94,21 +93,25 @@ export default function BandHub() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState('');
   const [driveFilter, setDriveFilter] = useState<DriveFilterId>('alla');
-  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(PINNED_IDS_KEY) || '[]');
-    } catch {
-      return [];
-    }
-  });
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [pinMode, setPinMode] = useState<'shared' | 'local'>('local');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isAdmin = S.me === 'hannes';
   const activeTabMeta = TABS.find((tab) => tab.id === activeTab) || TABS[0];
 
   useEffect(() => {
     if (activeTab === 'drive') {
-      void loadFiles();
+      void loadDriveSurface();
     }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'drive') return;
+    const channel = subscribePinnedFiles(() => {
+      void loadPins();
+    });
+    return () => {
+      if (channel && supabase) supabase.removeChannel(channel);
+    };
   }, [activeTab]);
 
   async function loadFiles() {
@@ -118,18 +121,41 @@ export default function BandHub() {
       const result = await getDriveFiles();
       setFiles(result);
     } catch {
-      setError('Kunde inte hämta filer. Kontrollera att du är inloggad med rätt Google-konto.');
+      setError('Kunde inte hämta filer just nu.');
     } finally {
       setLoading(false);
     }
   }
 
-  function togglePin(id: string) {
-    const updated = pinnedIds.includes(id)
-      ? pinnedIds.filter((p) => p !== id)
-      : [...pinnedIds, id];
-    setPinnedIds(updated);
-    localStorage.setItem(PINNED_IDS_KEY, JSON.stringify(updated));
+  async function loadPins() {
+    try {
+      const result = await fetchPinnedFileIds();
+      setPinnedIds(result.ids);
+      setPinMode(result.source);
+    } catch (err: any) {
+      console.warn('[BandHub] pin load failed:', err?.message || err);
+    }
+  }
+
+  async function loadDriveSurface() {
+    await Promise.all([loadFiles(), loadPins()]);
+  }
+
+  async function handleTogglePin(id: string) {
+    const previous = pinnedIds;
+    const wasPinned = previous.includes(id);
+    const optimistic = wasPinned
+      ? previous.filter((p) => p !== id)
+      : [...previous, id];
+    setPinnedIds(optimistic);
+
+    try {
+      const source = await togglePinnedFile(id, wasPinned, S.me);
+      setPinMode(source);
+    } catch (err: any) {
+      setPinnedIds(previous);
+      setError(typeof err?.message === 'string' && err.message ? err.message : 'Kunde inte uppdatera fästning.');
+    }
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,7 +167,7 @@ export default function BandHub() {
     try {
       await uploadFile(file);
       setUploadSuccess(`${file.name} uppladdad!`);
-      await loadFiles();
+      await loadDriveSurface();
     } catch (err: any) {
       const message = typeof err?.message === 'string' && err.message
         ? err.message
@@ -187,6 +213,21 @@ export default function BandHub() {
   const flowFiles = useMemo(
     () => filteredFiles.filter((file) => !pinnedIds.includes(file.id)),
     [filteredFiles, pinnedIds]
+  );
+
+  const latestRecording = useMemo(
+    () => files.find((file) => getCategory(file) === 'inspelningar') || null,
+    [files]
+  );
+
+  const latestDocument = useMemo(
+    () => files.find((file) => getCategory(file) === 'dokument') || null,
+    [files]
+  );
+
+  const latestImage = useMemo(
+    () => files.find((file) => getCategory(file) === 'bilder') || null,
+    [files]
   );
 
   const emptyDriveMessage = driveFilter === 'fasta'
@@ -351,7 +392,7 @@ export default function BandHub() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button
-                onClick={() => void loadFiles()}
+                onClick={() => void loadDriveSurface()}
                 style={iconButtonStyle}
                 aria-label="Ladda om filer"
               >
@@ -386,6 +427,21 @@ export default function BandHub() {
               marginBottom: 'var(--section-gap)',
             }}
           >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                paddingRight: 6,
+                fontSize: 'var(--text-micro)',
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {pinMode === 'shared' ? 'Fästa delas i bandet' : 'Fästa sparas lokalt'}
+            </div>
             {DRIVE_FILTERS.map((filter) => {
               const active = driveFilter === filter.id;
               const count = filter.id === 'alla'
@@ -451,6 +507,44 @@ export default function BandHub() {
 
           {!loading && !error && (
             <>
+              {driveFilter === 'alla' && (latestRecording || latestDocument || latestImage) && (
+                <section style={{ marginBottom: 'var(--section-gap)' }}>
+                  <SectionEyebrow
+                    title="Öppna först"
+                    subtitle="Det som oftast är mest relevant när någon går in här"
+                  />
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                      gap: 10,
+                    }}
+                  >
+                    {latestRecording ? (
+                      <QuickOpenCard
+                        icon={<Mic2 size={15} />}
+                        eyebrow="Senaste inspelning"
+                        file={latestRecording}
+                      />
+                    ) : null}
+                    {latestDocument ? (
+                      <QuickOpenCard
+                        icon={<FileText size={15} />}
+                        eyebrow="Senaste dokument"
+                        file={latestDocument}
+                      />
+                    ) : null}
+                    {latestImage ? (
+                      <QuickOpenCard
+                        icon={<Image size={15} />}
+                        eyebrow="Senaste bild"
+                        file={latestImage}
+                      />
+                    ) : null}
+                  </div>
+                </section>
+              )}
+
               {featuredFiles.length > 0 && (
                 <section style={{ marginBottom: 'var(--section-gap)' }}>
                   <SectionEyebrow title="Fästa filer" subtitle="Det som ska vara nära till hands" />
@@ -460,8 +554,7 @@ export default function BandHub() {
                         key={file.id}
                         file={file}
                         pinned={true}
-                        isAdmin={isAdmin}
-                        onTogglePin={() => togglePin(file.id)}
+                        onTogglePin={() => handleTogglePin(file.id)}
                       />
                     ))}
                   </div>
@@ -477,7 +570,7 @@ export default function BandHub() {
                 {flowFiles.length === 0 && featuredFiles.length === 0 && files.length === 0 && (
                   <div style={{ ...emptyCardStyle, textAlign: 'center' }}>
                     <div style={{ marginBottom: 14 }}>
-                      Inga filer hittades. Google-anslutningen kan ha gått ut.
+                      Inga filer hittades i den här Drive-mappen ännu.
                     </div>
                     <button
                       onClick={async () => {
@@ -505,8 +598,7 @@ export default function BandHub() {
                         key={file.id}
                         file={file}
                         pinned={false}
-                        isAdmin={isAdmin}
-                        onTogglePin={() => togglePin(file.id)}
+                        onTogglePin={() => handleTogglePin(file.id)}
                       />
                     ))}
                   </div>
@@ -618,12 +710,10 @@ function StatCard({
 function FileRow({
   file,
   pinned,
-  isAdmin,
   onTogglePin,
 }: {
   file: DriveFile;
   pinned: boolean;
-  isAdmin: boolean;
   onTogglePin: () => void;
 }) {
   const category = getCategory(file);
@@ -725,16 +815,14 @@ function FileRow({
       </div>
 
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        {isAdmin && (
-          <button
-            onClick={onTogglePin}
-            style={iconButtonStyle}
-            title={pinned ? 'Ta bort fästning' : 'Fäst fil'}
-            aria-label={pinned ? 'Ta bort fästning' : 'Fäst fil'}
-          >
-            <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
-          </button>
-        )}
+        <button
+          onClick={onTogglePin}
+          style={iconButtonStyle}
+          title={pinned ? 'Ta bort fästning' : 'Fäst fil'}
+          aria-label={pinned ? 'Ta bort fästning' : 'Fäst fil'}
+        >
+          <Pin size={14} fill={pinned ? 'currentColor' : 'none'} />
+        </button>
         <a
           href={file.webViewLink}
           target="_blank"
@@ -749,6 +837,68 @@ function FileRow({
         </a>
       </div>
     </div>
+  );
+}
+
+function QuickOpenCard({
+  icon,
+  eyebrow,
+  file,
+}: {
+  icon: React.ReactNode;
+  eyebrow: string;
+  file: DriveFile;
+}) {
+  return (
+    <a
+      href={file.webViewLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        minWidth: 0,
+        padding: '14px 12px',
+        background: 'var(--color-surface-elevated)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-card)',
+        textDecoration: 'none',
+      }}
+    >
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        color: 'var(--color-text-muted)',
+      }}>
+        {icon}
+        <span style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-micro)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          {eyebrow}
+        </span>
+      </div>
+      <div style={{
+        fontSize: 'var(--text-body)',
+        color: 'var(--color-text)',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {file.name}
+      </div>
+      <div style={{
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+      }}>
+        {formatRelativeDriveDate(file.modifiedTime)}
+      </div>
+    </a>
   );
 }
 

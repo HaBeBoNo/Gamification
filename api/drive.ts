@@ -1,7 +1,7 @@
 import { JWT } from 'google-auth-library';
 import type { IncomingMessage, ServerResponse } from 'http';
 
-const FOLDER_ID = '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
+const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || process.env.VITE_GOOGLE_DRIVE_FOLDER_ID || '149IJgnMfI9GBH813yTOhv-_leb8T59EU';
 
 function setCors(res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
