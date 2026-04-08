@@ -5,6 +5,7 @@ import { addNotification, getNotifications, NOTIF_TYPES, upsertNotifications } f
 import { S } from '@/state/store';
 import { getSocialBackfillCutoff, setLastSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { fetchRemoteNotifications, subscribeToRemoteNotifications } from '@/lib/socialData';
+import { hasRecordedSocialLatency, recordSocialResponseLatencies } from '@/lib/productBaseline';
 
 function getActivityTs(item: any): number {
   const raw = item?.created_at || item?.ts || item?.time || item?.t;
@@ -210,11 +211,70 @@ export function useSocialNotifications() {
       const result = await fetchRemoteNotifications(S.me);
       if (cancelled || !result.supported) return result;
       if (!result.transientError) {
+        await maybeRecordSocialLatency(result.notifications);
         upsertNotifications(result.notifications);
         maybePersistSync(Date.now());
       }
       initialized.current = true;
       return result;
+    }
+
+    async function maybeRecordSocialLatency(notifications: ReturnType<typeof getNotifications>) {
+      if (!supabase || !S.me) return;
+
+      const candidates = new Map<string, { responseType: 'feed_comment' | 'feed_reaction' | 'feed_witness'; responseTs: number }>();
+
+      notifications.forEach((notification) => {
+        if (
+          notification.type !== NOTIF_TYPES.FEED_COMMENT &&
+          notification.type !== NOTIF_TYPES.FEED_REACTION &&
+          notification.type !== NOTIF_TYPES.FEED_WITNESS
+        ) {
+          return;
+        }
+
+        const feedItemId = String(notification.payload?.feedItemId || notification.payload?.parentFeedItemId || '');
+        if (!feedItemId || hasRecordedSocialLatency(S.me!, feedItemId)) return;
+
+        const responseTs = Number(notification.ts || 0);
+        if (!Number.isFinite(responseTs) || responseTs <= 0) return;
+
+        const responseType = notification.type as 'feed_comment' | 'feed_reaction' | 'feed_witness';
+        const existing = candidates.get(feedItemId);
+        if (!existing || responseTs < existing.responseTs) {
+          candidates.set(feedItemId, { responseType, responseTs });
+        }
+      });
+
+      const feedItemIds = [...candidates.keys()];
+      if (feedItemIds.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('activity_feed')
+        .select('id, created_at')
+        .in('id', feedItemIds);
+
+      if (error || !data) {
+        console.warn('[SocialNotifications] Could not baseline social latency:', error?.message);
+        return;
+      }
+
+      const samples = data.flatMap((row: any) => {
+        const candidate = candidates.get(String(row.id || ''));
+        if (!candidate) return [];
+
+        const actionTs = Date.parse(String(row.created_at || ''));
+        if (Number.isNaN(actionTs)) return [];
+
+        return [{
+          feedItemId: String(row.id),
+          responseType: candidate.responseType,
+          actionTs,
+          responseTs: candidate.responseTs,
+        }];
+      });
+
+      recordSocialResponseLatencies(S.me, samples);
     }
 
     async function initialize() {

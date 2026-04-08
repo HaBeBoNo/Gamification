@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { unregisterPush } from '@/lib/webPush';
+import { clearBaselineSession, consumePushOpenMarker, recordAppOpenOncePerSession } from '@/lib/productBaseline';
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 
 const PRIMARY_TAB_IDS = new Set(['quests', 'bandhub', 'leaderboard']);
@@ -140,6 +141,19 @@ export default function Index() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!synced || !S.me) return;
+
+    const source = consumePushOpenMarker() ? 'push' : 'direct';
+    recordAppOpenOncePerSession({
+      memberKey: S.me,
+      source,
+      path: typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.hash || ''}`
+        : '/',
+    });
+  }, [synced, S.me]);
+
   const shouldOnboard = synced && !S.onboarded && !S.chars[S.me!]?.onboarded;
 
   // ── Handlers ──────────────────────────────────────────────────────
@@ -153,7 +167,10 @@ export default function Index() {
       }
       if (supabase) await supabase.auth.signOut();
       localStorage.removeItem(STORAGE_KEY);
-      if (currentMember) clearSocialSignalSync(currentMember);
+      if (currentMember) {
+        clearSocialSignalSync(currentMember);
+        clearBaselineSession(currentMember);
+      }
       window.location.reload();
       return;
     }

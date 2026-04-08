@@ -49,6 +49,7 @@ It is a controlled hybrid and must be treated as such.
 | Calendar events | Google Calendar API | transient component state | [src/lib/googleCalendar.ts](/Users/t-nab/Documents/Gamification/src/lib/googleCalendar.ts) | Home, Band Hub, CalendarView | External integration, read-only in current app model. |
 | Drive files | Google Drive service-account proxy | transient component state | [api/drive.ts](/Users/t-nab/Documents/Gamification/api/drive.ts) | Band Hub | External integration, server-mediated. |
 | Push subscriptions | Supabase `push_subscriptions` | browser service worker registration | [src/lib/webPush.ts](/Users/t-nab/Documents/Gamification/src/lib/webPush.ts) | Edge push function | Server-owned registry of devices. |
+| Baseline telemetry | device-local storage via [src/lib/productBaseline.ts](/Users/t-nab/Documents/Gamification/src/lib/productBaseline.ts) | none | app shell, social notification bootstrap | strategy review, manual diagnostics | Indicative only. Not product truth, not a shared business object. |
 
 ## Architectural Rules
 
@@ -60,6 +61,16 @@ These rules are the intended guardrails until the system is refactored more deep
 4. `member_data.data` is a persistence envelope, not a substitute relational model.
 5. New shared interaction features should prefer structured tables over JSON blobs.
 6. The UI may cache and stage, but it should not invent alternative shared truths.
+
+## Decision Rule For New Data
+
+When a new data object or write path is introduced, classify it before implementation:
+
+1. If it affects only the owning member's experience, it is local-first.
+2. If another member needs to see it in order to react or act, it is server-first.
+3. If it must be both, the write order and conflict handling must be documented before the feature is considered ready.
+
+This rule is stricter than taste. It exists to stop new hybrid ambiguity from creeping in silently.
 
 ## Control Flows
 

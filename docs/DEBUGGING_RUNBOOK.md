@@ -8,6 +8,10 @@ This runbook exists to answer one question quickly:
 
 Do not start from UI symptoms alone. Start by classifying the data class.
 
+If the issue affects feed, notifications, calendar, collab, or push, add it to
+[BASELINE_AND_INCIDENT_LOG.md](/Users/t-nab/Documents/Gamification/docs/BASELINE_AND_INCIDENT_LOG.md)
+before or during investigation. The goal is a lightweight baseline for time-to-root-cause, not process theater.
+
 ## Step 1: Classify The Problem
 
 Pick the narrowest category that matches the bug:

@@ -55,9 +55,12 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const rawUrl = event.notification.data?.url || '/';
-  const notificationUrl = String(rawUrl).startsWith('http')
-    ? String(rawUrl)
-    : `${self.location.origin}${String(rawUrl).startsWith('/') ? '' : '/'}${rawUrl}`;
+  const notificationUrl = new globalThis.URL(
+    String(rawUrl).startsWith('http')
+      ? String(rawUrl)
+      : `${self.location.origin}${String(rawUrl).startsWith('/') ? '' : '/'}${rawUrl}`
+  );
+  notificationUrl.searchParams.set('sek_push_open', '1');
 
   event.waitUntil((async () => {
     const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -67,7 +70,7 @@ self.addEventListener('notificationclick', (event) => {
         try {
           await client.focus();
           if ('navigate' in client) {
-            await client.navigate(notificationUrl);
+            await client.navigate(notificationUrl.toString());
           }
           return;
         } catch {
@@ -76,6 +79,6 @@ self.addEventListener('notificationclick', (event) => {
       }
     }
 
-    await clients.openWindow(notificationUrl);
+    await clients.openWindow(notificationUrl.toString());
   })());
 });
