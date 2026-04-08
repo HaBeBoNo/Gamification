@@ -67,8 +67,8 @@
   "framework": "vite",
   "crons": [
     {
-      "path": "/api/ping",
-      "schedule": "0 12 * * *"
+      "path": "/api/push-cron",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

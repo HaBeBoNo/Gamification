@@ -28,6 +28,8 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   calendar_rsvp: CalendarDays,
   calendar_decline: CalendarDays,
   calendar_check_in: MapPin,
+  calendar_check_in_open: MapPin,
+  calendar_reminder: CalendarDays,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -52,6 +54,8 @@ const TYPE_COLORS: Record<string, string> = {
   calendar_rsvp: 'var(--color-primary)',
   calendar_decline: 'var(--color-error, #e05555)',
   calendar_check_in: 'var(--color-accent)',
+  calendar_check_in_open: 'var(--color-accent)',
+  calendar_reminder: 'var(--color-primary)',
 };
 
 function timeAgo(ts: number): string {

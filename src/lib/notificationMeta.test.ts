@@ -60,6 +60,24 @@ describe('notificationMeta', () => {
     });
   });
 
+  it('treats check-in opening as a strong calendar action signal', () => {
+    const notification = makeNotification({
+      type: 'calendar_check_in_open',
+      body: 'Kvällsrep',
+      payload: {
+        eventId: 'rep-1',
+        eventTitle: 'Kvällsrep',
+      },
+    });
+
+    expect(getNotificationTarget(notification)).toBe('bandhub');
+    expect(getNotificationPriority(notification)).toBe(91);
+    expect(getNotificationText(notification)).toMatchObject({
+      title: 'Check-in är öppen',
+      subtitle: 'Kvällsrep',
+    });
+  });
+
   it('sorts unread actionable notifications before read or lower-priority items', () => {
     const sorted = sortNotificationsForAttention([
       makeNotification({ id: 'old-comment', type: 'feed_comment', ts: 10_000, read: false }),

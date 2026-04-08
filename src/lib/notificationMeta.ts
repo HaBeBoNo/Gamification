@@ -90,6 +90,16 @@ export function getNotificationText(notification: Notification): { title: string
         title: notification.title || `${memberName || 'Någon'} checkade in`,
         subtitle: notification.body || '',
       };
+    case 'calendar_check_in_open':
+      return {
+        title: notification.title || 'Check-in är öppen',
+        subtitle: notification.body || str(p.eventTitle) || '',
+      };
+    case 'calendar_reminder':
+      return {
+        title: notification.title || 'Imorgon',
+        subtitle: notification.body || str(p.eventTitle) || '',
+      };
     default:
       return { title: notification.title || 'Notifikation', subtitle: notification.body || '' };
   }
@@ -122,6 +132,8 @@ export function getNotificationTarget(notification: Notification): NotificationT
     case 'calendar_rsvp':
     case 'calendar_decline':
     case 'calendar_check_in':
+    case 'calendar_check_in_open':
+    case 'calendar_reminder':
       return 'bandhub';
     default:
       return 'notifications';
@@ -165,6 +177,10 @@ export function getNotificationPriority(notification: Notification): number {
       return 87;
     case 'calendar_check_in':
       return 86;
+    case 'calendar_check_in_open':
+      return 91;
+    case 'calendar_reminder':
+      return 84;
     case 'feed_witness':
       return 70;
     default:

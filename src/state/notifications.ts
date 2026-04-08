@@ -44,6 +44,8 @@ export const NOTIF_TYPES = {
   QUEST_COMPLETE:         'quest_complete',
   CALENDAR_RSVP:          'calendar_rsvp',
   CALENDAR_CHECK_IN:      'calendar_check_in',
+  CALENDAR_CHECK_IN_OPEN: 'calendar_check_in_open',
+  CALENDAR_REMINDER:      'calendar_reminder',
   FIRST_LOGIN:            'first_login',
   STREAK:                 'streak',
   FEED_COMMENT:           'feed_comment',

@@ -909,6 +909,10 @@ function getSignalIcon(notification: Notification): string {
       return '🚫';
     case 'calendar_check_in':
       return '📍';
+    case 'calendar_check_in_open':
+      return '📍';
+    case 'calendar_reminder':
+      return '📅';
     default:
       return '🔔';
   }
