@@ -9,6 +9,7 @@ const PUSH_SIGNAL_TYPES = new Set([
   'collaborative_complete',
   'high_five',
   'calendar_rsvp',
+  'calendar_decline',
   'calendar_check_in',
   'delegation_received',
 ]);

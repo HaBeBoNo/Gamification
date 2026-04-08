@@ -57,7 +57,9 @@ function getEventRSVPCount(eventId: string): number {
 }
 
 function getEventCheckInCount(eventId: string): number {
-  return (S.checkIns ?? []).filter((entry: any) => entry?.eventId === eventId && entry?.type !== 'rsvp').length;
+  return (S.checkIns ?? []).filter(
+    (entry: any) => entry?.eventId === eventId && entry?.type !== 'rsvp' && entry?.type !== 'decline'
+  ).length;
 }
 
 function getReengagementEyebrow(stage: ReturnType<typeof getReengagementStage>): string {
@@ -903,6 +905,8 @@ function getSignalIcon(notification: Notification): string {
       return '🤝';
     case 'calendar_rsvp':
       return '📅';
+    case 'calendar_decline':
+      return '🚫';
     case 'calendar_check_in':
       return '📍';
     default:

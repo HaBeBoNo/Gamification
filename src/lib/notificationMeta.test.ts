@@ -43,6 +43,23 @@ describe('notificationMeta', () => {
     );
   });
 
+  it('routes calendar decline signals to bandhub with strong priority', () => {
+    const notification = makeNotification({
+      type: 'calendar_decline',
+      payload: {
+        memberId: 'niklas',
+      },
+      body: 'Rep i studion',
+    });
+
+    expect(getNotificationTarget(notification)).toBe('bandhub');
+    expect(getNotificationPriority(notification)).toBe(87);
+    expect(getNotificationText(notification)).toMatchObject({
+      title: 'Niklas kan inte komma',
+      subtitle: 'Rep i studion',
+    });
+  });
+
   it('sorts unread actionable notifications before read or lower-priority items', () => {
     const sorted = sortNotificationsForAttention([
       makeNotification({ id: 'old-comment', type: 'feed_comment', ts: 10_000, read: false }),

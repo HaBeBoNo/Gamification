@@ -622,6 +622,10 @@ export default function BandHub() {
 }
 
 function CalendarSpotlight() {
+  function isPresenceCheckIn(entry: any): boolean {
+    return entry?.type !== 'rsvp' && entry?.type !== 'decline';
+  }
+
   const [events, setEvents] = useState<Array<{
     id: string;
     title: string;
@@ -655,7 +659,8 @@ function CalendarSpotlight() {
   const nextEvent = events[0] || null;
   const hasRsvp = nextEvent ? (S.checkIns ?? []).some((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp' && entry?.memberKey === S.me) : false;
   const rsvpCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp').length : 0;
-  const checkInCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type !== 'rsvp').length : 0;
+  const declineCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'decline').length : 0;
+  const checkInCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && isPresenceCheckIn(entry)).length : 0;
   const active = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
   const soon = nextEvent ? isEventSoon(nextEvent.start) : false;
   const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, hasRsvp) : false;
@@ -669,8 +674,8 @@ function CalendarSpotlight() {
   return (
     <section style={{ marginBottom: 'var(--section-gap)' }}>
       <SectionEyebrow
-        title="Det som kräver respons nu"
-        subtitle="Kalendern ska vara den snabbaste vägen till bandets rytm"
+        title="Nästa i kalendern"
+        subtitle="Det närmaste som påverkar bandet"
       />
 
       {loading ? (
@@ -755,7 +760,7 @@ function CalendarSpotlight() {
               {active
                 ? `${checkInCount} incheckad${checkInCount === 1 ? '' : 'e'} hittills. Om du är på plats, checka in i listan nedan så att närvaron blir synlig.`
                 : needsResponse
-                  ? `${rsvpCount} har redan svarat. Det här är en av de starkaste sociala signalerna i appen, så den ska kännas enkel att ta hand om direkt här.`
+                  ? `${rsvpCount} har svarat${declineCount > 0 ? `, ${declineCount} kan inte` : ''}. Ta ställning direkt här så blir läget tydligt för alla.`
                   : nextEvent
                     ? hasRsvp
                       ? 'Du är redan med. Håll koll här när det närmar sig live-läge och check-in börjar spela roll.'

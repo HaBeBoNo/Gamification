@@ -80,6 +80,11 @@ export function getNotificationText(notification: Notification): { title: string
         title: notification.title || `${memberName || 'Någon'} kommer`,
         subtitle: notification.body || '',
       };
+    case 'calendar_decline':
+      return {
+        title: notification.title || `${memberName || 'Någon'} kan inte komma`,
+        subtitle: notification.body || '',
+      };
     case 'calendar_check_in':
       return {
         title: notification.title || `${memberName || 'Någon'} checkade in`,
@@ -115,6 +120,7 @@ export function getNotificationTarget(notification: Notification): NotificationT
     case 'goal_milestone':
       return 'activity';
     case 'calendar_rsvp':
+    case 'calendar_decline':
     case 'calendar_check_in':
       return 'bandhub';
     default:
@@ -155,6 +161,8 @@ export function getNotificationPriority(notification: Notification): number {
       return 80;
     case 'calendar_rsvp':
       return 88;
+    case 'calendar_decline':
+      return 87;
     case 'calendar_check_in':
       return 86;
     case 'feed_witness':

@@ -8,6 +8,10 @@ import { checkIn } from '@/hooks/useCheckIn'
 import { MEMBERS } from '@/data/members'
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals'
 
+function isPresenceCheckIn(entry: any): boolean {
+  return entry?.type !== 'rsvp' && entry?.type !== 'decline'
+}
+
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,12 +34,12 @@ export default function CalendarView() {
 
   function isCheckedIn(eventId: string): boolean {
     return (S.checkIns ?? []).some(
-      (c: any) => c.eventId === eventId && c.type !== 'rsvp' && (c.memberKey === S.me || c.member === S.me)
+      (c: any) => c.eventId === eventId && isPresenceCheckIn(c) && (c.memberKey === S.me || c.member === S.me)
     )
   }
 
   function getCheckInCount(eventId: string): number {
-    return (S.checkIns ?? []).filter((c: any) => c.eventId === eventId && c.type !== 'rsvp').length
+    return (S.checkIns ?? []).filter((c: any) => c.eventId === eventId && isPresenceCheckIn(c)).length
   }
 
   function handleCheckIn(event: CalendarEvent) {
@@ -56,6 +60,18 @@ export default function CalendarView() {
     )
   }
 
+  function getDeclineCount(eventId: string): number {
+    return (S.checkIns ?? []).filter(
+      (c: any) => c.eventId === eventId && c.type === 'decline'
+    ).length
+  }
+
+  function hasDeclined(eventId: string): boolean {
+    return (S.checkIns ?? []).some(
+      (c: any) => c.eventId === eventId && c.type === 'decline' && c.memberKey === S.me
+    )
+  }
+
   function handleRSVP(event: CalendarEvent) {
     if (!S.me) return
 
@@ -65,6 +81,9 @@ export default function CalendarView() {
         (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
       )
     } else {
+      S.checkIns = (S.checkIns ?? []).filter(
+        (c: any) => !(c.eventId === event.id && c.type === 'decline' && c.memberKey === S.me)
+      )
       // Lägg till RSVP
       if (!S.checkIns) S.checkIns = []
       S.checkIns.push({
@@ -97,6 +116,53 @@ export default function CalendarView() {
         },
       })
     }
+    save()
+  }
+
+  function handleDecline(event: CalendarEvent) {
+    if (!S.me) return
+
+    if (hasDeclined(event.id)) {
+      S.checkIns = (S.checkIns ?? []).filter(
+        (c: any) => !(c.eventId === event.id && c.type === 'decline' && c.memberKey === S.me)
+      )
+    } else {
+      S.checkIns = (S.checkIns ?? []).filter(
+        (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
+      )
+
+      if (!S.checkIns) S.checkIns = []
+      S.checkIns.push({
+        eventId: event.id,
+        eventTitle: event.title,
+        memberKey: S.me,
+        type: 'decline',
+        eventStart: event.start,
+        ts: Date.now(),
+      })
+
+      const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
+      void notifyMembersSignal({
+        targetMemberKeys: getBandmateKeys(S.me),
+        type: 'calendar_decline',
+        title: `${memberName} kan inte komma`,
+        body: event.title,
+        dedupeKey: `calendar-decline:${S.me}:${event.id}`,
+        payload: {
+          memberId: S.me,
+          eventId: event.id,
+          eventTitle: event.title,
+          eventStart: event.start,
+        },
+        push: {
+          title: '📅 Någon kan inte komma',
+          body: `${memberName} kan inte komma till ${event.title}`,
+          excludeMember: S.me,
+          url: '/',
+        },
+      })
+    }
+
     save()
   }
 
@@ -162,6 +228,7 @@ export default function CalendarView() {
         const active = isEventActive(event.start, event.end)
         const checkedIn = isCheckedIn(event.id)
         const checkInCount = getCheckInCount(event.id)
+        const declineCount = getDeclineCount(event.id)
         const canCheckIn = active || soon
 
         return (
@@ -191,9 +258,23 @@ export default function CalendarView() {
               </div>
             )}
 
-            {checkInCount > 0 && (
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>
-                {checkInCount} {checkInCount === 1 ? 'member' : 'members'} incheckad{checkInCount > 1 ? 'e' : ''}
+            {(checkInCount > 0 || getRSVPCount(event.id) > 0 || declineCount > 0) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>
+                {checkInCount > 0 && (
+                  <span>
+                    {checkInCount} {checkInCount === 1 ? 'member' : 'members'} incheckad{checkInCount > 1 ? 'e' : ''}
+                  </span>
+                )}
+                {getRSVPCount(event.id) > 0 && (
+                  <span>
+                    {getRSVPCount(event.id)} kommer
+                  </span>
+                )}
+                {declineCount > 0 && (
+                  <span>
+                    {declineCount} kan inte
+                  </span>
+                )}
               </div>
             )}
 
@@ -221,30 +302,38 @@ export default function CalendarView() {
             {/* RSVP */}
             <div style={{
               display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', marginTop: 8
+              justifyContent: 'space-between', marginTop: 8, gap: 10
             }}>
-              <button
-                onClick={() => handleRSVP(event)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  background: 'transparent',
-                  color: hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                  border: `1px solid ${hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                  borderRadius: '999px', padding: '6px 14px',
-                  fontSize: 12, fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer', touchAction: 'manipulation',
-                }}
-              >
-                {hasRSVP(event.id) ? '✓ Jag kommer' : '+ Jag kommer'}
-              </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {getRSVPCount(event.id) > 0 && (
-                  <span style={{
-                    fontSize: 11, color: 'var(--color-text-muted)'
+                <button
+                  onClick={() => handleRSVP(event)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'transparent',
+                    color: hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                    border: `1px solid ${hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    borderRadius: '999px', padding: '6px 14px',
+                    fontSize: 12, fontFamily: 'var(--font-ui)',
+                    cursor: 'pointer', touchAction: 'manipulation',
                   }}>
-                    {getRSVPCount(event.id)} kommer
-                  </span>
-                )}
+                  {hasRSVP(event.id) ? '✓ Jag kommer' : '+ Jag kommer'}
+                </button>
+                <button
+                  onClick={() => handleDecline(event)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'transparent',
+                    color: hasDeclined(event.id) ? 'var(--color-error, #e05555)' : 'var(--color-text-muted)',
+                    border: `1px solid ${hasDeclined(event.id) ? 'var(--color-error, #e05555)' : 'var(--color-border)'}`,
+                    borderRadius: '999px', padding: '6px 14px',
+                    fontSize: 12, fontFamily: 'var(--font-ui)',
+                    cursor: 'pointer', touchAction: 'manipulation',
+                  }}
+                >
+                  {hasDeclined(event.id) ? '✕ Kan inte' : 'Kan inte'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button
                   onClick={() => handleReminder(event)}
                   style={{

@@ -26,6 +26,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   feed_reaction: Award,
   feed_witness: Eye,
   calendar_rsvp: CalendarDays,
+  calendar_decline: CalendarDays,
   calendar_check_in: MapPin,
 };
 
@@ -49,6 +50,7 @@ const TYPE_COLORS: Record<string, string> = {
   feed_reaction: 'var(--color-accent)',
   feed_witness: 'var(--color-green)',
   calendar_rsvp: 'var(--color-primary)',
+  calendar_decline: 'var(--color-error, #e05555)',
   calendar_check_in: 'var(--color-accent)',
 };
 
