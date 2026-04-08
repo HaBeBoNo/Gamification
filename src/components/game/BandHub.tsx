@@ -14,6 +14,7 @@ import {
   Pin,
   Clock3,
   Mic2,
+  CircleOff,
 } from 'lucide-react';
 import { fetchPinnedFileIds, getCategory, getDriveFiles, uploadFile, getMimeTypeLabel, formatDate, subscribePinnedFiles, togglePinnedFile, type DriveFile } from '@/lib/googleDrive';
 import { supabase } from '@/lib/supabase';
@@ -705,10 +706,10 @@ function CalendarSpotlight() {
               detail={nextEvent ? (hasRsvp ? 'du är med' : 'svara i listan nedan') : 'ingen respons behövs'}
             />
             <StatCard
-              icon={<Mic2 size={15} />}
-              label="Live"
-              value={nextEvent ? String(checkInCount) : '0'}
-              detail={active ? 'incheckade just nu' : soon ? 'redo för check-in' : 'ingen aktivitet just nu'}
+              icon={<CircleOff size={15} />}
+              label="Kan inte"
+              value={nextEvent ? String(declineCount) : '0'}
+              detail={nextEvent ? 'markerad frånvaro' : 'ingen aktivitet just nu'}
             />
           </div>
 

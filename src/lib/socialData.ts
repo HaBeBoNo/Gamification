@@ -596,13 +596,22 @@ export async function fetchBandActivitySnapshot(
     return { activeToday: 0, xp48h: 0, activeNow: null };
   }
 
-  const sinceMs = Date.now() - withinHours * 60 * 60 * 1000;
-  const [{ data, error }, presence] = await Promise.all([
+  const now = Date.now();
+  const sinceMs = now - withinHours * 60 * 60 * 1000;
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTodayIso = startOfToday.toISOString();
+
+  const [{ data, error }, presence, feedTodayResult] = await Promise.all([
     supabase
       .from('member_data')
       .select('member_key, data')
       .not('data', 'is', null),
     fetchPresenceSnapshot(presenceMinutes),
+    supabase
+      .from('activity_feed')
+      .select('who, created_at')
+      .gte('created_at', startOfTodayIso),
   ]);
 
   if (error) {
@@ -614,6 +623,11 @@ export async function fetchBandActivitySnapshot(
     };
   }
 
+  if (feedTodayResult.error) {
+    console.warn('[SocialData] band snapshot feed fallback failed:', feedTodayResult.error.message);
+  }
+
+  const activeMemberKeys = new Set<string>();
   let activeToday = 0;
   let xp48h = 0;
 
@@ -627,7 +641,7 @@ export async function fetchBandActivitySnapshot(
     const lastSeen = Number(char?.lastSeen || char?.lastQuestDate || 0);
     const isActiveToday = isSameLocalDay(lastSeen) || hasQuestToday;
 
-    if (isActiveToday) activeToday += 1;
+    if (isActiveToday) activeMemberKeys.add(memberKey);
 
     xp48h += completedQuests.reduce((sum: number, entry: any) => {
       const completedAt = Number(entry?.completedAt || 0);
@@ -636,10 +650,21 @@ export async function fetchBandActivitySnapshot(
     }, 0);
   }
 
+  for (const row of (feedTodayResult.data || []) as Record<string, any>[]) {
+    const memberKey = String(row?.who || '');
+    if (!memberKey) continue;
+    activeMemberKeys.add(memberKey);
+  }
+
   const localMemberIsLive = typeof document !== 'undefined'
     && document.visibilityState === 'visible'
     && typeof navigator !== 'undefined'
     && navigator.onLine;
+
+  activeToday = activeMemberKeys.size;
+  if (localMemberIsLive) {
+    activeToday = Math.max(activeToday, 1);
+  }
 
   const activeNow = presence.supported
     ? Math.max(presence.activeNow, localMemberIsLive ? 1 : 0)
