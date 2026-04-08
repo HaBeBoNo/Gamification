@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { EMAIL_TO_MEMBER } from '@/data/members';
 import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
-import { registerPush } from '@/lib/webPush';
+import { ensurePushRegistration } from '@/lib/webPush';
 
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
@@ -41,7 +41,7 @@ export function useAuth() {
       console.warn('[Auth] Background sync failed:', error);
     });
 
-    void registerPush(resolvedMemberKey).catch((error) => {
+    void ensurePushRegistration(resolvedMemberKey, { promptIfNeeded: true, reason: 'auth' }).catch((error) => {
       console.error('[Push] Failed:', error);
     });
   }, []);
