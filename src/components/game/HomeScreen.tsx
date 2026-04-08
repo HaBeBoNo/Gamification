@@ -674,6 +674,7 @@ function PushActivationCard() {
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [hasProof, setHasProof] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     if (!me) return;
@@ -770,14 +771,23 @@ function PushActivationCard() {
             onClick={async () => {
               if (!me) return;
               setActivating(true);
+              setFeedback(null);
               try {
-                await ensurePushRegistration(me, {
+                const ok = await ensurePushRegistration(me, {
                   promptIfNeeded: true,
                   reason: 'manual',
                 });
                 const nextState = await getPushReadiness(me);
+                const proofSeen = hasSeenPushProof();
                 setState(nextState);
-                setHasProof(hasSeenPushProof());
+                setHasProof(proofSeen);
+                setFeedback(
+                  ok
+                    ? nextState.state === 'active' && !proofSeen
+                      ? 'Kopplingen uppdaterades. Nu väntar vi på första levererade push för att bekräfta den här enheten.'
+                      : 'Push är uppdaterat på den här enheten.'
+                    : 'HQ kunde inte aktivera push på den här enheten ännu. Kontrollera notistillståndet och försök igen.'
+                );
               } finally {
                 setActivating(false);
               }
@@ -805,6 +815,16 @@ function PushActivationCard() {
             color: 'var(--color-text-muted)',
           }}>
             Öppna HQ från hemskärmen och tillåt sedan notiser i telefonens inställningar.
+          </div>
+        )}
+        {feedback && (
+          <div style={{
+            fontSize: 'var(--text-micro)',
+            color: 'var(--color-text-muted)',
+            marginTop: SECTION_GAP_COMPACT,
+            lineHeight: 1.45,
+          }}>
+            {feedback}
           </div>
         )}
       </div>

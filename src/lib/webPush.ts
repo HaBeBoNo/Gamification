@@ -112,6 +112,23 @@ function shouldForceRefresh(memberKey: string, endpoint: string): boolean {
   return Date.now() - current.registeredAt > PUSH_REFRESH_INTERVAL_MS
 }
 
+async function removeStaleEndpoints(memberKey: string, endpoints: string[]): Promise<void> {
+  if (!supabase || !memberKey || endpoints.length === 0) return
+
+  const uniqueEndpoints = [...new Set(endpoints.filter(Boolean))]
+  if (uniqueEndpoints.length === 0) return
+
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('member_key', memberKey)
+    .in('endpoint', uniqueEndpoints)
+
+  if (error) {
+    console.warn('Failed to remove stale push subscriptions:', error)
+  }
+}
+
 export async function registerPush(
   memberKey: string,
   options: { forceRefresh?: boolean; promptIfNeeded?: boolean } = {}
@@ -124,6 +141,11 @@ export async function registerPush(
   try {
     const registration = await getPushRegistration()
     if (!registration) return false
+    const storedState = loadPushRegistrationState()
+    const staleEndpoints = new Set<string>()
+    if (storedState?.memberKey === memberKey && storedState.endpoint) {
+      staleEndpoints.add(storedState.endpoint)
+    }
 
     const permission = Notification.permission === 'granted'
       ? 'granted'
@@ -140,6 +162,9 @@ export async function registerPush(
     }
 
     let subscription = await registration.pushManager.getSubscription()
+    if (subscription?.endpoint) {
+      staleEndpoints.add(subscription.endpoint)
+    }
     const forceRefresh = options.forceRefresh || shouldForceRefresh(memberKey, subscription?.endpoint || '')
 
     if (subscription && forceRefresh) {
@@ -176,6 +201,8 @@ export async function registerPush(
       endpoint: payload.endpoint,
       registeredAt: Date.now(),
     })
+    staleEndpoints.delete(payload.endpoint)
+    await removeStaleEndpoints(memberKey, [...staleEndpoints])
     clearRuntimeIssue('push')
     return true
   } catch (err) {
