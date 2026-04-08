@@ -12,6 +12,20 @@ type PushRegistrationState = {
   registeredAt: number
 }
 
+export type PushReadiness =
+  | 'active'
+  | 'needs-install'
+  | 'needs-permission'
+  | 'blocked'
+  | 'needs-reconnect'
+  | 'unsupported'
+
+export interface PushReadinessState {
+  state: PushReadiness
+  message: string
+  canActivate: boolean
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -23,6 +37,16 @@ async function getPushRegistration(): Promise<ServiceWorkerRegistration | null> 
   if (!('serviceWorker' in navigator)) return null
   await navigator.serviceWorker.register('/sw.js')
   return navigator.serviceWorker.ready
+}
+
+function isStandaloneDisplayMode(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone)
+}
+
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || '')
 }
 
 function loadPushRegistrationState(): PushRegistrationState | null {
@@ -107,7 +131,11 @@ export async function registerPush(
         ? Notification.permission
         : await Notification.requestPermission()
     if (permission !== 'granted') {
-      clearRuntimeIssue('push')
+      if (permission === 'denied') {
+        setRuntimeIssue('push', 'Tillåt notiser för HQ för att få spontana signaler från bandet.', 'info', { toast: true })
+      } else {
+        clearRuntimeIssue('push')
+      }
       return false
     }
 
@@ -154,6 +182,73 @@ export async function registerPush(
     setRuntimeIssue('push', 'Push-signaler kunde inte aktiveras på den här enheten.', 'warn')
     console.error('Push registration failed:', err)
     return false
+  }
+}
+
+export async function getPushReadiness(memberKey?: string | null): Promise<PushReadinessState> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || typeof Notification === 'undefined') {
+    return {
+      state: 'unsupported',
+      message: 'Den här enheten stöder inte push för HQ.',
+      canActivate: false,
+    }
+  }
+
+  if (isIOS() && !isStandaloneDisplayMode()) {
+    return {
+      state: 'needs-install',
+      message: 'Installera HQ på hemskärmen för att iPhone ska kunna ta emot push.',
+      canActivate: false,
+    }
+  }
+
+  if (Notification.permission === 'denied') {
+    return {
+      state: 'blocked',
+      message: 'Push är blockerat på den här enheten. Tillåt notiser för HQ och försök igen.',
+      canActivate: false,
+    }
+  }
+
+  if (Notification.permission !== 'granted') {
+    return {
+      state: 'needs-permission',
+      message: 'Aktivera push för att få spontana signaler när bandet rör sig.',
+      canActivate: true,
+    }
+  }
+
+  const registration = await getPushRegistration()
+  if (!registration) {
+    return {
+      state: 'unsupported',
+      message: 'HQ kunde inte starta push på den här enheten.',
+      canActivate: false,
+    }
+  }
+
+  const subscription = await registration.pushManager.getSubscription()
+  const endpoint = subscription?.endpoint || ''
+  if (!subscription) {
+    return {
+      state: 'needs-reconnect',
+      message: 'Push är tillåtet men saknar aktiv koppling. Återaktivera så att bandets signaler når fram.',
+      canActivate: true,
+    }
+  }
+
+  if (memberKey && shouldForceRefresh(memberKey, endpoint)) {
+    return {
+      state: 'needs-reconnect',
+      message: 'Pushkopplingen behöver fräschas upp för att signalerna ska nå rätt enhet.',
+      canActivate: true,
+    }
+  }
+
+  return {
+    state: 'active',
+    message: 'Push är aktivt på den här enheten.',
+    canActivate: false,
   }
 }
 

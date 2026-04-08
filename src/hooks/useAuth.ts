@@ -41,7 +41,7 @@ export function useAuth() {
       console.warn('[Auth] Background sync failed:', error);
     });
 
-    void ensurePushRegistration(resolvedMemberKey, { promptIfNeeded: true, reason: 'auth' }).catch((error) => {
+    void ensurePushRegistration(resolvedMemberKey, { promptIfNeeded: false, reason: 'auth' }).catch((error) => {
       console.error('[Push] Failed:', error);
     });
   }, []);
