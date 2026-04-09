@@ -309,7 +309,7 @@ export default function ProfileView() {
             <div className="pv-name">{member.name}</div>
             <div className="pv-role">{member.role}</div>
             <div className="pv-role-type" style={{ color: rtLabel?.labelColor || xpColor }}>
-              {member.emoji} {rtLabel?.label || roleType}
+              {rtLabel?.label || roleType}
             </div>
           </div>
         </div>

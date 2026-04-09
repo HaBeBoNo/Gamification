@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { S } from '@/state/store';
+import { Camera, Globe2, Music2, Play, Ticket } from 'lucide-react';
 
 const METRICS = [
-  { key: 'spf', label: 'Spotify',   icon: '🎵' },
-  { key: 'str', label: 'Streams',   icon: '▶️' },
-  { key: 'ig',  label: 'Instagram', icon: '📸' },
-  { key: 'x',   label: 'Japan X',   icon: '🇯🇵' },
-  { key: 'tix', label: 'Tickets',   icon: '🎟️' },
+  { key: 'spf', label: 'Spotify',   icon: Music2 },
+  { key: 'str', label: 'Streams',   icon: Play },
+  { key: 'ig',  label: 'Instagram', icon: Camera },
+  { key: 'x',   label: 'Japan X',   icon: Globe2 },
+  { key: 'tix', label: 'Tickets',   icon: Ticket },
 ];
 
 function formatMetric(n: number): string {
@@ -54,7 +55,9 @@ export default function MetricsBar({ onMetricClick }: MetricsBarProps) {
       paddingBottom: 4,
       scrollbarWidth: 'none',
     }}>
-      {METRICS.map(m => (
+      {METRICS.map((m) => {
+        const Icon = m.icon;
+        return (
         <div
           key={m.key}
           onClick={() => onMetricClick?.()}
@@ -70,7 +73,9 @@ export default function MetricsBar({ onMetricClick }: MetricsBarProps) {
             cursor: onMetricClick ? 'pointer' : 'default',
           }}
         >
-          <span style={{ fontSize: 16 }}>{m.icon}</span>
+          <span style={{ color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
+            <Icon size={16} strokeWidth={1.9} />
+          </span>
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-body)',
@@ -88,7 +93,8 @@ export default function MetricsBar({ onMetricClick }: MetricsBarProps) {
             {m.label}
           </span>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
+import { Flame, Moon, Zap } from 'lucide-react';
 
 type PulseLevel = 'Vilande' | 'Aktiv' | 'I eld';
 
@@ -75,8 +76,7 @@ export function BandPulse() {
     pulse === 'I eld' ? 'var(--color-accent)' :
     pulse === 'Aktiv' ? 'var(--color-primary)' :
     'var(--color-text-muted)';
-
-  const pulseEmoji = pulse === 'I eld' ? '🔥' : pulse === 'Aktiv' ? '⚡' : '😴';
+  const PulseIcon = pulse === 'I eld' ? Flame : pulse === 'Aktiv' ? Zap : Moon;
 
   return (
     <div style={{
@@ -93,8 +93,9 @@ export function BandPulse() {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Band Pulse
         </span>
-        <span style={{ fontSize: 'var(--text-body)', color: pulseColor, fontWeight: 600 }}>
-          {pulseEmoji} {pulse}
+        <span style={{ fontSize: 'var(--text-body)', color: pulseColor, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <PulseIcon size={15} strokeWidth={1.9} />
+          {pulse}
         </span>
       </div>
       <div style={{ display: 'flex', gap: 'var(--space-lg)' }}>

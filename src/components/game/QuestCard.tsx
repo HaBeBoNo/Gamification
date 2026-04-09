@@ -4,7 +4,7 @@ import { MEMBERS } from '@/data/members';
 import { supabase } from '@/lib/supabase';
 import { awardXP } from '@/hooks/useXP';
 import { aiValidate } from '@/hooks/useAI';
-import { Check, X, Zap, Paperclip } from 'lucide-react';
+import { Check, X, Zap, Paperclip, Globe2, MapPin, User } from 'lucide-react';
 import { getQuestOrigin, ORIGIN_LABELS, isQuestDoneNow } from '@/lib/questUtils';
 import { pushFeedEntry } from '@/lib/feed';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
@@ -12,6 +12,8 @@ import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
 import QuestDetailModal from './QuestDetailModal';
+import { MemberIcon } from '@/components/icons/MemberIcons';
+import { formatRegionLabel, getRegionDisplayKind } from '@/lib/uiDisplay';
 
 const CAT_DOT: Record<string, string> = {
   daily: 'cat-daily', personal: 'cat-personal', strategic: 'cat-strategic',
@@ -91,7 +93,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
           type: 'collaborative_complete',
           title: `${memberName} slutförde ert gemensamma uppdrag`,
-          body: `"${quest.title}" — alla deltagare klara! 🎉`,
+          body: `"${quest.title}" — alla deltagare klara!`,
           dedupeKey: `collab-complete:${quest.id}`,
           payload: {
             memberId: me,
@@ -100,7 +102,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
           },
           push: {
             title: `${memberName} slutförde ert gemensamma uppdrag`,
-            body: `"${quest.title}" — alla deltagare klara! 🎉`,
+            body: `"${quest.title}" — alla deltagare klara!`,
             excludeMember: me,
           },
         });
@@ -206,7 +208,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
     pushFeedEntry({
       who: S.me,
-      action: `anslöt sig till "${quest.title}" 🤝`,
+      action: `anslöt sig till "${quest.title}"`,
       xp: 0,
       type: 'collaborative_join',
     });
@@ -234,6 +236,9 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
   const badgeClass = CAT_BADGE[quest.cat] || 'badge-daily';
   const badgeLabel = CAT_LABEL[quest.cat] || quest.cat?.toUpperCase() || 'UPPDRAG';
   const dotClass = CAT_DOT[quest.cat] || 'cat-global';
+  const regionLabel = formatRegionLabel(quest.region);
+  const regionKind = getRegionDisplayKind(quest.region);
+  const RegionIcon = regionKind === 'personal' ? User : regionKind === 'global' ? Globe2 : MapPin;
 
   return (
     <>
@@ -296,9 +301,18 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         <div className="quest-meta">
           {quest.recur && quest.recur !== 'none' && <span className="quest-recur">{quest.recur}</span>}
           {quest.region && quest.region !== 'all' && (
-            <span className="quest-region">{quest.region}</span>
+            <span className="quest-region" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <RegionIcon size={12} strokeWidth={1.8} />
+              {regionLabel}
+            </span>
           )}
-          <span style={{ fontSize: 12, marginRight: 'var(--space-xs)', opacity: 0.7 }}>
+          <span style={{
+            fontSize: 11,
+            marginRight: 'var(--space-xs)',
+            opacity: 0.8,
+            fontFamily: 'var(--font-mono)',
+            letterSpacing: '0.06em',
+          }}>
             {ORIGIN_LABELS[getQuestOrigin(quest)]}
           </span>
           <span className="quest-xp"><Zap size={12} style={{ display: 'inline', verticalAlign: '-1px' }} /> {quest.xp} XP</span>
@@ -330,7 +344,8 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
             alignItems: 'center',
             gap: 4,
           }}>
-            {(MEMBERS as any)[quest.initiator]?.emoji} från {(MEMBERS as any)[quest.initiator]?.name}
+            <MemberIcon id={quest.initiator} size={14} />
+            från {(MEMBERS as any)[quest.initiator]?.name}
           </div>
         )}
 
@@ -391,7 +406,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
                 touchAction: 'manipulation',
               }}
             >
-              {isParticipant ? '✓ Ansluten' : 'Anslut'}
+              {isParticipant ? <><Check size={13} strokeWidth={2} /> Ansluten</> : 'Anslut'}
             </button>
           </>
         )}

@@ -115,31 +115,6 @@ function buildFeedPresentation(feedItems: any[]) {
   return { commentsByItemId, hiddenCommentIds };
 }
 
-// ── EVENT_MAP: händelsetyp → ikon + label ─────────────────────────
-const EVENT_MAP: Record<string, { icon: string; label: string }> = {
-  quest_completed:  { icon: '✅', label: 'slutförde' },
-  quest_created:    { icon: '➕', label: 'skapade uppdraget' },
-  check_in:         { icon: '📅', label: 'checkade in' },
-  level_up:         { icon: '⬆️', label: 'gick upp till' },
-  streak_milestone: { icon: '🔥', label: 'nådde streak' },
-};
-
-// Detektera ikon från entry.type, entry.category eller action-text som fallback
-function getEventIcon(entry: any): string {
-  const fromType = EVENT_MAP[entry.type] ?? EVENT_MAP[entry.category];
-  if (fromType) return fromType.icon;
-  const a = (entry.action || '').toLowerCase();
-  if (a.includes('completed') || a.includes('slutförde')) return '✅';
-  if (a.includes('checkade in'))                          return '📅';
-  if (a.includes('nivå') || a.includes('level'))         return '⬆️';
-  if (a.includes('kommenterade'))                        return '💬';
-  if (a.includes('high-five'))                            return '🙌';
-  if (a.includes('anslöt'))                               return '🤝';
-  if (a.includes('reflekterade'))                         return '💡';
-  if (a.includes('streak'))                               return '🔥';
-  return '⚡';
-}
-
 // Extrahera XP ur action-text, t.ex. "(+150 XP)"
 function extractXPFromText(text: string): number | null {
   const match = text.match(/\(\+(\d+)\s*XP/i);
@@ -1148,13 +1123,13 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                   <div className="feed-synergy-avatars">
                     {mA && (
                       <div className="feed-synergy-avatar" style={{ background: mA.xpColor }}>
-                        {mA.emoji}
+                        <MemberIcon id={members?.[0] as any} size={18} />
                       </div>
                     )}
                     <div className="feed-synergy-line" />
                     {mB && (
                       <div className="feed-synergy-avatar" style={{ background: mB.xpColor }}>
-                        {mB.emoji}
+                        <MemberIcon id={members?.[1] as any} size={18} />
                       </div>
                     )}
                   </div>
@@ -1183,7 +1158,11 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                     className="feed-avatar"
                     style={{ background: commenter?.xpColor || 'var(--color-surface-elevated)' }}
                   >
-                    {commenter ? <MemberIcon id={(item.who ?? '').toLowerCase()} size={28} /> : '💬'}
+                    {commenter ? (
+                      <MemberIcon id={(item.who ?? '').toLowerCase()} size={28} />
+                    ) : (
+                      <MessageCircle size={18} strokeWidth={1.9} />
+                    )}
                   </div>
 
                   <div className="feed-content">
@@ -1227,7 +1206,6 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
             const memberKey = (item.who ?? '').toLowerCase();
             const hasIcon = KNOWN_MEMBERS.includes(memberKey);
             const member   = (MEMBERS as any)[item.who] || null;
-            const icon     = getEventIcon(item);
             // BUG-FIX: texten ligger i item.action, INTE item.text
             const actionText = item.action || '';
             // XP: explicit fält eller extraherat ur action-text
@@ -1328,7 +1306,10 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                             <span key={label}>{label}</span>
                           ))}
                           {witnessCount > 0 && (
-                            <span>✍️ {witnessCount}</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Radio size={12} strokeWidth={1.9} />
+                              {witnessCount}
+                            </span>
                           )}
                           {threadSignalLabel && (
                             <span style={{ color: 'var(--color-primary)' }}>{threadSignalLabel}</span>
@@ -1543,7 +1524,8 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                             color: (item.witnesses ?? []).includes(S.me!) ? 'var(--color-primary)' : 'var(--color-text-muted)',
                           }}
                         >
-                          ✍️ Var där {witnessCount > 0 && <span>{witnessCount}</span>}
+                          <Radio size={12} strokeWidth={1.9} />
+                          Var där {witnessCount > 0 && <span>{witnessCount}</span>}
                         </button>
                         <button
                           onClick={() => {

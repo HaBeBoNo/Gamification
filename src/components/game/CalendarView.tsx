@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Clock, RefreshCw, CheckCircle, Check } from 'lucide-react'
+import { MapPin, Clock, RefreshCw, CheckCircle, Check, Bell, BellOff, Plus, X } from 'lucide-react'
 import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
 } from '@/lib/googleCalendar'
@@ -109,7 +109,7 @@ export default function CalendarView() {
           eventStart: event.start,
         },
         push: {
-          title: '📅 Någon kommer',
+          title: 'Någon kommer',
           body: `${memberName} kommer till ${event.title}`,
           excludeMember: S.me,
           url: '/',
@@ -155,7 +155,7 @@ export default function CalendarView() {
           eventStart: event.start,
         },
         push: {
-          title: '📅 Någon kan inte komma',
+          title: 'Någon kan inte komma',
           body: `${memberName} kan inte komma till ${event.title}`,
           excludeMember: S.me,
           url: '/',
@@ -316,7 +316,7 @@ export default function CalendarView() {
                     fontSize: 12, fontFamily: 'var(--font-ui)',
                     cursor: 'pointer', touchAction: 'manipulation',
                   }}>
-                  {hasRSVP(event.id) ? '✓ Jag kommer' : '+ Jag kommer'}
+                  {hasRSVP(event.id) ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
                 </button>
                 <button
                   onClick={() => handleDecline(event)}
@@ -330,7 +330,7 @@ export default function CalendarView() {
                     cursor: 'pointer', touchAction: 'manipulation',
                   }}
                 >
-                  {hasDeclined(event.id) ? '✕ Kan inte' : 'Kan inte'}
+                  {hasDeclined(event.id) ? <><X size={13} /> Kan inte</> : 'Kan inte'}
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -345,7 +345,7 @@ export default function CalendarView() {
                   }}
                   title={hasReminder(event.id) ? 'Ta bort påminnelse' : 'Sätt påminnelse'}
                 >
-                  {hasReminder(event.id) ? '🔔' : '🔕'}
+                  {hasReminder(event.id) ? <Bell size={16} strokeWidth={1.9} /> : <BellOff size={16} strokeWidth={1.9} />}
                 </button>
               </div>
             </div>

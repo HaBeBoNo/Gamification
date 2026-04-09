@@ -1,6 +1,6 @@
 import React from 'react';
 import { S } from '@/state/store';
-import { Bell } from 'lucide-react';
+import { Bell, Flame } from 'lucide-react';
 
 interface TopbarProps {
   logoRef?: (node: HTMLButtonElement | null) => void;
@@ -72,7 +72,8 @@ export default function Topbar({ logoRef, onNotifications, onLogoClick }: Topbar
                 color: 'var(--color-text-muted)',
                 fontFamily: 'var(--font-mono)',
               }}>
-              🔥 {streak}
+              <Flame size={12} strokeWidth={2} />
+              {streak}
             </div>
           )}
           {/* Notis-klocka */}

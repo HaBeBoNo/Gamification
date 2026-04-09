@@ -44,7 +44,7 @@ export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]
         done: row.done ?? false,
         completed_by: row.completed_by ?? [],
         owner: row.initiator,
-        region: '🌐 Global',
+        region: 'Global',
         recur: 'none',
         type: 'collaborative',
         personal: false,

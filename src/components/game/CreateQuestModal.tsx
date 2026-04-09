@@ -4,6 +4,7 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { createCollaborativeQuest, fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
+import { MemberIcon } from '@/components/icons/MemberIcons';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -56,7 +57,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
         initiator: S.me,
         recur: 'none',
         done: false,
-        region: '🌐 Global',
+        region: 'Global',
         personal: false,
         aiVerdict: null,
       };
@@ -94,7 +95,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
         cat,
         xp,
         stars: '',
-        region: '🌐 Personal',
+        region: 'Personal',
         recur: 'none',
         type: 'personal',
         done: false,
@@ -381,10 +382,9 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
                       borderRadius: '50%',
                       background: (member as any).color || 'var(--color-border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 14,
                       flexShrink: 0,
                     }}>
-                      {(member as any).emoji || '👤'}
+                      <MemberIcon id={id as any} size={16} />
                     </div>
                     <div>
                       <div style={{

@@ -4,8 +4,9 @@ import { MEMBERS } from '@/data/members';
 import { awardXP } from '@/hooks/useXP';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import { ChevronLeft, RefreshCw, Zap, Check } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Zap, Check, Globe2, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatRegionLabel, getRegionDisplayKind } from '@/lib/uiDisplay';
 
 const CAT_COLORS: Record<string, string> = {
   wisdom: 'var(--cat-wisdom)', tech: 'var(--cat-tech)', social: 'var(--cat-social)',
@@ -30,6 +31,9 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
   const canComplete = !isStrategic || reflection.trim().length > 0;
   const catColor = CAT_COLORS[quest.cat] || 'var(--color-primary)';
   const delegator = quest.delegatedBy ? MEMBERS[quest.delegatedBy] : null;
+  const regionLabel = formatRegionLabel(quest.region);
+  const regionKind = getRegionDisplayKind(quest.region);
+  const RegionIcon = regionKind === 'personal' ? User : regionKind === 'global' ? Globe2 : MapPin;
 
   async function handleComplete() {
     if (isDone || !me || completing) return;
@@ -111,8 +115,10 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              {quest.region || '🌐 Global'}
+              <RegionIcon size={14} strokeWidth={1.8} />
+              {regionLabel}
             </motion.div>
 
             <motion.div

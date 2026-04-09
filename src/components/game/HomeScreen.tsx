@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import { Zap, CalendarDays, Trophy } from 'lucide-react';
+import { Zap, CalendarDays, Trophy, MessageCircle, Hand, Eye, Inbox, Users, MapPin, Bell, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents, isEventActive, isEventSoon } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
@@ -410,7 +410,7 @@ function getMemberName(memberKey?: string): string {
 
 type AttentionSignal = {
   id: string;
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
   target: NotificationTarget;
@@ -544,9 +544,8 @@ function DailyCoachCard({
             justifyContent: 'center',
             background: 'var(--color-primary-muted)',
             color: 'var(--color-primary)',
-            fontSize: 18,
           }}>
-            ✦
+            <Zap size={16} strokeWidth={1.9} />
           </div>
         </div>
 
@@ -887,34 +886,34 @@ function ReengagementCard({
   );
 }
 
-function getSignalIcon(notification: Notification): string {
+function getSignalIcon(notification: Notification): React.ReactNode {
   switch (notification.type) {
     case 'feed_comment':
-      return '💬';
+      return <MessageCircle size={16} strokeWidth={1.9} />;
     case 'feed_reaction':
-      return '👏';
+      return <Hand size={16} strokeWidth={1.9} />;
     case 'feed_witness':
-      return '👀';
+      return <Eye size={16} strokeWidth={1.9} />;
     case 'collaborative_invite':
-      return '📥';
+      return <Inbox size={16} strokeWidth={1.9} />;
     case 'collaborative_progress':
-      return '🤝';
+      return <Users size={16} strokeWidth={1.9} />;
     case 'delegation_received':
-      return '📥';
+      return <Inbox size={16} strokeWidth={1.9} />;
     case 'collaborative_complete':
-      return '🤝';
+      return <Users size={16} strokeWidth={1.9} />;
     case 'calendar_rsvp':
-      return '📅';
+      return <CalendarDays size={16} strokeWidth={1.9} />;
     case 'calendar_decline':
-      return '🚫';
+      return <X size={16} strokeWidth={1.9} />;
     case 'calendar_check_in':
-      return '📍';
+      return <MapPin size={16} strokeWidth={1.9} />;
     case 'calendar_check_in_open':
-      return '📍';
+      return <MapPin size={16} strokeWidth={1.9} />;
     case 'calendar_reminder':
-      return '📅';
+      return <CalendarDays size={16} strokeWidth={1.9} />;
     default:
-      return '🔔';
+      return <Bell size={16} strokeWidth={1.9} />;
   }
 }
 
@@ -972,7 +971,7 @@ function WaitingOnYouCard({
           if (live || needsResponse) {
             nextSignals.push({
               id: 'calendar-focus',
-              icon: live ? '📍' : '📅',
+              icon: live ? <MapPin size={16} strokeWidth={1.9} /> : <CalendarDays size={16} strokeWidth={1.9} />,
               title: live ? 'Bandet är live nu' : `Svara på ${nextEvent.title}`,
               subtitle: live
                 ? `${getEventCheckInCount(nextEvent.id)} incheckad${getEventCheckInCount(nextEvent.id) === 1 ? '' : 'e'} · öppna kalendern och checka in`
@@ -983,7 +982,7 @@ function WaitingOnYouCard({
           } else if (soon && nextSignals.length < 2) {
             nextSignals.push({
               id: 'calendar-upcoming',
-              icon: '📅',
+              icon: <CalendarDays size={16} strokeWidth={1.9} />,
               title: `${nextEvent.title} är snart här`,
               subtitle: `${getRelativeCalendarLabel(nextEvent.start)} · håll rytmen levande i kalendern`,
               target: 'bandhub',
@@ -1000,7 +999,7 @@ function WaitingOnYouCard({
       if (delegated.length > 0 && nextSignals.length < 3) {
         nextSignals.push({
           id: 'delegation',
-          icon: '📥',
+          icon: <Inbox size={16} strokeWidth={1.9} />,
           title: `${delegated.length} uppdrag väntar på ditt svar`,
           subtitle: delegated[0]?.title || 'Någon skickade något till dig',
           target: 'quests',
@@ -1020,7 +1019,7 @@ function WaitingOnYouCard({
           const first = collabWaiting[0];
           nextSignals.push({
             id: 'collaborative',
-            icon: '🤝',
+            icon: <Users size={16} strokeWidth={1.9} />,
             title: `${collabWaiting.length} samarbetsuppdrag rör sig utan dig`,
             subtitle: first.quest_data?.title || 'Din del väntar fortfarande',
             target: 'quests',
@@ -1045,7 +1044,7 @@ function WaitingOnYouCard({
         if (directComments.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
             id: 'comments',
-            icon: '💬',
+            icon: <MessageCircle size={16} strokeWidth={1.9} />,
             title: `${directComments.length} kommentar${directComments.length > 1 ? 'er' : ''} till dig`,
             subtitle: `${getMemberName(directComments[0].who)} svarade på din aktivitet`,
             target: 'activity',
@@ -1066,7 +1065,7 @@ function WaitingOnYouCard({
         if (feedbackItems.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
             id: 'feedback',
-            icon: '👏',
+            icon: <Hand size={16} strokeWidth={1.9} />,
             title: `Respons på ${feedbackItems.length} av dina aktiviteter`,
             subtitle: 'Öppna feeden och svara medan det är levande',
             target: 'activity',
@@ -1078,7 +1077,7 @@ function WaitingOnYouCard({
       if (unreadCount > 0 && nextSignals.length < 3) {
         nextSignals.push({
           id: 'notifications',
-          icon: '🔔',
+          icon: <Bell size={16} strokeWidth={1.9} />,
           title: `${unreadCount} olästa notis${unreadCount > 1 ? 'er' : ''}`,
           subtitle: 'Något har hänt sedan sist',
           target: 'notifications',
@@ -1189,7 +1188,6 @@ function WaitingOnYouCard({
                 justifyContent: 'center',
                 background: 'var(--color-surface)',
                 flexShrink: 0,
-                fontSize: 18,
               }}>
                 {signal.icon}
               </div>

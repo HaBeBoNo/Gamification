@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { Hand, X, Zap } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { awardInsightBonus } from '@/hooks/useXP';
@@ -77,13 +77,13 @@ export default function QuestCompleteModal({
       const meName = (MEMBERS as Record<string, { name?: string }>)[me]?.name || me;
       pushFeedEntry({
         who: me,
-        action: `gav en high-five till ${targetName} 🙌`,
+        action: `gav en high-five till ${targetName}`,
         xp: 0,
       });
       void notifyMembersSignal({
         targetMemberKeys: [highFiveTo],
         type: 'high_five',
-        title: `${meName} gav dig en high-five 🙌`,
+        title: `${meName} gav dig en high-five`,
         body: `Efter "${quest.title}"`,
         dedupeKey: `high-five:${me}:${highFiveTo}:${quest.id}`,
         payload: {
@@ -92,7 +92,7 @@ export default function QuestCompleteModal({
         },
         push: {
           title: `${meName} gav dig en high-five`,
-          body: `Efter "${quest.title}" 🙌`,
+          body: `Efter "${quest.title}"`,
           excludeMember: me,
         },
       });
@@ -189,8 +189,11 @@ export default function QuestCompleteModal({
               <div style={{
                 fontSize: 32,
                 marginBottom: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}>
-                ⚡
+                <Zap size={28} strokeWidth={1.9} />
               </div>
               <div style={{
                 fontSize: 22,
@@ -501,9 +504,14 @@ export default function QuestCompleteModal({
                 letterSpacing: '0.08em',
                 cursor: 'pointer',
                 touchAction: 'manipulation',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
               }}
             >
-              {highFiveTo ? `🙌 HIGH-FIVE TILL ${((MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo).toUpperCase()}` : 'KLAR'}
+              {highFiveTo && <Hand size={14} strokeWidth={1.9} />}
+              {highFiveTo ? `HIGH-FIVE TILL ${((MEMBERS as Record<string, { name?: string }>)[highFiveTo]?.name || highFiveTo).toUpperCase()}` : 'KLAR'}
             </button>
           </>
         )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Check, Users } from 'lucide-react'
+import { Check, Users, Zap } from 'lucide-react'
 import { MEMBERS } from '@/data/members'
 import { S } from '@/state/store'
 import { completeMyPart } from '@/lib/collaborativeQuests'
@@ -7,6 +7,7 @@ import { awardXP } from '@/hooks/useXP'
 import { notifyMembersSignal } from '@/lib/notificationSignals'
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests'
 import QuestCompleteModal from './QuestCompleteModal'
+import { MemberIcon } from '@/components/icons/MemberIcons'
 
 interface Props {
   key?: React.Key
@@ -57,7 +58,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
         targetMemberKeys: participants.filter((p: string) => p !== S.me),
         type: 'collaborative_complete',
         title: `${memberName} slutförde ert gemensamma uppdrag`,
-        body: `"${q.title}" — alla klara! 🎉`,
+        body: `"${q.title}" — alla klara!`,
         dedupeKey: `collab-complete:${quest.id}`,
         payload: {
           memberId: S.me,
@@ -66,7 +67,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
         },
         push: {
           title: `${memberName} slutförde ert gemensamma uppdrag`,
-          body: `"${q.title}" — alla klara! 🎉`,
+          body: `"${q.title}" — alla klara!`,
           excludeMember: S.me || undefined,
         },
       })
@@ -152,10 +153,9 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
                 ? ((MEMBERS as any)[p]?.xpColor || 'var(--color-accent)')
                 : 'var(--color-border)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12,
               opacity: localCompletedBy.includes(p) ? 1 : 0.4,
             }}>
-              {(MEMBERS as any)[p]?.emoji || p[0]}
+              <MemberIcon id={p as any} size={14} />
             </div>
           ))}
         </div>
@@ -175,8 +175,12 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           color: 'var(--color-accent)',
           fontFamily: 'var(--font-mono)',
           fontWeight: 700,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
-          ⚡ {q.xp} XP
+          <Zap size={12} strokeWidth={1.9} />
+          {q.xp} XP
         </div>
         {!hasCompleted && (
           <button

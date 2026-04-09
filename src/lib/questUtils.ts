@@ -47,9 +47,9 @@ export function wasQuestCompletedByMember(quest: any, memberId: string): boolean
 }
 
 export const ORIGIN_LABELS: Record<string, string> = {
-  generated: '🤖',
-  collaborative: '🤝',
-  personal: '⭐',
+  generated: 'AI',
+  collaborative: 'TEAM',
+  personal: 'EGEN',
 };
 
 function pad(value: number): string {
