@@ -35,6 +35,55 @@ export type MemberDataPayload = {
   seasonEnd: string;
 };
 
+type CheckInEntry = {
+  eventId?: string;
+  memberKey?: string;
+  member?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+function getCheckInActor(entry: CheckInEntry, fallbackMemberKey?: string): string {
+  return String(entry?.memberKey || entry?.member || fallbackMemberKey || '');
+}
+
+function getCheckInType(entry: CheckInEntry): string {
+  return String(entry?.type || 'check_in');
+}
+
+function mergeCheckIns(
+  sources: Array<{ entries?: unknown[]; fallbackMemberKey?: string }>
+): CheckInEntry[] {
+  const merged = new Map<string, CheckInEntry>();
+
+  for (const source of sources) {
+    for (const rawEntry of source.entries || []) {
+      if (!rawEntry || typeof rawEntry !== 'object') continue;
+      const entry = rawEntry as CheckInEntry;
+      const eventId = String(entry.eventId || '');
+      const actor = getCheckInActor(entry, source.fallbackMemberKey);
+      const type = getCheckInType(entry);
+      if (!eventId || !actor) continue;
+
+      const key = `${actor}:${eventId}:${type}`;
+      merged.set(key, {
+        ...entry,
+        memberKey: actor,
+        member: String(entry.member || actor),
+        type: type === 'check_in' ? undefined : type,
+      });
+    }
+  }
+
+  return [...merged.values()].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
+}
+
+function getOwnCheckIns(entries: unknown[], memberKey: string): CheckInEntry[] {
+  return mergeCheckIns([{ entries, fallbackMemberKey: memberKey }]).filter(
+    (entry) => getCheckInActor(entry, memberKey) === memberKey
+  );
+}
+
 function mergeReminders(localReminders: Reminder[] = [], remoteReminders: Reminder[] = []): Reminder[] {
   const merged = new Map<string, Reminder>();
 
@@ -75,7 +124,7 @@ export function buildMemberDataPayload(memberKey: string, notifications: Notific
     quests: S.quests,
     metrics: S.metrics,
     prev: S.prev,
-    checkIns: S.checkIns,
+    checkIns: getOwnCheckIns(S.checkIns, memberKey),
     reminders: S.reminders,
     onboarded: S.onboarded,
     operationName: S.operationName,
@@ -151,7 +200,6 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   if (remote.weeklyCheckouts) S.weeklyCheckouts = remote.weeklyCheckouts;
   if (remote.metrics) S.metrics = remote.metrics;
   if (remote.prev) S.prev = remote.prev;
-  if (remote.checkIns) S.checkIns = remote.checkIns;
   if (remote.reminders) S.reminders = mergeReminders(S.reminders, remote.reminders as Reminder[]);
   const remoteNotifications = await fetchRemoteNotifications(memberKey);
   if (remoteNotifications.supported) {
@@ -164,6 +212,14 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
 
   // Applicera minimala leaderboard-fält för övriga members
   if (!othersError && othersData) {
+    S.checkIns = mergeCheckIns([
+      { entries: remote.checkIns, fallbackMemberKey: memberKey },
+      ...othersData.map((row: any) => ({
+        entries: row?.data?.checkIns as unknown[] | undefined,
+        fallbackMemberKey: row?.member_key as string | undefined,
+      })),
+    ]);
+
     for (const row of othersData) {
       const otherKey = row.member_key as string;
       const chars = (row as any).data?.chars as Record<string, any> | null;
@@ -180,6 +236,8 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
         }
       }
     }
+  } else if (remote.checkIns) {
+    S.checkIns = mergeCheckIns([{ entries: remote.checkIns, fallbackMemberKey: memberKey }]);
   }
 
   // Spara explicit till localStorage via save()

@@ -77,4 +77,19 @@ describe('useSupabaseSync payload guardrails', () => {
     expect(payload.notifications).toHaveLength(1);
     expect(payload.notifications[0].source).toBe('local');
   });
+
+  it('stores only the active member check-ins in member_data payload', () => {
+    S.checkIns = [
+      { eventId: 'event-1', memberKey: 'hannes', type: 'rsvp', ts: 1 },
+      { eventId: 'event-1', memberKey: 'niklas', type: 'rsvp', ts: 2 },
+      { eventId: 'event-2', member: 'hannes', ts: 3 },
+    ];
+
+    const payload = buildMemberDataPayload('hannes', useGameStore.getState().notifications);
+
+    expect(payload.checkIns).toEqual([
+      { eventId: 'event-1', memberKey: 'hannes', member: 'hannes', type: 'rsvp', ts: 1 },
+      { eventId: 'event-2', memberKey: 'hannes', member: 'hannes', ts: 3 },
+    ]);
+  });
 });
