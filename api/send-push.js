@@ -11,6 +11,13 @@ function getEnv(name, fallbackName) {
   return process.env[name] || (fallbackName ? process.env[fallbackName] : '');
 }
 
+function getFirstEnv(...names) {
+  for (const name of names) {
+    if (name && process.env[name]) return process.env[name];
+  }
+  return '';
+}
+
 function isExpiredSubscriptionError(error) {
   const statusCode = Number(error?.statusCode || 0);
   return statusCode === 404 || statusCode === 410;
@@ -39,8 +46,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const supabaseUrl = getEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
-  const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+  const supabaseUrl = getFirstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
+  const serviceRoleKey = getFirstEnv(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_SECRET_KEY',
+    'SUPABASE_SERVICE_ROLE',
+    'SUPABASE_SERVICE_KEY'
+  );
   const vapidPublicKey = getEnv('VAPID_PUBLIC_KEY', 'VITE_VAPID_PUBLIC_KEY');
   const vapidPrivateKey = getEnv('VAPID_PRIVATE_KEY');
   const vapidSubject = getEnv('VAPID_SUBJECT');
