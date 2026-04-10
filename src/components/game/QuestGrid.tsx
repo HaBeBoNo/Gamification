@@ -98,12 +98,15 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const baseVisible = getVisibleQuests();
   const visible = applyFilter(baseVisible);
   const active = visible.filter((q: any) => !isQuestDoneNow(q));
-  const shouldShowCollabSection = (filter === 'alla' || filter === 'collaborative') && collabQuests.length > 0;
+  const shouldShowCollabSection = collabQuests.length > 0 && (
+    filter === 'collaborative' || (filter === 'alla' && tab === 'all')
+  );
   const activeNonCollaborative = shouldShowCollabSection
     ? active.filter((q: any) => !q.collaborative)
     : active;
   const completed = visible.filter((q: any) => isQuestDoneNow(q));
-  const allDone = visible.length > 0 && active.length === 0;
+  const hasQuestContent = visible.length > 0 || shouldShowCollabSection;
+  const allDone = hasQuestContent && active.length === 0 && !shouldShowCollabSection;
   const relevantQuests = getRelevantActiveQuests(activeNonCollaborative, me || undefined, 2);
   const focusQuest = relevantQuests[0];
   const followUpQuest = relevantQuests[1];
@@ -213,6 +216,22 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
   const coachName = (S.chars[me!] as any)?.coachName || 'Coach';
 
+  function handleFilterChange(nextFilter: string) {
+    setFilter(nextFilter);
+    if (nextFilter === 'collaborative' && tab !== 'all') {
+      setTab('all');
+      S.tab = 'all';
+    }
+  }
+
+  function handleTabChange(nextTab: string) {
+    setTab(nextTab);
+    S.tab = nextTab;
+    if (nextTab !== 'all' && filter === 'collaborative') {
+      setFilter('alla');
+    }
+  }
+
   return (
     <div className="quest-center">
       {/* Coach card */}
@@ -316,7 +335,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             <button
               key={f.id}
               className={'qf-pill ' + (filter === f.id ? 'active' : '')}
-              onClick={() => setFilter(f.id)}
+              onClick={() => handleFilterChange(f.id)}
             >{f.label}</button>
           ))}
         </div>
@@ -329,7 +348,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
           <button
             key={t.id}
             className={'tab-btn ' + (tab === t.id ? 'active' : '')}
-            onClick={() => { setTab(t.id); S.tab = t.id; }}
+            onClick={() => handleTabChange(t.id)}
           >{t.label}</button>
         ))}
         {tab === 'personal' && (
@@ -356,10 +375,12 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
           <QuestCardSkeleton />
           <QuestCardSkeleton />
         </div>
-      ) : visible.length === 0 ? (
+      ) : !hasQuestContent ? (
         <div className="empty-state stagger-3">
           <Compass size={48} strokeWidth={1} />
-          <div className="empty-text">Inga aktiva quests just nu.</div>
+          <div className="empty-text">
+            {filter === 'collaborative' ? 'Inga kollaborativa uppdrag just nu.' : 'Inga aktiva quests just nu.'}
+          </div>
         </div>
       ) : showGrouped ? (
         <div className="quest-grid stagger-3">

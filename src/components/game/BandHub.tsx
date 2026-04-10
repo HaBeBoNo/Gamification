@@ -20,7 +20,7 @@ import { fetchPinnedFileIds, getCategory, getDriveFiles, uploadFile, getMimeType
 import { supabase } from '@/lib/supabase';
 import { S } from '@/state/store';
 import CalendarView from './CalendarView';
-import { getUpcomingEvents, isEventActive, isEventSoon } from '@/lib/googleCalendar';
+import { getUpcomingEvents, isEventActive } from '@/lib/googleCalendar';
 import { isCalendarResponseNeeded } from '@/lib/reengagement';
 import GoogleConnectButton from './GoogleConnectButton';
 import { loadToken, type GoogleTokenData } from '@/lib/googleAuth';
@@ -733,12 +733,12 @@ function CalendarSpotlight() {
 
   const nextEvent = events[0] || null;
   const hasRsvp = nextEvent ? (S.checkIns ?? []).some((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp' && entry?.memberKey === S.me) : false;
+  const hasDeclined = nextEvent ? (S.checkIns ?? []).some((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'decline' && entry?.memberKey === S.me) : false;
   const rsvpCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp').length : 0;
   const declineCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'decline').length : 0;
   const checkInCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && isPresenceCheckIn(entry)).length : 0;
   const active = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
-  const soon = nextEvent ? isEventSoon(nextEvent.start) : false;
-  const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, hasRsvp) : false;
+  const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, hasRsvp || hasDeclined) : false;
   const nextLabel = nextEvent
     ? new Date(nextEvent.start).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
     : '—';
@@ -777,7 +777,7 @@ function CalendarSpotlight() {
               icon={<Clock3 size={15} />}
               label="Kommer"
               value={nextEvent ? String(rsvpCount) : '0'}
-              detail={nextEvent ? (hasRsvp ? 'du är med' : 'svara i listan nedan') : 'ingen respons behövs'}
+              detail={nextEvent ? (hasRsvp ? 'du är med' : hasDeclined ? 'du har lämnat besked' : 'svara i listan nedan') : 'ingen respons behövs'}
             />
             <StatCard
               icon={<CircleOff size={15} />}
@@ -837,8 +837,10 @@ function CalendarSpotlight() {
                 : needsResponse
                   ? `${rsvpCount} har svarat${declineCount > 0 ? `, ${declineCount} kan inte` : ''}. Ta ställning direkt här så blir läget tydligt för alla.`
                   : nextEvent
-                    ? hasRsvp
-                      ? 'Du är redan med. Håll koll här när det närmar sig live-läge och check-in börjar spela roll.'
+                    ? (hasRsvp || hasDeclined)
+                      ? hasDeclined
+                        ? 'Du har redan markerat att du inte kan komma. Håll ändå koll här om läget i bandet förändras.'
+                        : 'Du är redan med. Håll koll här när det närmar sig live-läge och check-in börjar spela roll.'
                       : 'Du behöver inte göra något direkt nu, men det här är nästa naturliga punkt där bandet samlas igen.'
                     : 'När nästa rep, planering eller aktivitet landar i kalendern ska den här ytan bli den snabbaste vägen tillbaka in i bandets vardag.'}
             </div>

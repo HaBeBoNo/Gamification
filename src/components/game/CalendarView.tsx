@@ -229,7 +229,7 @@ export default function CalendarView() {
         const checkedIn = isCheckedIn(event.id)
         const checkInCount = getCheckInCount(event.id)
         const declineCount = getDeclineCount(event.id)
-        const canCheckIn = active || soon
+        const canCheckIn = active
 
         return (
           <div key={event.id} style={{

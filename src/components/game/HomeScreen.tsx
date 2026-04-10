@@ -52,6 +52,13 @@ function hasEventRSVP(eventId: string, memberKey?: string): boolean {
   );
 }
 
+function hasEventDecline(eventId: string, memberKey?: string): boolean {
+  if (!eventId || !memberKey) return false;
+  return (S.checkIns ?? []).some(
+    (entry: any) => entry?.eventId === eventId && entry?.type === 'decline' && entry?.memberKey === memberKey
+  );
+}
+
 function getEventRSVPCount(eventId: string): number {
   return (S.checkIns ?? []).filter((entry: any) => entry?.eventId === eventId && entry?.type === 'rsvp').length;
 }
@@ -237,6 +244,7 @@ function HeroCard() {
 
 // ── BandStatusRow ───────────────────────────────────────────────────
 function BandStatusRow() {
+  const totalMembers = Object.keys(MEMBERS).length;
   const [activeToday, setActiveToday] = useState(0);
   const [activeNow, setActiveNow] = useState<number | null>(null);
   const [xp48h, setXp48h] = useState(0);
@@ -313,7 +321,7 @@ function BandStatusRow() {
   const cards = [
     {
       icon: Zap,
-      value: `${activeToday}/8`,
+      value: `${activeToday}/${totalMembers}`,
       label: 'Aktiva idag',
       sub: activeNow !== null ? `${activeNow} live nu · ${xp48h} XP / 48h` : `${xp48h} XP · 48h`,
     },
@@ -425,6 +433,11 @@ function getActivityTimestamp(item: any): number {
   if (typeof raw === 'number') return raw;
   const parsed = Date.parse(String(raw));
   return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function isRecentActivity(item: any, maxAgeMs = 24 * 60 * 60 * 1000): boolean {
+  const ts = getActivityTimestamp(item);
+  return Boolean(ts) && Date.now() - ts <= maxAgeMs;
 }
 
 function formatActivityAge(item: any): string {
@@ -718,7 +731,10 @@ function ReengagementCard({
         const eventLive = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
         const eventSoon = nextEvent ? isEventSoon(nextEvent.start) : false;
         const eventNeedsResponse = nextEvent
-          ? isCalendarResponseNeeded(nextEvent.start, hasEventRSVP(nextEvent.id, me || undefined))
+          ? isCalendarResponseNeeded(
+              nextEvent.start,
+              hasEventRSVP(nextEvent.id, me || undefined) || hasEventDecline(nextEvent.id, me || undefined)
+            )
           : false;
 
         const collabWaiting = (collabs || []).find((quest: any) =>
@@ -966,7 +982,8 @@ function WaitingOnYouCard({
           const live = isEventActive(nextEvent.start, nextEvent.end);
           const soon = isEventSoon(nextEvent.start);
           const hasRsvp = hasEventRSVP(nextEvent.id, me || undefined);
-          const needsResponse = isCalendarResponseNeeded(nextEvent.start, hasRsvp);
+          const hasDeclined = hasEventDecline(nextEvent.id, me || undefined);
+          const needsResponse = isCalendarResponseNeeded(nextEvent.start, hasRsvp || hasDeclined);
 
           if (live || needsResponse) {
             nextSignals.push({
@@ -1038,7 +1055,7 @@ function WaitingOnYouCard({
 
         const directComments = hydrated.filter((item: any) => {
           const parsed = getFeedCommentMeta(item);
-          return item.who !== me && parsed?.targetKey === me;
+          return item.who !== me && parsed?.targetKey === me && isRecentActivity(getActivityTimestamp(item), 48 * 60 * 60 * 1000);
         });
 
         if (directComments.length > 0 && nextSignals.length < 3) {
@@ -1054,6 +1071,7 @@ function WaitingOnYouCard({
 
         const feedbackItems = hydrated.filter((item: any) => {
           if (item.who !== me) return false;
+          if (!isRecentActivity(getActivityTimestamp(item), 48 * 60 * 60 * 1000)) return false;
 
           const reactionMembers = Object.values(item.reactions ?? {}).flat() as string[];
           const hasExternalReaction = reactionMembers.some(memberId => memberId && memberId !== me);
