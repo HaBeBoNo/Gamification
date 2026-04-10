@@ -24,6 +24,7 @@ import { getUpcomingEvents, isEventActive } from '@/lib/googleCalendar';
 import { isCalendarResponseNeeded } from '@/lib/reengagement';
 import GoogleConnectButton from './GoogleConnectButton';
 import { loadToken, type GoogleTokenData } from '@/lib/googleAuth';
+import { getCalendarEventParticipationState } from '@/lib/calendarState';
 
 const TABS = [
   {
@@ -697,10 +698,6 @@ export default function BandHub() {
 }
 
 function CalendarSpotlight() {
-  function isPresenceCheckIn(entry: any): boolean {
-    return entry?.type !== 'rsvp' && entry?.type !== 'decline';
-  }
-
   const [events, setEvents] = useState<Array<{
     id: string;
     title: string;
@@ -732,13 +729,16 @@ function CalendarSpotlight() {
   }, []);
 
   const nextEvent = events[0] || null;
-  const hasRsvp = nextEvent ? (S.checkIns ?? []).some((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp' && entry?.memberKey === S.me) : false;
-  const hasDeclined = nextEvent ? (S.checkIns ?? []).some((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'decline' && entry?.memberKey === S.me) : false;
-  const rsvpCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'rsvp').length : 0;
-  const declineCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && entry?.type === 'decline').length : 0;
-  const checkInCount = nextEvent ? (S.checkIns ?? []).filter((entry: any) => entry?.eventId === nextEvent.id && isPresenceCheckIn(entry)).length : 0;
+  const participation = nextEvent
+    ? getCalendarEventParticipationState(S.checkIns, nextEvent.id, S.me || undefined)
+    : null;
+  const hasRsvp = participation?.hasRsvp || false;
+  const hasDeclined = participation?.hasDeclined || false;
+  const rsvpCount = participation?.rsvpCount || 0;
+  const declineCount = participation?.declineCount || 0;
+  const checkInCount = participation?.checkInCount || 0;
   const active = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
-  const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, hasRsvp || hasDeclined) : false;
+  const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, Boolean(participation?.hasResponded)) : false;
   const nextLabel = nextEvent
     ? new Date(nextEvent.start).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
     : '—';

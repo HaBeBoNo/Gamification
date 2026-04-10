@@ -15,6 +15,7 @@ import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import { getFeedCommentMeta } from '@/lib/feed';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 import { getDaysSinceActivity, getReengagementStage, isCalendarResponseNeeded } from '@/lib/reengagement';
+import { getCalendarEventParticipationState } from '@/lib/calendarState';
 
 const MOBILE_GUTTER = 'var(--layout-gutter-mobile)';
 const ROOM_GUTTER = 'var(--layout-gutter-room)';
@@ -43,30 +44,6 @@ function getRelativeCalendarLabel(dateStr: string): string {
   if (diffDays === 0) return 'Idag';
   if (diffDays === 1) return 'Imorgon';
   return eventDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
-}
-
-function hasEventRSVP(eventId: string, memberKey?: string): boolean {
-  if (!eventId || !memberKey) return false;
-  return (S.checkIns ?? []).some(
-    (entry: any) => entry?.eventId === eventId && entry?.type === 'rsvp' && entry?.memberKey === memberKey
-  );
-}
-
-function hasEventDecline(eventId: string, memberKey?: string): boolean {
-  if (!eventId || !memberKey) return false;
-  return (S.checkIns ?? []).some(
-    (entry: any) => entry?.eventId === eventId && entry?.type === 'decline' && entry?.memberKey === memberKey
-  );
-}
-
-function getEventRSVPCount(eventId: string): number {
-  return (S.checkIns ?? []).filter((entry: any) => entry?.eventId === eventId && entry?.type === 'rsvp').length;
-}
-
-function getEventCheckInCount(eventId: string): number {
-  return (S.checkIns ?? []).filter(
-    (entry: any) => entry?.eventId === eventId && entry?.type !== 'rsvp' && entry?.type !== 'decline'
-  ).length;
 }
 
 function getReengagementEyebrow(stage: ReturnType<typeof getReengagementStage>): string {
@@ -730,11 +707,11 @@ function ReengagementCard({
         const nextEvent = events?.[0] || null;
         const eventLive = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
         const eventSoon = nextEvent ? isEventSoon(nextEvent.start) : false;
+        const participation = nextEvent
+          ? getCalendarEventParticipationState(S.checkIns, nextEvent.id, me || undefined)
+          : null;
         const eventNeedsResponse = nextEvent
-          ? isCalendarResponseNeeded(
-              nextEvent.start,
-              hasEventRSVP(nextEvent.id, me || undefined) || hasEventDecline(nextEvent.id, me || undefined)
-            )
+          ? isCalendarResponseNeeded(nextEvent.start, Boolean(participation?.hasResponded))
           : false;
 
         const collabWaiting = (collabs || []).find((quest: any) =>
@@ -754,9 +731,9 @@ function ReengagementCard({
                 ? 'Kom tillbaka via nästa rep'
                 : 'Nästa bandpunkt är nära',
             subtitle: eventLive
-              ? `${nextEvent.title} · ${getEventCheckInCount(nextEvent.id)} incheckad${getEventCheckInCount(nextEvent.id) === 1 ? '' : 'e'} hittills`
+              ? `${nextEvent.title} · ${participation?.checkInCount || 0} incheckad${(participation?.checkInCount || 0) === 1 ? '' : 'e'} hittills`
               : eventNeedsResponse
-                ? `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)} · ${getEventRSVPCount(nextEvent.id)} kommer hittills`
+                ? `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)} · ${participation?.rsvpCount || 0} kommer hittills`
                 : `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
             cta: 'Öppna kalendern',
             target: 'bandhub',
@@ -981,9 +958,8 @@ function WaitingOnYouCard({
         if (nextEvent && nextSignals.length < 3) {
           const live = isEventActive(nextEvent.start, nextEvent.end);
           const soon = isEventSoon(nextEvent.start);
-          const hasRsvp = hasEventRSVP(nextEvent.id, me || undefined);
-          const hasDeclined = hasEventDecline(nextEvent.id, me || undefined);
-          const needsResponse = isCalendarResponseNeeded(nextEvent.start, hasRsvp || hasDeclined);
+          const participation = getCalendarEventParticipationState(S.checkIns, nextEvent.id, me || undefined);
+          const needsResponse = isCalendarResponseNeeded(nextEvent.start, participation.hasResponded);
 
           if (live || needsResponse) {
             nextSignals.push({
@@ -991,8 +967,8 @@ function WaitingOnYouCard({
               icon: live ? <MapPin size={16} strokeWidth={1.9} /> : <CalendarDays size={16} strokeWidth={1.9} />,
               title: live ? 'Bandet är live nu' : `Svara på ${nextEvent.title}`,
               subtitle: live
-                ? `${getEventCheckInCount(nextEvent.id)} incheckad${getEventCheckInCount(nextEvent.id) === 1 ? '' : 'e'} · öppna kalendern och checka in`
-                : `${getRelativeCalendarLabel(nextEvent.start)} · ${getEventRSVPCount(nextEvent.id)} kommer hittills`,
+                ? `${participation.checkInCount} incheckad${participation.checkInCount === 1 ? '' : 'e'} · öppna kalendern och checka in`
+                : `${getRelativeCalendarLabel(nextEvent.start)} · ${participation.rsvpCount} kommer hittills`,
               target: 'bandhub',
               cta: live ? 'Checka in' : 'Svara nu',
             });

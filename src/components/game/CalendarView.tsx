@@ -7,10 +7,7 @@ import { S, save } from '@/state/store'
 import { checkIn } from '@/hooks/useCheckIn'
 import { MEMBERS } from '@/data/members'
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals'
-
-function isPresenceCheckIn(entry: any): boolean {
-  return entry?.type !== 'rsvp' && entry?.type !== 'decline'
-}
+import { getCalendarEventParticipationState, hasEventDecline, hasEventRSVP } from '@/lib/calendarState'
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -32,50 +29,15 @@ export default function CalendarView() {
     }
   }
 
-  function isCheckedIn(eventId: string): boolean {
-    return (S.checkIns ?? []).some(
-      (c: any) => c.eventId === eventId && isPresenceCheckIn(c) && (c.memberKey === S.me || c.member === S.me)
-    )
-  }
-
-  function getCheckInCount(eventId: string): number {
-    return (S.checkIns ?? []).filter((c: any) => c.eventId === eventId && isPresenceCheckIn(c)).length
-  }
-
   function handleCheckIn(event: CalendarEvent) {
-    if (isCheckedIn(event.id)) return
+    if (getCalendarEventParticipationState(S.checkIns, event.id, S.me || undefined).checkedIn) return
     void checkIn(event.id, event.title)
-  }
-
-  // RSVP-state — lagras i S.checkIns med type: 'rsvp'
-  function getRSVPCount(eventId: string): number {
-    return (S.checkIns ?? []).filter(
-      (c: any) => c.eventId === eventId && c.type === 'rsvp'
-    ).length
-  }
-
-  function hasRSVP(eventId: string): boolean {
-    return (S.checkIns ?? []).some(
-      (c: any) => c.eventId === eventId && c.type === 'rsvp' && c.memberKey === S.me
-    )
-  }
-
-  function getDeclineCount(eventId: string): number {
-    return (S.checkIns ?? []).filter(
-      (c: any) => c.eventId === eventId && c.type === 'decline'
-    ).length
-  }
-
-  function hasDeclined(eventId: string): boolean {
-    return (S.checkIns ?? []).some(
-      (c: any) => c.eventId === eventId && c.type === 'decline' && c.memberKey === S.me
-    )
   }
 
   function handleRSVP(event: CalendarEvent) {
     if (!S.me) return
 
-    if (hasRSVP(event.id)) {
+    if (hasEventRSVP(S.checkIns, event.id, S.me)) {
       // Ta bort RSVP
       S.checkIns = (S.checkIns ?? []).filter(
         (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
@@ -122,7 +84,7 @@ export default function CalendarView() {
   function handleDecline(event: CalendarEvent) {
     if (!S.me) return
 
-    if (hasDeclined(event.id)) {
+    if (hasEventDecline(S.checkIns, event.id, S.me)) {
       S.checkIns = (S.checkIns ?? []).filter(
         (c: any) => !(c.eventId === event.id && c.type === 'decline' && c.memberKey === S.me)
       )
@@ -226,9 +188,13 @@ export default function CalendarView() {
       {events.map(event => {
         const soon = isEventSoon(event.start)
         const active = isEventActive(event.start, event.end)
-        const checkedIn = isCheckedIn(event.id)
-        const checkInCount = getCheckInCount(event.id)
-        const declineCount = getDeclineCount(event.id)
+        const participation = getCalendarEventParticipationState(S.checkIns, event.id, S.me || undefined)
+        const checkedIn = participation.checkedIn
+        const checkInCount = participation.checkInCount
+        const declineCount = participation.declineCount
+        const rsvpCount = participation.rsvpCount
+        const hasRsvp = participation.hasRsvp
+        const hasDeclined = participation.hasDeclined
         const canCheckIn = active
 
         return (
@@ -258,16 +224,16 @@ export default function CalendarView() {
               </div>
             )}
 
-            {(checkInCount > 0 || getRSVPCount(event.id) > 0 || declineCount > 0) && (
+            {(checkInCount > 0 || rsvpCount > 0 || declineCount > 0) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>
                 {checkInCount > 0 && (
                   <span>
                     {checkInCount} {checkInCount === 1 ? 'member' : 'members'} incheckad{checkInCount > 1 ? 'e' : ''}
                   </span>
                 )}
-                {getRSVPCount(event.id) > 0 && (
+                {rsvpCount > 0 && (
                   <span>
-                    {getRSVPCount(event.id)} kommer
+                    {rsvpCount} kommer
                   </span>
                 )}
                 {declineCount > 0 && (
@@ -310,27 +276,27 @@ export default function CalendarView() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     background: 'transparent',
-                    color: hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                    border: `1px solid ${hasRSVP(event.id) ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                    color: hasRsvp ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                    border: `1px solid ${hasRsvp ? 'var(--color-accent)' : 'var(--color-border)'}`,
                     borderRadius: '999px', padding: '6px 14px',
                     fontSize: 12, fontFamily: 'var(--font-ui)',
                     cursor: 'pointer', touchAction: 'manipulation',
                   }}>
-                  {hasRSVP(event.id) ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
+                  {hasRsvp ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
                 </button>
                 <button
                   onClick={() => handleDecline(event)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     background: 'transparent',
-                    color: hasDeclined(event.id) ? 'var(--color-error, #e05555)' : 'var(--color-text-muted)',
-                    border: `1px solid ${hasDeclined(event.id) ? 'var(--color-error, #e05555)' : 'var(--color-border)'}`,
+                    color: hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-text-muted)',
+                    border: `1px solid ${hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-border)'}`,
                     borderRadius: '999px', padding: '6px 14px',
                     fontSize: 12, fontFamily: 'var(--font-ui)',
                     cursor: 'pointer', touchAction: 'manipulation',
                   }}
                 >
-                  {hasDeclined(event.id) ? <><X size={13} /> Kan inte</> : 'Kan inte'}
+                  {hasDeclined ? <><X size={13} /> Kan inte</> : 'Kan inte'}
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
