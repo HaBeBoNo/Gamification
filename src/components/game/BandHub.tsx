@@ -202,8 +202,8 @@ export default function BandHub() {
             <div style={{
               background: 'var(--color-surface-elevated)',
               border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-card)',
-              padding: '14px 14px',
+              borderRadius: '16px',
+              padding: '12px 14px',
               marginBottom: 'var(--section-gap)',
               display: 'flex',
               alignItems: 'center',
@@ -211,21 +211,38 @@ export default function BandHub() {
               gap: 12,
               flexWrap: 'wrap',
             }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 'var(--text-micro)',
                   color: 'var(--color-text-muted)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
-                  marginBottom: 4,
                 }}>
-                  Google för uppladdning
+                  Google
                 </div>
-                <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  {googleToken
-                    ? 'Drive-uppladdning använder din egen Google-behörighet, så att vem som helst i bandet kan lägga in filer härifrån.'
-                    : 'Anslut Google här om uppladdning inte fungerar direkt. Listningen fortsätter fungera även utan det.'}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minHeight: 30,
+                  padding: '0 10px',
+                  borderRadius: '999px',
+                  background: googleToken ? 'var(--color-primary-muted)' : 'var(--color-surface)',
+                  border: `1px solid ${googleToken ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  color: googleToken ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontSize: 'var(--text-micro)',
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '0.04em',
+                }}>
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: googleToken ? 'currentColor' : 'var(--color-text-subtle)',
+                    opacity: googleToken ? 1 : 0.75,
+                  }} />
+                  {googleToken ? 'Uppladdning aktiv' : 'Anslut för uppladdning'}
                 </div>
               </div>
               <GoogleConnectButton
