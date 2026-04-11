@@ -14,17 +14,24 @@ import { callClaude, parseJSON } from '../lib/claudeApi';
 import {
   buildValidatePrompt,
   buildQuestGenPrompt,
-  buildCoachPrompt,
-  buildDailyCoachPrompt,
-  buildGhostPrompt,
   buildSidequestPrompt,
 } from '../lib/aiPrompts';
+import {
+  CoachPolicy,
+  DEFAULT_COACH_NAMES,
+  WELCOME_MESSAGES,
+  buildCoachPrompt,
+  buildDailyCoachPromptFromContext,
+  buildGhostPromptFromContext,
+  getCoachContext,
+  type CoachContext,
+} from '../lib/coach';
 import type { Quest } from '../types/game';
 import { isQuestDoneNow } from '../lib/questUtils';
 import { clearRuntimeIssue } from '../lib/runtimeHealth';
 
 // Re-export constants that components already import from this file
-export { DEFAULT_COACH_NAMES, WELCOME_MESSAGES, buildCoachPrompt } from '../lib/aiPrompts';
+export { DEFAULT_COACH_NAMES, WELCOME_MESSAGES, buildCoachPrompt } from '../lib/coach';
 
 // ── Typer för UI-callbacks ────────────────────────────────────────
 
@@ -177,8 +184,9 @@ export async function generatePersonalQuests(refreshMode = false): Promise<void>
  */
 export async function refreshCoach(): Promise<string> {
   if (!S.me || !S.chars[S.me]) return 'Laddar din profil...';
+  const context = getCoachContext(S.me);
   try {
-    const response = await callClaude(buildCoachPrompt(S.me) as string, 200);
+    const response = await callClaude(buildCoachPrompt(context), 200);
     clearRuntimeIssue('ai');
     return response;
   } catch {
@@ -187,10 +195,11 @@ export async function refreshCoach(): Promise<string> {
   }
 }
 
-function buildDailyCoachFallback(memberKey: string): string {
-  const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
-  const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
-  const latestFeed = (useGameStore.getState().feed || []).find(item => item.who && item.who !== memberKey);
+function buildDailyCoachFallback(context: CoachContext): string {
+  const nextQuest = context.nextQuest || (S.quests || []).find(q => !isQuestDoneNow(q));
+  const latestFeed = context.latestBandActivity || (useGameStore.getState().feed || []).find(
+    (item) => item.who && item.who !== context.memberKey
+  );
 
   if (nextQuest && latestFeed) {
     return `Det rör sig i gruppen nu. Börja med "${nextQuest.title}" och använd momentumet medan det fortfarande känns levande.`;
@@ -214,10 +223,26 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
     return char.dailyCoachMessage;
   }
 
+  const context = getCoachContext(memberKey);
+  const reengagementMode = CoachPolicy.getReengagementMode(context);
+  const mayInitiate = CoachPolicy.canInitiate(memberKey, context.now);
+  const activeFlow = CoachPolicy.isInActiveFlow(memberKey, context.now);
+  const shouldSpeakProactively = reengagementMode !== 'silent' && mayInitiate && !activeFlow;
+
+  if (!shouldSpeakProactively) {
+    const fallback = buildDailyCoachFallback(context);
+    clearRuntimeIssue('ai');
+    char.dailyCoachMessage = fallback;
+    char.dailyCoachDate = today;
+    save();
+    return fallback;
+  }
+
   try {
-    const msg = (await callClaude(buildDailyCoachPrompt(memberKey) as string, 180)).trim();
+    const msg = (await callClaude(buildDailyCoachPromptFromContext(context), 180)).trim();
     if (msg) {
       clearRuntimeIssue('ai');
+      CoachPolicy.markInitiated(memberKey, context.now);
       char.dailyCoachMessage = msg;
       char.dailyCoachDate = today;
       save();
@@ -227,8 +252,9 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
     // fallback below
   }
 
-  const fallback = buildDailyCoachFallback(memberKey);
+  const fallback = buildDailyCoachFallback(context);
   clearRuntimeIssue('ai');
+  CoachPolicy.markInitiated(memberKey, context.now);
   char.dailyCoachMessage = fallback;
   char.dailyCoachDate = today;
   save();
@@ -240,21 +266,17 @@ export async function getDailyCoachMessage(memberKey = S.me as string): Promise<
  * Kontrollerar om ghost quest ska triggas (7 dagars quest-inaktivitet).
  */
 export async function checkGhostQuest(): Promise<void> {
-  const c = S.chars[S.me!];
-  const m = (MEMBERS as Record<string, any>)[S.me!];
-  if (!c || !m) return;
+  if (!S.me) return;
 
-  const lastQuestDate = (c.lastQuestDate as number | undefined)
-    || (c.lastSeen as number)
-    || (Date.now() - 8 * 24 * 60 * 60 * 1000);
-  const daysSince = (Date.now() - lastQuestDate) / (1000 * 60 * 60 * 24);
-
-  if (daysSince < 7) return;
+  const context = getCoachContext(S.me);
+  if (!context.char || !context.member) return;
+  if (context.daysSinceActivity < 7) return;
+  if (CoachPolicy.getReengagementMode(context) === 'silent') return;
   if (S.quests.some(q => q.owner === S.me && q.type === 'ghost' && !q.done)) return;
 
   let ghostData: Partial<Quest>;
   try {
-    const txt = await callClaude(buildGhostPrompt(m, c, daysSince) as string, 200);
+    const txt = await callClaude(buildGhostPromptFromContext(context), 200);
     ghostData = parseJSON<Partial<Quest>>(txt);
   } catch {
     ghostData = {

@@ -38,13 +38,14 @@ It is a controlled hybrid and must be treated as such.
 | Personal progression (`chars[me]`) | Local `S.chars[me]`, then mirrored to `member_data.data.chars[me]` | `localStorage`, `member_data` | [src/hooks/useXP.ts](/Users/t-nab/Documents/Gamification/src/hooks/useXP.ts), onboarding, coach flows | Home, profile, leaderboard, quests | Local-first. Server copy is persistence, not live collaboration. |
 | Personal quests | Local `S.quests`, then mirrored to `member_data.data.quests` | `localStorage`, `member_data` | [src/hooks/useAI.ts](/Users/t-nab/Documents/Gamification/src/hooks/useAI.ts), quest UI | Quest views, coach, profile | Hybrid because collaborative quests also project into `S.quests`. |
 | Collaborative quests | Supabase `collaborative_quests` | projected into `S.quests` | [src/lib/collaborativeQuests.ts](/Users/t-nab/Documents/Gamification/src/lib/collaborativeQuests.ts), quest UI | QuestGrid, quest cards | Server-owned shared object. Local copy is a view model. |
-| Activity feed | Supabase `activity_feed` | hydrated local feed list, `S.feed` for local-first event creation | [src/hooks/useFeedSync.ts](/Users/t-nab/Documents/Gamification/src/hooks/useFeedSync.ts), SQL triggers, local event producers | ActivityFeed, Home | Shared truth is server-side. Local feed is staging/history, not canonical social truth. |
+| Activity feed | Supabase `activity_feed` | Zustand feed slice in [src/state/store.ts](/Users/t-nab/Documents/Gamification/src/state/store.ts) + local feed cache | [src/hooks/useFeedSync.ts](/Users/t-nab/Documents/Gamification/src/hooks/useFeedSync.ts), SQL triggers, local event producers | ActivityFeed, Home, coach context | Shared truth is server-side. The local feed slice is a reactive staging/cache layer, not canonical social truth. |
 | Notifications | Supabase `notifications` when supported | Zustand notifications slice + `localStorage` | SQL functions/triggers, [src/lib/notificationSignals.ts](/Users/t-nab/Documents/Gamification/src/lib/notificationSignals.ts), local fallbacks | Notification panel, Home | Treat Supabase notifications as canonical shared signals. Local notifications exist for resilience. |
 | Reactions | Supabase `feed_reactions` | hydrated into feed items | [src/lib/socialData.ts](/Users/t-nab/Documents/Gamification/src/lib/socialData.ts) | ActivityFeed, notifications | Structured shared truth. |
 | Witnesses | Supabase `feed_witnesses` | hydrated into feed items | [src/lib/socialData.ts](/Users/t-nab/Documents/Gamification/src/lib/socialData.ts) | ActivityFeed, notifications | Structured shared truth. |
 | Presence | Supabase `member_presence` | none beyond local current surface | [src/hooks/usePresenceSync.ts](/Users/t-nab/Documents/Gamification/src/hooks/usePresenceSync.ts) | Home, social pulse | Server-owned ephemeral state. |
 | Reminders | `member_data.data.reminders` | `S.reminders`, `localStorage` | Calendar UI + Supabase sync | Calendar reminders edge function, Home | Personal but server-mirrored so scheduled reminders can fire. |
 | Check-ins | `member_data.data.checkIns` plus feed signals | `S.checkIns` | Check-in UI | Calendar, feed, stats | Local-first data with shared social consequences. UI participation semantics should be derived through [src/lib/calendarState.ts](/Users/t-nab/Documents/Gamification/src/lib/calendarState.ts), not redefined per view. |
+| Coach context and policy | Local derived coach domain in [src/lib/coach](/Users/t-nab/Documents/Gamification/src/lib/coach) | localStorage-backed cadence/runtime markers + derived context | [src/lib/coach/coachContext.ts](/Users/t-nab/Documents/Gamification/src/lib/coach/coachContext.ts), [src/lib/coach/coachPolicy.ts](/Users/t-nab/Documents/Gamification/src/lib/coach/coachPolicy.ts), [src/hooks/usePresenceSync.ts](/Users/t-nab/Documents/Gamification/src/hooks/usePresenceSync.ts) | [src/hooks/useAI.ts](/Users/t-nab/Documents/Gamification/src/hooks/useAI.ts), coach UI, Home | Coach behavior is now bounded locally before AI is called. It is still local-first and not a shared durable domain. |
 | Coach text and coach cache | Local character fields in `S.chars[me]` | `localStorage`, `member_data` | [src/hooks/useAI.ts](/Users/t-nab/Documents/Gamification/src/hooks/useAI.ts) | Home, coach UI, quests | Cached locally to avoid AI dependence for every render. |
 | Calendar events | Google Calendar API | transient component state | [src/lib/googleCalendar.ts](/Users/t-nab/Documents/Gamification/src/lib/googleCalendar.ts) | Home, Band Hub, CalendarView | External integration, read-only in current app model. |
 | Drive files | Google Drive service-account proxy | transient component state | [api/drive.ts](/Users/t-nab/Documents/Gamification/api/drive.ts) | Band Hub | External integration, server-mediated. |
@@ -57,7 +58,7 @@ These rules are the intended guardrails until the system is refactored more deep
 
 1. Shared social state must be treated as server-owned.
 2. Personal progression may remain local-first, but the write path must be explicit.
-3. `S.feed` must never again be treated as the canonical shared feed.
+3. The Zustand feed slice must never again be treated as the canonical shared feed.
 4. `member_data.data` is a persistence envelope, not a substitute relational model.
 5. New shared interaction features should prefer structured tables over JSON blobs.
 6. The UI may cache and stage, but it should not invent alternative shared truths.
@@ -136,7 +137,7 @@ Fallback logic in `socialData.ts` improves resilience, but each fallback is also
 
 ### 4. Coach importance vs coach formalization
 
-The coach is central to product value, but still exists mostly as orchestration and cached text rather than as a clearly bounded domain.
+The coach is central to product value. It now has a bounded local domain for context, policy, and prompt construction, but still lacks durable shared memory and should not silently become a server-owned domain without an explicit decision.
 
 ## Invariants
 
@@ -144,7 +145,7 @@ These are the invariants that should stay true unless an intentional migration c
 
 - `member_key` is the single app identity.
 - Shared notifications should prefer the `notifications` table over local-only notifications.
-- Shared feed state should prefer `activity_feed` over `S.feed`.
+- Shared feed state should prefer `activity_feed` over the local feed slice.
 - Reactions and witnesses should prefer structured tables over embedded feed JSON as authoring surfaces.
 - `member_presence` is ephemeral and must not be treated as business history.
 - Calendar reminders must exist in server-readable state if scheduled push depends on them.
@@ -156,7 +157,7 @@ Revisit the current hybrid model if any of these become true:
 - more than one device per member becomes common
 - social bugs require tracing through more than three layers on a regular basis
 - new shared features increasingly need cross-member transactions
-- the coach starts needing durable shared context or explicit memory
+- the coach starts needing durable shared context or explicit memory beyond the local coach domain
 - schema drift between repo and live becomes recurring again
 
 These are stronger triggers than a raw user-count threshold.
@@ -194,7 +195,7 @@ Medium term:
 
 - extract explicit domain APIs for quests, progression, and social signaling
 - reduce heuristics in feed semantics
-- formalize coach state only after system boundaries are clearer
+- extend the coach domain deliberately without turning it into an implicit shared truth
 
 Long term:
 

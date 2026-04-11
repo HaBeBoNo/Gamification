@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { S } from '@/state/store';
 import { upsertPresence } from '@/lib/socialData';
+import { CoachPolicy } from '@/lib/coach';
 
 const HEARTBEAT_MS = 45_000;
 
@@ -13,6 +14,9 @@ export function usePresenceSync(currentSurface: string) {
 
     const heartbeat = (isOnline = true) => {
       if (!S.me || cancelled) return;
+      if (isOnline) {
+        CoachPolicy.recordSurfaceActivity(S.me, currentSurface, Date.now());
+      }
       void upsertPresence({
         memberKey: S.me,
         currentSurface,
