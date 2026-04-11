@@ -237,10 +237,7 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
       <div className="ideas-scroll" ref={scrollRef}>
         <div className="ideas-hero">
           <div className="ideas-hero-eyebrow">Idéer</div>
-          <div className="ideas-hero-title">Fånga något innan det försvinner</div>
-          <div className="ideas-hero-subtitle">
-            Den här ytan ska hjälpa en lös tanke att bli tydligare, inte tvinga den att vara färdig.
-          </div>
+          <div className="ideas-hero-title">Fånga en idé</div>
           <div className="ideas-hero-stats">
             <div className="ideas-stat-chip">
               <Sparkles size={14} />
@@ -260,14 +257,13 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
         {totalIdeas === 0 && (
           <div className="empty-state">
             <Lightbulb size={48} strokeWidth={1} />
-            <div className="empty-text">Vad bubblar just nu?</div>
+            <div className="empty-text">Tomt än så länge.</div>
           </div>
         )}
 
         {groupedIdeas.shaping.length > 0 && (
           <section className="ideas-section">
             <div className="ideas-section-title">I rörelse</div>
-            <div className="ideas-section-subtitle">Tankar som fortfarande formas</div>
             <div className="ideas-list">
               {groupedIdeas.shaping.map((idea) => (
                 <IdeaCard
@@ -285,7 +281,6 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
         {groupedIdeas.activated.length > 0 && (
           <section className="ideas-section">
             <div className="ideas-section-title">Blev handling</div>
-            <div className="ideas-section-subtitle">Idéer som redan rör sig som uppdrag</div>
             <div className="ideas-list">
               {groupedIdeas.activated.map((idea) => (
                 <IdeaCard
@@ -303,7 +298,6 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
         {groupedIdeas.shared.length > 0 && (
           <section className="ideas-section">
             <div className="ideas-section-title">Delade</div>
-            <div className="ideas-section-subtitle">Frön som redan lagts ut i bandets gemensamma rum</div>
             <div className="ideas-list">
               {groupedIdeas.shared.map((idea) => (
                 <IdeaCard
@@ -320,12 +314,12 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
       </div>
 
       <div className="ideas-input-wrap">
-        <div className="ideas-input-label">Ny tanke</div>
+        <div className="ideas-input-label">Fånga</div>
         <div className="cc-input-bar">
           <textarea
             ref={taRef}
             className="cc-input"
-            placeholder="Skriv något som känns värt att fånga..."
+            placeholder="Skriv en idé..."
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}
@@ -382,7 +376,7 @@ function IdeaCard({
       </div>
       {idea.questId ? (
         <div className="idea-next-step">
-          Ett uppdrag finns nu kopplat till idén.
+          Uppdrag kopplat
           <ArrowRight size={14} />
         </div>
       ) : null}

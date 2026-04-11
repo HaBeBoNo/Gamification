@@ -1,4 +1,4 @@
-export function SectionEyebrow({ title, subtitle }: { title: string; subtitle: string }) {
+export function SectionEyebrow({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{
@@ -11,9 +11,11 @@ export function SectionEyebrow({ title, subtitle }: { title: string; subtitle: s
       }}>
         {title}
       </div>
-      <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-        {subtitle}
-      </div>
+      {subtitle ? (
+        <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
+          {subtitle}
+        </div>
+      ) : null}
     </div>
   );
 }

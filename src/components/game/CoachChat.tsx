@@ -179,7 +179,7 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
         {messages.length === 0 && !loading && (
           <div className="empty-state">
             <MessageCircle size={48} strokeWidth={1} />
-            <div className="empty-text">Din coach är redo. Skriv något.</div>
+            <div className="empty-text">Skriv till coachen.</div>
           </div>
         )}
         {messages.map((m, i) => (

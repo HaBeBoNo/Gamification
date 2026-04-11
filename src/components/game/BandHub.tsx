@@ -84,14 +84,16 @@ export default function BandHub() {
           }}>
             {activeTabMeta.title}
           </div>
-          <div style={{
-            fontSize: 'var(--text-body)',
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.55,
-            maxWidth: 560,
-          }}>
-            {activeTabMeta.desc}
-          </div>
+          {activeTabMeta.desc ? (
+            <div style={{
+              fontSize: 'var(--text-body)',
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.55,
+              maxWidth: 560,
+            }}>
+              {activeTabMeta.desc}
+            </div>
+          ) : null}
         </div>
 
         <div style={{
@@ -140,7 +142,7 @@ export default function BandHub() {
         <div style={{ padding: 'var(--section-gap) var(--layout-gutter-room) 0' }}>
           <CalendarSpotlight />
           <section style={{ marginTop: 'var(--section-gap)' }}>
-            <SectionEyebrow title="Allt i kalendern" subtitle="Rep, svar och check-ins på ett ställe" />
+            <SectionEyebrow title="Allt i kalendern" />
           </section>
           <CalendarView />
         </div>
@@ -154,13 +156,13 @@ export default function BandHub() {
             gap: 10,
             marginBottom: 'var(--section-gap)',
           }}>
-            <StatCard icon={<HardDrive size={15} />} label="Filer" value={String(driveStats.total)} detail="i hubben" />
-            <StatCard icon={<Pin size={15} />} label="Fästa" value={String(driveStats.pinned)} detail="snabb access" />
+            <StatCard icon={<HardDrive size={15} />} label="Filer" value={String(driveStats.total)} />
+            <StatCard icon={<Pin size={15} />} label="Fästa" value={String(driveStats.pinned)} />
             <StatCard
               icon={<Clock3 size={15} />}
               label="Senast"
               value={driveStats.latestModified ? formatDate(driveStats.latestModified) : '—'}
-              detail={driveStats.latestModified ? formatRelativeDriveDate(driveStats.latestModified) : 'ingen aktivitet'}
+              detail={driveStats.latestModified ? formatRelativeDriveDate(driveStats.latestModified) : undefined}
             />
           </div>
 
@@ -242,7 +244,7 @@ export default function BandHub() {
                     background: googleToken ? 'currentColor' : 'var(--color-text-subtle)',
                     opacity: googleToken ? 1 : 0.75,
                   }} />
-                  {googleToken ? 'Uppladdning aktiv' : 'Anslut för uppladdning'}
+                  {googleToken ? 'Uppladdning på' : 'Anslut uppladdning'}
                 </div>
               </div>
               <GoogleConnectButton
@@ -332,7 +334,7 @@ export default function BandHub() {
             <>
               {driveFilter === 'alla' && (latestRecording || latestDocument || latestImage) && (
                 <section style={{ marginBottom: 'var(--section-gap)' }}>
-                  <SectionEyebrow title="Öppna först" subtitle="Det som oftast är mest relevant när någon går in här" />
+                  <SectionEyebrow title="Öppna först" />
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
                     {latestRecording ? <QuickOpenCard icon={<Mic2 size={15} />} eyebrow="Senaste inspelning" file={latestRecording} /> : null}
                     {latestDocument ? <QuickOpenCard icon={<FileText size={15} />} eyebrow="Senaste dokument" file={latestDocument} /> : null}
@@ -343,7 +345,7 @@ export default function BandHub() {
 
               {featuredFiles.length > 0 && (
                 <section style={{ marginBottom: 'var(--section-gap)' }}>
-                  <SectionEyebrow title="Fästa filer" subtitle="Det som ska vara nära till hands" />
+                  <SectionEyebrow title="Fästa filer" />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {featuredFiles.map((file) => (
                       <FileRow key={file.id} file={file} pinned={true} onTogglePin={() => handleTogglePin(file.id)} />
@@ -354,13 +356,12 @@ export default function BandHub() {
 
               <section>
                 <SectionEyebrow
-                  title={driveFilter === 'alla' ? 'Flödet just nu' : `Visar ${DRIVE_FILTERS.find((filter) => filter.id === driveFilter)?.label.toLowerCase()}`}
-                  subtitle="Det senaste som är relevant att öppna"
+                  title={driveFilter === 'alla' ? 'Senast' : DRIVE_FILTERS.find((filter) => filter.id === driveFilter)?.label ?? 'Filer'}
                 />
 
                 {flowFiles.length === 0 && featuredFiles.length === 0 && files.length === 0 && (
                   <div style={{ ...emptyCardStyle, textAlign: 'center' }}>
-                    <div style={{ marginBottom: 14 }}>Inga filer hittades i den här Drive-mappen ännu.</div>
+                    <div style={{ marginBottom: 14 }}>Tomt i Drive just nu.</div>
                     <button
                       onClick={async () => {
                         if (supabase) await supabase.auth.signOut();

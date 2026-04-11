@@ -29,15 +29,12 @@ export function HomeBandEcho({
       }}>
         {loading ? (
           <div style={{ padding: CARD_PAD_ROOM, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
-            Lyssnar in bandet...
+            Lyssnar...
           </div>
         ) : items.length === 0 ? (
           <div style={{ padding: CARD_PAD_ROOM, display: 'flex', flexDirection: 'column', gap: SECTION_GAP_COMPACT }}>
             <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text)', fontWeight: 600 }}>
-              Det är lugnt i bandet just nu.
-            </div>
-            <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
-              När någon annan rör sig dyker det upp här först. Hela flödet finns fortfarande under Aktivitet.
+              Tyst just nu.
             </div>
             <button
               onClick={() => onNavigate?.('activity')}
@@ -57,7 +54,7 @@ export function HomeBandEcho({
                 cursor: 'pointer',
               }}
             >
-              Öppna flödet
+              Aktivitet
             </button>
           </div>
         ) : (
@@ -126,7 +123,7 @@ export function HomeBandEcho({
                   cursor: 'pointer',
                 }}
               >
-                Se hela flödet
+                Aktivitet
               </button>
             </div>
           </>

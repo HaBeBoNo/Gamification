@@ -5,17 +5,17 @@ export const BAND_HUB_TABS = [
   {
     id: 'kalender',
     label: 'Kalender',
-    eyebrow: 'Bandets rytm',
-    title: 'Det som händer nu och snart',
-    desc: 'Håll koll på rep, aktiviteter och det som förtjänar närvaro.',
+    eyebrow: 'Kalender',
+    title: 'Rep, svar, check-in',
+    desc: '',
     icon: CalendarDays,
   },
   {
     id: 'drive',
     label: 'Drive',
-    eyebrow: 'Bandets material',
-    title: 'Filerna ni faktiskt använder',
-    desc: 'Snabb väg till senaste materialet, viktiga dokument och det som ska upp igen.',
+    eyebrow: 'Drive',
+    title: 'Inspelningar, dokument, bilder',
+    desc: '',
     icon: HardDrive,
   },
 ] as const;
@@ -92,7 +92,7 @@ export function getDriveSurfaceModel(
 }
 
 export function getDriveEmptyMessage(driveFilter: DriveFilterId): string {
-  if (driveFilter === 'fasta') return 'Inga filer är fästa ännu.';
-  if (driveFilter === 'alla') return 'Inga filer hittades i Sektionen-mappen.';
-  return `Inga filer hittades i kategorin ${DRIVE_FILTERS.find((filter) => filter.id === driveFilter)?.label?.toLowerCase()}.`;
+  if (driveFilter === 'fasta') return 'Inget fäst just nu.';
+  if (driveFilter === 'alla') return 'Tomt i Drive just nu.';
+  return `Tomt under ${DRIVE_FILTERS.find((filter) => filter.id === driveFilter)?.label?.toLowerCase()}.`;
 }

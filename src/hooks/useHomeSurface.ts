@@ -226,24 +226,24 @@ export function useReengagementSurface() {
           nextPlan = {
             eyebrow: getReengagementEyebrow(stage),
             title: eventLive
-              ? 'Bandet är live nu'
+              ? 'Live nu'
               : eventNeedsResponse
-                ? 'Kom tillbaka via nästa rep'
-                : 'Nästa bandpunkt är nära',
+                ? 'Svara i kalendern'
+                : 'Nästa uppe',
             subtitle: eventLive
-              ? `${nextEvent.title} · ${participation?.checkInCount || 0} incheckad${(participation?.checkInCount || 0) === 1 ? '' : 'e'} hittills`
+              ? `${nextEvent.title} · ${participation?.checkInCount || 0} incheckad${(participation?.checkInCount || 0) === 1 ? '' : 'e'}`
               : eventNeedsResponse
-                ? `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)} · ${participation?.rsvpCount || 0} kommer hittills`
+                ? `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`
                 : `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
-            cta: 'Öppna kalendern',
+            cta: 'Kalender',
             target: 'bandhub',
           };
         } else if (collabWaiting) {
           nextPlan = {
             eyebrow: getReengagementEyebrow(stage),
-            title: 'Bandet väntar på din del',
-            subtitle: collabWaiting.quest_data?.title || 'Ett gemensamt uppdrag rör sig vidare',
-            cta: 'Öppna uppdrag',
+            title: 'Din del väntar',
+            subtitle: collabWaiting.quest_data?.title || 'Samarbete i rörelse',
+            cta: 'Quests',
             target: 'quests',
           };
         } else if (unreadActionable) {
@@ -257,17 +257,17 @@ export function useReengagementSurface() {
         } else if (focusQuest) {
           nextPlan = {
             eyebrow: getReengagementEyebrow(stage),
-            title: 'Börja med ett litet nästa steg',
+            title: 'Nästa steg',
             subtitle: focusQuest.title,
-            cta: 'Fortsätt i Quests',
+            cta: 'Quests',
             target: 'quests',
           };
         } else {
           nextPlan = {
             eyebrow: getReengagementEyebrow(stage),
-            title: 'Plocka upp tråden med coachen',
+            title: 'Öppna coach',
             subtitle: getReengagementContext(daysSinceActivity, stage),
-            cta: 'Öppna coach',
+            cta: 'Coach',
             target: 'coach',
           };
         }
@@ -280,9 +280,9 @@ export function useReengagementSurface() {
         if (!cancelled) {
           setPlan({
             eyebrow: getReengagementEyebrow(stage),
-            title: 'Kom tillbaka med ett tydligt nästa steg',
+            title: 'Öppna coach',
             subtitle: getReengagementContext(daysSinceActivity, stage),
-            cta: 'Öppna coach',
+            cta: 'Coach',
             target: 'coach',
           });
           setLoading(false);
@@ -344,7 +344,7 @@ export function useWaitingOnYouSurface() {
           id: `notification-${notification.id}`,
           tone,
           title,
-          subtitle: subtitle || 'Något väntar på din respons',
+          subtitle: subtitle || 'Svar väntar',
           target: getNotificationTarget(notification),
           cta: getNotificationActionLabel(notification),
           notificationId: notification.id,
@@ -361,26 +361,26 @@ export function useWaitingOnYouSurface() {
           const needsResponse = isCalendarResponseNeeded(nextEvent.start, participation.hasResponded);
 
           if (live || needsResponse) {
-            nextSignals.push({
-              id: 'calendar-focus',
-              tone: live ? 'checkin' : 'calendar',
-              title: live ? 'Bandet är live nu' : `Svara på ${nextEvent.title}`,
-              subtitle: live
-                ? `${participation.checkInCount} incheckad${participation.checkInCount === 1 ? '' : 'e'} · öppna kalendern och checka in`
-                : `${getRelativeCalendarLabel(nextEvent.start)} · ${participation.rsvpCount} kommer hittills`,
-              target: 'bandhub',
-              cta: live ? 'Checka in' : 'Svara nu',
-            });
-          } else if (soon && nextSignals.length < 2) {
-            nextSignals.push({
-              id: 'calendar-upcoming',
-              tone: 'calendar',
-              title: `${nextEvent.title} är snart här`,
-              subtitle: `${getRelativeCalendarLabel(nextEvent.start)} · håll rytmen levande i kalendern`,
-              target: 'bandhub',
-              cta: 'Öppna kalender',
-            });
-          }
+          nextSignals.push({
+            id: 'calendar-focus',
+            tone: live ? 'checkin' : 'calendar',
+            title: live ? 'Live nu' : `Svara på ${nextEvent.title}`,
+            subtitle: live
+              ? `${participation.checkInCount} incheckad${participation.checkInCount === 1 ? '' : 'e'}`
+                : `${getRelativeCalendarLabel(nextEvent.start)} · ${participation.rsvpCount} kommer`,
+            target: 'bandhub',
+            cta: live ? 'Checka in' : 'Svara',
+          });
+        } else if (soon && nextSignals.length < 2) {
+          nextSignals.push({
+            id: 'calendar-upcoming',
+            tone: 'calendar',
+            title: 'Snart',
+            subtitle: `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
+            target: 'bandhub',
+            cta: 'Kalender',
+          });
+        }
         }
       } catch {
         // Ignore transient calendar failures.
@@ -392,7 +392,7 @@ export function useWaitingOnYouSurface() {
           id: 'delegation',
           tone: 'delegation',
           title: `${delegated.length} uppdrag väntar på ditt svar`,
-          subtitle: delegated[0]?.title || 'Någon skickade något till dig',
+          subtitle: delegated[0]?.title || 'Skickat till dig',
           target: 'quests',
           cta: 'Öppna uppdrag',
         });
@@ -411,10 +411,10 @@ export function useWaitingOnYouSurface() {
           nextSignals.push({
             id: 'collaborative',
             tone: 'collaborative',
-            title: `${collabWaiting.length} samarbetsuppdrag rör sig utan dig`,
-            subtitle: first.quest_data?.title || 'Din del väntar fortfarande',
+            title: `${collabWaiting.length} samarbetsuppdrag väntar`,
+            subtitle: first.quest_data?.title || 'Din del väntar',
             target: 'quests',
-            cta: 'Hoppa in',
+            cta: 'Quests',
           });
         }
       } catch {
@@ -439,7 +439,7 @@ export function useWaitingOnYouSurface() {
             id: 'comments',
             tone: 'comment',
             title: `${directComments.length} kommentar${directComments.length > 1 ? 'er' : ''} till dig`,
-            subtitle: `${getMemberName(directComments[0].who)} svarade på din aktivitet`,
+            subtitle: `${getMemberName(directComments[0].who)} svarade`,
             target: 'activity',
             cta: 'Svara',
           });
@@ -459,10 +459,10 @@ export function useWaitingOnYouSurface() {
           nextSignals.push({
             id: 'feedback',
             tone: 'reaction',
-            title: `Respons på ${feedbackItems.length} av dina aktiviteter`,
-            subtitle: 'Öppna feeden och svara medan det är levande',
+            title: `Respons på ${feedbackItems.length} aktivitet${feedbackItems.length > 1 ? 'er' : ''}`,
+            subtitle: 'Aktivitet',
             target: 'activity',
-            cta: 'Se aktivitet',
+            cta: 'Aktivitet',
           });
         }
       } catch {
@@ -474,7 +474,7 @@ export function useWaitingOnYouSurface() {
           id: 'notifications',
           tone: 'notifications',
           title: `${unreadCount} olästa notis${unreadCount > 1 ? 'er' : ''}`,
-          subtitle: 'Något har hänt sedan sist',
+          subtitle: 'Notiser',
           target: 'notifications',
           cta: 'Visa alla',
         });

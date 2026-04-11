@@ -59,10 +59,10 @@ export function CalendarSpotlight() {
 
   return (
     <section style={{ marginBottom: 'var(--section-gap)' }}>
-      <SectionEyebrow title="Nästa i kalendern" subtitle="Det närmaste som påverkar bandet" />
+      <SectionEyebrow title="Kalenderfokus" />
 
       {loading ? (
-        <div style={emptyCardStyle}>Läser in nästa bandpunkt...</div>
+        <div style={emptyCardStyle}>Läser in...</div>
       ) : (
         <>
           <div style={{
@@ -75,19 +75,19 @@ export function CalendarSpotlight() {
               icon={<CalendarDays size={15} />}
               label="Nästa"
               value={nextLabel}
-              detail={nextEvent ? `${nextEvent.title} · ${nextTime}` : 'ingen händelse planerad'}
+              detail={nextEvent ? `${nextEvent.title} · ${nextTime}` : 'Tomt'}
             />
             <StatCard
               icon={<Clock3 size={15} />}
               label="Kommer"
               value={nextEvent ? String(rsvpCount) : '0'}
-              detail={nextEvent ? (hasRsvp ? 'du är med' : hasDeclined ? 'du har lämnat besked' : 'svara i listan nedan') : 'ingen respons behövs'}
+              detail={nextEvent ? (hasRsvp ? 'Med' : hasDeclined ? 'Kan inte' : 'Väntar') : '—'}
             />
             <StatCard
               icon={<CircleOff size={15} />}
               label="Kan inte"
               value={nextEvent ? String(declineCount) : '0'}
-              detail={nextEvent ? 'markerad frånvaro' : 'ingen aktivitet just nu'}
+              detail={nextEvent ? 'Frånvaro' : '—'}
             />
           </div>
 
@@ -107,29 +107,25 @@ export function CalendarSpotlight() {
               letterSpacing: '0.08em',
               marginBottom: 8,
             }}>
-              {active ? 'Live nu' : needsResponse ? 'Behöver ditt svar' : nextEvent ? 'Nästa bandpunkt' : 'Lugnare läge'}
+              {active ? 'Live nu' : needsResponse ? 'Svar behövs' : nextEvent ? 'Nästa uppe' : 'Tomt just nu'}
             </div>
             <div style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600, marginBottom: 6 }}>
               {active
-                ? `${nextEvent?.title} är igång`
+                ? nextEvent?.title
                 : needsResponse
-                  ? `Svara på ${nextEvent?.title} medan det fortfarande är nära`
+                  ? nextEvent?.title
                   : nextEvent
-                    ? `${nextEvent.title} håller bandets rytm uppe`
-                    : 'Kalendern är lugn just nu'}
+                    ? nextEvent.title
+                    : 'Kalendern är lugn'}
             </div>
             <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
               {active
-                ? `${checkInCount} incheckad${checkInCount === 1 ? '' : 'e'} hittills. Om du är på plats, checka in i listan nedan så att närvaron blir synlig.`
+                ? `${checkInCount} incheckad${checkInCount === 1 ? '' : 'e'}`
                 : needsResponse
-                  ? `${rsvpCount} har svarat${declineCount > 0 ? `, ${declineCount} kan inte` : ''}. Ta ställning direkt här så blir läget tydligt för alla.`
+                  ? `${rsvpCount} kommer${declineCount > 0 ? ` · ${declineCount} kan inte` : ''}`
                   : nextEvent
-                    ? (hasRsvp || hasDeclined)
-                      ? hasDeclined
-                        ? 'Du har redan markerat att du inte kan komma. Håll ändå koll här om läget i bandet förändras.'
-                        : 'Du är redan med. Håll koll här när det närmar sig live-läge och check-in börjar spela roll.'
-                      : 'Du behöver inte göra något direkt nu, men det här är nästa naturliga punkt där bandet samlas igen.'
-                    : 'När nästa rep, planering eller aktivitet landar i kalendern ska den här ytan bli den snabbaste vägen tillbaka in i bandets vardag.'}
+                    ? `${nextLabel} · ${nextTime}`
+                    : 'Inget nära'}
             </div>
           </div>
         </>

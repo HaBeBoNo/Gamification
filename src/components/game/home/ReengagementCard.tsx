@@ -35,21 +35,23 @@ export function ReengagementCard({
         </div>
         {loading ? (
           <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-            Kalibrerar den kortaste vägen tillbaka in i bandets rytm...
+            Kalibrerar...
           </div>
         ) : (
           <>
             <div style={{ fontSize: 'var(--text-body)', color: 'var(--color-text)', fontWeight: 600, marginBottom: 6 }}>
               {plan?.title}
             </div>
-            <div style={{
-              fontSize: 'var(--text-caption)',
-              color: 'var(--color-text-muted)',
-              lineHeight: 1.5,
-              marginBottom: SECTION_GAP_COMPACT,
-            }}>
-              {plan?.subtitle}
-            </div>
+            {plan?.subtitle ? (
+              <div style={{
+                fontSize: 'var(--text-caption)',
+                color: 'var(--color-text-muted)',
+                lineHeight: 1.5,
+                marginBottom: SECTION_GAP_COMPACT,
+              }}>
+                {plan.subtitle}
+              </div>
+            ) : null}
             <button
               onClick={() => {
                 if (!plan) return;

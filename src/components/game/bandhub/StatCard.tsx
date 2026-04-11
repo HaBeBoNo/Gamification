@@ -9,7 +9,7 @@ export function StatCard({
   icon: React.ReactNode;
   label: string;
   value: string;
-  detail: string;
+  detail?: string;
 }) {
   return (
     <div style={{
@@ -41,9 +41,11 @@ export function StatCard({
       }}>
         {value}
       </div>
-      <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-        {detail}
-      </div>
+      {detail ? (
+        <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+          {detail}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function DailyCoachCard({
         letterSpacing: '0.08em',
         margin: `0 0 ${SECTION_GAP_COMPACT}`,
       }}>
-        Läget just nu
+        Coach
       </p>
       <div
         onClick={() => onOpenCoach?.(message)}
@@ -73,7 +73,7 @@ export function DailyCoachCard({
               {coachName}
             </div>
             <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
-              {activeQuestCount > 0 ? `${activeQuestCount} aktiva uppdrag just nu` : 'Dags att välja nästa steg'}
+              {activeQuestCount > 0 ? `${activeQuestCount} aktiva` : 'Nästa steg'}
             </div>
           </div>
           <div style={{
@@ -98,7 +98,7 @@ export function DailyCoachCard({
           marginBottom: SECTION_GAP,
           minHeight: 52,
         }}>
-          {loading ? 'Coach kalibrerar läget...' : message}
+          {loading ? 'Kalibrerar...' : message}
         </div>
 
         {focusQuest && (
@@ -117,7 +117,7 @@ export function DailyCoachCard({
               letterSpacing: '0.08em',
               marginBottom: 6,
             }}>
-              Nästa steg
+              Fokus
             </div>
             <div style={{
               fontSize: 'var(--text-body)',
@@ -132,7 +132,7 @@ export function DailyCoachCard({
             </div>
             {followUpQuest && (
               <div style={{ marginTop: SECTION_GAP_COMPACT, fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>
-                Efter det: {followUpQuest.title}
+                Sedan: {followUpQuest.title}
               </div>
             )}
           </div>
@@ -140,7 +140,7 @@ export function DailyCoachCard({
 
         {latestSocial && (
           <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', marginBottom: SECTION_GAP_COMPACT }}>
-            Senaste puls: {(MEMBERS as Record<string, any>)[latestSocial.who]?.name || latestSocial.who} {latestSocial.action}
+            Senast: {(MEMBERS as Record<string, any>)[latestSocial.who]?.name || latestSocial.who}
           </div>
         )}
 
@@ -165,7 +165,7 @@ export function DailyCoachCard({
               cursor: 'pointer',
             }}
           >
-            Fortsätt nu
+            Quests
           </button>
           <button
             onClick={(event) => {
@@ -187,7 +187,7 @@ export function DailyCoachCard({
               cursor: 'pointer',
             }}
           >
-            Öppna coach
+            Coach
           </button>
         </div>
       </div>

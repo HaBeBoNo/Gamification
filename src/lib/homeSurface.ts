@@ -73,13 +73,13 @@ export function getRelativeCalendarLabel(dateStr: string): string {
 export function getReengagementEyebrow(stage: 'active' | 'quiet_3' | 'quiet_7' | 'quiet_14'): string {
   switch (stage) {
     case 'quiet_14':
-      return 'Plocka upp tråden igen';
+      return 'Tillbaka in';
     case 'quiet_7':
-      return 'Tillbaka in i rytmen';
+      return 'Rytm';
     case 'quiet_3':
-      return 'Hitta tillbaka snabbt';
+      return 'Tillbaka';
     default:
-      return 'Läget just nu';
+      return 'Nu';
   }
 }
 
@@ -89,11 +89,11 @@ export function getReengagementContext(
 ): string {
   switch (stage) {
     case 'quiet_14':
-      return `Det har varit lugnt i ungefär ${daysSinceActivity} dagar. Börja med det som återkopplar dig till bandets rytm.`;
+      return `${daysSinceActivity} dagar lugnt`;
     case 'quiet_7':
-      return 'Det har varit tyst i ungefär en vecka. Ett tydligt nästa steg räcker för att komma tillbaka in i rörelsen.';
+      return 'En vecka lugnt';
     case 'quiet_3':
-      return 'Du har varit borta några dagar. Ta den kortaste vägen tillbaka in i flödet.';
+      return 'Några dagar lugnt';
     default:
       return '';
   }
@@ -160,30 +160,30 @@ export function buildHomeBandStatusCards(params: {
     {
       kind: 'activity',
       value: `${activeToday}/${totalMembers}`,
-      label: 'Aktiva idag',
-      sub: activeNow !== null ? `${activeNow} live nu · ${xp48h} XP / 48h` : `${xp48h} XP · 48h`,
+      label: 'Aktiva',
+      sub: activeNow !== null ? `${activeNow} live · ${xp48h} XP / 48h` : `${xp48h} XP / 48h`,
     },
     nextEvent ? {
       kind: 'calendar',
       value: nextEvent.date,
       label: nextEvent.title,
-      sub: 'Nästa event',
+      sub: 'Kalender',
     } : {
       kind: 'calendar',
       value: '—',
-      label: 'Inga events',
-      sub: 'Lägg till i kalendern',
+      label: 'Tomt',
+      sub: 'Kalender',
     },
     myRank ? {
       kind: 'rank',
       value: `#${myRank.pos}`,
-      label: myRank.pos === 1 ? 'Du leder!' : `${myRank.gap} XP till #${myRank.pos - 1}`,
-      sub: myRank.pos === 1 ? 'Håll positionen' : myRank.above,
+      label: 'Position',
+      sub: myRank.pos === 1 ? 'Leder' : `${myRank.gap} upp`,
     } : {
       kind: 'rank',
       value: '—',
-      label: 'Ranking',
-      sub: 'Slutför quests för XP',
+      label: 'Position',
+      sub: '—',
     },
   ];
 }

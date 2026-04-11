@@ -77,7 +77,7 @@ export function OverflowSheet({
                       <span className="overflow-row-label">{item.label}</span>
                     </div>
                     <div className="overflow-row-meta">
-                      {active ? <span className="overflow-row-active">Här nu</span> : null}
+                      {active ? <span className="overflow-row-active">Öppen</span> : null}
                       <ChevronRight size={16} className="overflow-row-chevron" />
                     </div>
                   </button>

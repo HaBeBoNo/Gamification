@@ -937,7 +937,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                 fontSize: 'var(--text-caption)',
                 textAlign: 'center',
               }}>
-                Inga svar ännu. Första kommentaren kan vara din.
+                Inga svar än.
               </div>
             ) : (
               <div style={{
@@ -1032,7 +1032,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
       ) : feedItems.length === 0 ? (
         <div className="empty-state" style={{ padding: 'var(--space-xl) var(--space-lg)' }}>
           <Activity size={48} strokeWidth={1} />
-          <div className="empty-text">Ingen aktivitet ännu. Första steget är ditt.</div>
+          <div className="empty-text">Tomt just nu.</div>
         </div>
       ) : (
         <div className={`feed-list feed-list-flat ${compact ? 'feed-list-compact' : 'feed-list-roomy'}`}>

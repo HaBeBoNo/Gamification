@@ -379,7 +379,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         <div className="empty-state stagger-3">
           <Compass size={48} strokeWidth={1} />
           <div className="empty-text">
-            {filter === 'collaborative' ? 'Inga kollaborativa uppdrag just nu.' : 'Inga aktiva quests just nu.'}
+            {filter === 'collaborative' ? 'Inga kollaborativa uppdrag.' : 'Inga aktiva quests.'}
           </div>
         </div>
       ) : showGrouped ? (

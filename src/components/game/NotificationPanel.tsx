@@ -142,7 +142,7 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
           {orderedNotifications.length === 0 ? (
             <div className="notif-empty">
               <Bell size={48} strokeWidth={1} />
-              <span>Inga notifikationer ännu.</span>
+              <span>Tomt just nu.</span>
             </div>
           ) : (
             orderedNotifications.map(n => {

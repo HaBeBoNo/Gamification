@@ -23,7 +23,7 @@ function getTemporalLabel(pattern?: string): string {
     case 'early': return 'Tidig Avslutare';
     case 'deadline-driven': return 'Deadline-driven';
     case 'steady': return 'Stadig Arbetare';
-    default: return 'Utforskar...';
+    default: return 'Tar form';
   }
 }
 
@@ -84,19 +84,19 @@ function getCoachReading({
   if (motivation?.trim()) return motivation.trim();
 
   const paceMap: Record<string, string> = {
-    early: 'Du går ofta igång tidigt när riktningen är tydlig.',
-    'deadline-driven': 'Du svarar starkt när det finns ett skarpt läge att möta.',
-    steady: 'Du bygger bäst när du får hålla en stadig rytm över tid.',
+    early: 'Startar tidigt när riktningen är klar.',
+    'deadline-driven': 'Svarar starkt på skarpa lägen.',
+    steady: 'Bygger bäst i jämn rytm.',
   };
 
   const categoryPart = CAT_LABELS[dominantCategory]
-    ? `Just nu dras du mest mot ${CAT_LABELS[dominantCategory].toLowerCase()}.`
-    : 'Just nu håller din riktning fortfarande på att ta form.';
+    ? `Drar mot ${CAT_LABELS[dominantCategory].toLowerCase()}.`
+    : 'Riktningen tar form.';
   const streakPart = streak >= 3
-    ? ' Streaken visar att du redan är inne i rörelse.'
-    : ' Nästa steg blir viktigt för att sätta rytmen.';
+    ? ' Streaken är igång.'
+    : ' Nästa steg sätter tonen.';
 
-  return `${paceMap[temporalPattern || ''] || 'Du rör dig bäst när uppdraget känns relevant direkt.'} ${categoryPart}${streakPart}`;
+  return `${paceMap[temporalPattern || ''] || 'Rör sig bäst när uppgiften känns direkt relevant.'} ${categoryPart}${streakPart}`;
 }
 
 // ── Stat Radar (compact SVG) ────────────────────────────────────
@@ -358,25 +358,25 @@ export default function ProfileView() {
             <Target size={16} style={{ color: xpColor }} />
             <span className="pv-stat-value">{questsDone}</span>
             <span className="pv-stat-label">Uppdrag</span>
-            <span className="pv-stat-helper">gjorda hittills</span>
+            <span className="pv-stat-helper">klart</span>
           </div>
           <div className="pv-stat-card pv-glance-card">
             <Flame size={16} style={{ color: streak >= 7 ? '#f59e0b' : streak >= 3 ? xpColor : 'var(--color-text-muted)' }} />
             <span className="pv-stat-value">{streak}</span>
             <span className="pv-stat-label">Streak</span>
-            <span className="pv-stat-helper">dagar i rörelse</span>
+            <span className="pv-stat-helper">dagar</span>
           </div>
           <div className="pv-stat-card pv-glance-card">
             <Clock size={16} style={{ color: 'var(--color-text-muted)' }} />
             <span className="pv-stat-value pv-stat-value-text">{getTemporalLabel(temporalPattern)}</span>
             <span className="pv-stat-label">Arbetsstil</span>
-            <span className="pv-stat-helper">så brukar du arbeta</span>
+            <span className="pv-stat-helper">mönster</span>
           </div>
           <div className="pv-stat-card pv-glance-card">
             <Zap size={16} style={{ color: xpColor }} />
             <span className="pv-stat-value pv-stat-value-text">{focusLabel}</span>
             <span className="pv-stat-label">Fokus</span>
-            <span className="pv-stat-helper">där du växer mest</span>
+            <span className="pv-stat-helper">nu</span>
           </div>
         </div>
       </motion.div>
@@ -413,9 +413,9 @@ export default function ProfileView() {
           <div className="pv-section-label">ARBETSMÖNSTER</div>
           <div className="pv-focus-summary">
             <div className="pv-focus-copy">
-              <span className="pv-focus-head">Form senaste fem</span>
+              <span className="pv-focus-head">Senaste fem</span>
               <span className="pv-focus-sub">
-                {formWins} av 5 steg sattes med tydlig framdrift.
+                {formWins}/5 med fart.
               </span>
             </div>
             <FormDots form={form} color={xpColor} />
@@ -447,7 +447,7 @@ export default function ProfileView() {
         <div className="pv-section-label">COACHENS LÄSNING</div>
         <div className="pv-coach-name" style={{ color: xpColor }}>{coachName}</div>
         <div className="pv-coach-motivation">
-          <span className="pv-coach-quote-label">Just nu</span>
+          <span className="pv-coach-quote-label">Läsning</span>
           <span className="pv-coach-quote">{coachReading}</span>
         </div>
         <div className="pv-coach-tags">

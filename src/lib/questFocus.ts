@@ -69,49 +69,49 @@ export function getRelevantActiveQuests(quests: QuestLike[], memberKey?: string,
 }
 
 export function getQuestFocusReason(quest: QuestLike, memberKey?: string): string {
-  if (!quest) return 'Det här är nästa naturliga steg.';
+  if (!quest) return 'Nästa steg.';
 
   if (quest.delegatedTo === memberKey && !quest.delegationHandled) {
-    return 'Någon väntar på ditt svar här.';
+    return 'Väntar på ditt svar.';
   }
 
   const completedBy = quest.completedBy || quest.completed_by || [];
   if (quest.collaborative && (quest.participants || []).includes(memberKey) && !completedBy.includes(memberKey)) {
     if ((completedBy || []).length > 0) {
-      return 'Bandet rör sig redan här. Din del håller kedjan levande.';
+      return 'Bandet rör sig här.';
     }
-    return 'Det här bygger gemenskap och fart tillsammans.';
+    return 'Bra ihop med bandet.';
   }
 
   if (quest.deadline) {
     const diffHours = (Number(quest.deadline) - Date.now()) / (1000 * 60 * 60);
-    if (diffHours <= 24) return 'Bra läge att få detta ur vägen innan det blir tungt.';
-    if (diffHours <= 72) return 'Det här närmar sig och vinner på lite momentum nu.';
+    if (diffHours <= 24) return 'Bra före deadline.';
+    if (diffHours <= 72) return 'Bra läge nu.';
   }
 
   if (quest.recur === 'daily') {
-    return 'Låg tröskel, stark effekt på momentumet.';
+    return 'Snabb vinst.';
   }
 
   if (quest.type === 'strategic') {
-    return 'Det här bygger riktning, inte bara fart.';
+    return 'Bygger riktning.';
   }
 
   if (quest.personal || quest.owner === memberKey) {
-    return 'Det här ligger närmast din bana just nu.';
+    return 'Närmast din bana.';
   }
 
-  return 'Det här är nästa rimliga steg att ta just nu.';
+  return 'Bra nästa steg.';
 }
 
 export function buildCoachNextDirection(completedQuest: QuestLike, nextQuest?: QuestLike | null): string {
   if (nextQuest?.title) {
-    return `Bra. Lås nästa steg medan känslan fortfarande är levande: ${nextQuest.title}.`;
+    return `Bra. Nästa: ${nextQuest.title}.`;
   }
 
   if (completedQuest?.recur === 'daily') {
-    return 'Bra. Låt detta bli en rytm, inte bara en enskild seger.';
+    return 'Bra. Håll rytmen.';
   }
 
-  return 'Bra. Ta ett kort andetag och välj nästa riktning medan du fortfarande har momentum.';
+  return 'Bra. Välj nästa steg.';
 }

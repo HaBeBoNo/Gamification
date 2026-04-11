@@ -62,7 +62,7 @@ export function WaitingOnYouCard({
       }}>
         {loading ? (
           <div style={{ padding: CARD_PAD_ROOM, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
-            Läser av gruppens puls...
+            Läser av...
           </div>
         ) : (
           signals.map((signal, index) => (

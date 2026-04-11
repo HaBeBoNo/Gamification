@@ -12,7 +12,7 @@ export default function QuestHistory() {
         padding: 48, textAlign: 'center',
         color: 'var(--color-text-muted)', fontSize: 13,
       }}>
-        Inga avklarade uppdrag ännu.
+        Inget klart ännu.
       </div>
     );
   }

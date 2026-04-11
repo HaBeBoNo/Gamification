@@ -253,7 +253,7 @@ function LeaderboardView() {
       {sorted.length === 0 ? (
         <div className="lbv-empty">
           <Trophy size={48} strokeWidth={1} />
-          <div className="lbv-empty-text">Ingen aktivitet ännu — första uppdraget avgör allt.</div>
+          <div className="lbv-empty-text">Ingen ranking ännu.</div>
         </div>
       ) : (
         <div className="lbv-rows">
