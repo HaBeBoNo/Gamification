@@ -3,6 +3,7 @@ import { S, useGameStore } from '@/state/store';
 import { supabase } from '@/lib/supabase';
 import type { FeedEntry } from '@/types/game';
 import { getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
+import { hydrateFeedItems } from '@/lib/socialData';
 
 function getTimestampCandidate(value: unknown): string | null {
   if (!value) return null;
@@ -39,24 +40,74 @@ function getFeedFingerprint(item: FeedEntry): string {
   ].join('|');
 }
 
+function isUnsyncedLocalItem(item: FeedEntry, syncedFingerprints: Set<string>): boolean {
+  const itemId = String(item.id || '');
+  if (!itemId) return true;
+  return !syncedFingerprints.has(getFeedFingerprint(item));
+}
+
 export function useFeedSync() {
-  // Prenumerera på tick så hooken körs om vid varje save()/notify()
-  const tick = useGameStore(s => s.tick);
-  const initialized = useRef(false);
+  const me = S.me;
+  const feed = useGameStore((state) => state.feed);
+  const feedHydrated = useGameStore((state) => state.feedHydrated);
+  const setFeed = useGameStore((state) => state.setFeed);
   const syncedFingerprints = useRef<Set<string>>(new Set());
+  const bootstrapped = useRef(false);
 
   useEffect(() => {
-    if (!supabase || !S.feed || !S.me) return;
+    syncedFingerprints.current = new Set();
+    bootstrapped.current = false;
+  }, [me]);
 
-    if (!initialized.current) {
-      S.feed.forEach(item => {
-        syncedFingerprints.current.add(getFeedFingerprint(item));
-      });
-      initialized.current = true;
-      return;
+  useEffect(() => {
+    if (!supabase || !me || bootstrapped.current) return;
+
+    let cancelled = false;
+
+    async function bootstrapFeed() {
+      const localFeed = useGameStore.getState().feed;
+
+      try {
+        const { data, error } = await supabase
+          .from('activity_feed')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const hydratedFeed = await hydrateFeedItems((data as FeedEntry[]) || []);
+        if (cancelled) return;
+
+        hydratedFeed.forEach((item) => {
+          syncedFingerprints.current.add(getFeedFingerprint(item));
+        });
+
+        const unsyncedLocal = localFeed.filter((item) => isUnsyncedLocalItem(item, syncedFingerprints.current));
+        setFeed([...hydratedFeed, ...unsyncedLocal]);
+      } catch (error) {
+        console.error('[FeedSync] bootstrap error:', error);
+        if (!cancelled) {
+          setFeed(localFeed);
+        }
+      } finally {
+        if (!cancelled) {
+          bootstrapped.current = true;
+        }
+      }
     }
 
-    const newItems = S.feed.filter(item => !syncedFingerprints.current.has(getFeedFingerprint(item)));
+    void bootstrapFeed();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [me, setFeed]);
+
+  useEffect(() => {
+    if (!supabase || !me || !feedHydrated || !bootstrapped.current) return;
+
+    const newItems = feed.filter(item => !syncedFingerprints.current.has(getFeedFingerprint(item)));
     if (newItems.length === 0) return;
 
     async function syncItems() {
@@ -83,7 +134,7 @@ export function useFeedSync() {
           : supabase
               .from('activity_feed')
               .select('id')
-              .eq('who', item.who ?? S.me)
+              .eq('who', item.who ?? me)
               .eq('action', item.action)
               .eq('xp', item.xp ?? 0)
               .eq('created_at', createdAt)
@@ -98,7 +149,7 @@ export function useFeedSync() {
 
         if (!existing || existing.length === 0) {
           const { error } = await supabase.from('activity_feed').insert({
-            who: item.who ?? S.me,
+            who: item.who ?? me,
             action: item.action,
             xp: item.xp ?? 0,
             category,
@@ -123,5 +174,72 @@ export function useFeedSync() {
     }
 
     void syncItems();
-  }, [tick, S.me]);
+  }, [feed, feedHydrated, me]);
+
+  useEffect(() => {
+    if (!supabase || !me) return;
+
+    let cancelled = false;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    async function refreshFeedFromServer() {
+      try {
+        const { data, error } = await supabase
+          .from('activity_feed')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const hydratedFeed = await hydrateFeedItems((data as FeedEntry[]) || []);
+        if (cancelled) return;
+
+        hydratedFeed.forEach((item) => {
+          syncedFingerprints.current.add(getFeedFingerprint(item));
+        });
+
+        const localUnsynced = useGameStore
+          .getState()
+          .feed
+          .filter((item) => isUnsyncedLocalItem(item, syncedFingerprints.current));
+
+        setFeed([...hydratedFeed, ...localUnsynced]);
+      } catch (error) {
+        console.error('[FeedSync] realtime refresh error:', error);
+      }
+    }
+
+    function scheduleRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        void refreshFeedFromServer();
+      }, 80);
+    }
+
+    const channel = supabase
+      .channel('feed-store-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'activity_feed',
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'feed_reactions',
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'feed_witnesses',
+      }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [me, setFeed]);
 }

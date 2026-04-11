@@ -1,4 +1,4 @@
-import { S } from '../state/store';
+import { S, useGameStore } from '../state/store';
 import type { FeedEntry } from '../types/game';
 import { MEMBERS } from '../data/members';
 
@@ -32,11 +32,10 @@ export function pushFeedEntry(
   entry: Pick<FeedEntry, 'action'> & Partial<FeedEntry>
 ): FeedEntry {
   const normalized = createFeedEntry(entry);
-  S.feed = S.feed || [];
+  const { feed, appendFeedEntry } = useGameStore.getState();
 
-  if (!S.feed.some(item => item.syncId === normalized.syncId)) {
-    S.feed.unshift(normalized);
-    if (S.feed.length > 50) S.feed.length = 50;
+  if (!feed.some(item => item.syncId === normalized.syncId)) {
+    appendFeedEntry(normalized);
   }
 
   return normalized;

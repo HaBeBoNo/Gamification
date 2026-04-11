@@ -1,5 +1,32 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { resolveFeedCreatedAt } from './useFeedSync';
+import { useGameStore } from '@/state/store';
+
+describe('feed store slice', () => {
+  beforeEach(() => {
+    useGameStore.getState().setFeed([]);
+  });
+
+  it('notifies subscribers immediately when a feed entry is appended', () => {
+    let observedFeedLength = 0;
+    const unsubscribe = useGameStore.subscribe((state) => {
+      observedFeedLength = state.feed.length;
+    });
+
+    useGameStore.getState().appendFeedEntry({
+      who: 'niklas',
+      action: 'gav en signal',
+      xp: 0,
+      ts: '2026-04-11T10:00:00.000Z',
+      syncId: 'feed_1712829600000_demo',
+    });
+
+    unsubscribe();
+
+    expect(observedFeedLength).toBe(1);
+    expect(useGameStore.getState().feed).toHaveLength(1);
+  });
+});
 
 describe('resolveFeedCreatedAt', () => {
   it('prefers explicit timestamps when present', () => {

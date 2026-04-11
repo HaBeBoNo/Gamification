@@ -7,7 +7,7 @@
 //   src/hooks/useAI.ts    — Spellogik: state-mutationer, save(), notify()
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save, notify } from '../state/store';
+import { S, save, notify, useGameStore } from '../state/store';
 import { MEMBERS } from '../data/members';
 import { awardXP } from './useXP';
 import { callClaude, parseJSON } from '../lib/claudeApi';
@@ -190,7 +190,7 @@ export async function refreshCoach(): Promise<string> {
 function buildDailyCoachFallback(memberKey: string): string {
   const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
   const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
-  const latestFeed = (S.feed || []).find(item => item.who && item.who !== memberKey);
+  const latestFeed = (useGameStore.getState().feed || []).find(item => item.who && item.who !== memberKey);
 
   if (nextQuest && latestFeed) {
     return `Det rör sig i gruppen nu. Börja med "${nextQuest.title}" och använd momentumet medan det fortfarande känns levande.`;

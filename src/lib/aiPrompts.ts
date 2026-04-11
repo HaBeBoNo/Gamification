@@ -3,7 +3,7 @@
 // Extraherat från useAI.ts för separation av logik och text.
 // ═══════════════════════════════════════════════════════════════
 
-import { S } from '../state/store';
+import { S, useGameStore } from '../state/store';
 import { ROLE_TYPES } from '../data/members';
 import { isQuestDoneNow } from './questUtils';
 import type { CharData, Quest, ResponseProfile } from '../types/game';
@@ -243,7 +243,7 @@ export function buildDailyCoachPrompt(memberKey: string): string {
   const coachContext = buildCoachPrompt(memberKey);
   const activeQuests = (S.quests || []).filter(q => q.owner === memberKey && !isQuestDoneNow(q));
   const nextQuest = activeQuests[0] || (S.quests || []).find(q => !isQuestDoneNow(q));
-  const latestFeed = (S.feed || []).find(item => item.who && item.who !== memberKey);
+  const latestFeed = (useGameStore.getState().feed || []).find(item => item.who && item.who !== memberKey);
   const char = S.chars[memberKey] || {};
 
   const todayContext = [

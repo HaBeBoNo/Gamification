@@ -166,6 +166,7 @@ export interface FeedEntry {
   action: string;
   ts?:    string;   // HH:MM timestamp (most entries)
   time?:  string;   // alias used by some callers (insight bonus)
+  t?:     string | number;
   xp?:    number;
   id?:    string;
   created_at?: string;
@@ -189,4 +190,9 @@ export interface FeedEntry {
 export interface GameStoreState {
   tick:          number;
   notifications: Notification[];
+  feed:          FeedEntry[];
+  feedHydrated:  boolean;
+  setFeed:       (feed: FeedEntry[]) => void;
+  appendFeedEntry: (entry: FeedEntry) => void;
+  replaceFeedEntry: (id: string, entry: FeedEntry) => void;
 }

@@ -35,9 +35,9 @@ describe('useSupabaseSync payload guardrails', () => {
     S.weeklyCheckouts = { hannes: { week: 14 } };
     S.seasonStart = '2026-01-01';
     S.seasonEnd = '2026-12-31';
-    S.feed = [{ who: 'hannes', action: 'should not sync', xp: 0 }];
-
     useGameStore.setState({
+      feed: [{ who: 'hannes', action: 'should not sync', xp: 0 }],
+      feedHydrated: true,
       notifications: [
         {
           id: 'local-1',

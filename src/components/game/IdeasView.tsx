@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Lightbulb, Send, Sparkles, ArrowRight, Users, Target } from 'lucide-react';
 import { S, save, useGameStore } from '@/state/store';
 import { callClaude } from '@/lib/claudeApi';
+import { pushFeedEntry } from '@/lib/feed';
 import type { IdeaEntry } from '@/types/game';
 
 interface IdeasViewProps {
@@ -176,7 +177,7 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
     };
 
     S.quests.push(newQuest);
-    S.feed.unshift({
+    pushFeedEntry({
       id: `idea-quest-${idea.id}-${Date.now()}`,
       syncId: `idea-quest-${idea.id}-${Date.now()}`,
       who: S.me,
@@ -201,7 +202,7 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
   function handleShareToBand(idea: IdeaEntry) {
     if (!S.me) return;
     const nowIso = new Date().toISOString();
-    S.feed.unshift({
+    pushFeedEntry({
       id: `idea-share-${idea.id}-${Date.now()}`,
       syncId: `idea-share-${idea.id}-${Date.now()}`,
       who: S.me,

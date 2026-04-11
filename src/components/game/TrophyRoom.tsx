@@ -1,5 +1,5 @@
 import React from 'react';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -8,7 +8,7 @@ interface Badge {
   id: string;
   name: string;
   desc: string;
-  check: () => boolean;
+  check: (feed: any[]) => boolean;
   icon: (color: string, unlocked: boolean) => React.ReactNode;
 }
 
@@ -72,7 +72,7 @@ const BADGES: Badge[] = [
     id: 'mojliggoraren',
     name: 'Möjliggöraren',
     desc: '5 synergy-triggers',
-    check: () => (S.feed || []).filter((f: any) => f.type === 'synergy').length >= 5,
+    check: (feed) => (feed || []).filter((f: any) => f.type === 'synergy').length >= 5,
     icon: (c, u) => (
       <svg {...svgProps(u)} style={{ color: c }}>
         <path d="M8 32 Q24 12 40 32" />
@@ -175,10 +175,11 @@ const BADGES: Badge[] = [
 ];
 
 export default function TrophyRoom() {
+  const feed = useGameStore((state) => state.feed);
   const me = S.me || '';
   const member = MEMBERS[me];
   const xpColor = member?.xpColor || 'var(--color-accent)';
-  const unlocked = BADGES.filter(b => b.check());
+  const unlocked = BADGES.filter((badge) => badge.check(feed));
   const total = BADGES.length;
 
   return (
@@ -200,7 +201,7 @@ export default function TrophyRoom() {
         padding: '0 16px',
       }}>
         {BADGES.map((badge, i) => {
-          const isUnlocked = badge.check();
+          const isUnlocked = badge.check(feed);
           return (
             <motion.div
               key={badge.id}

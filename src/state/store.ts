@@ -11,6 +11,7 @@
 //   Komponenter prenumererar via:
 //     useGameStore(s => s.tick)              → re-render vid varje save()/notify()
 //     useGameStore(s => s.notifications)     → direkt reactive slice (migrerat)
+//     useGameStore(s => s.feed)              → direkt reactive slice (migrerat)
 //
 // MIGRATION S → ZUSTAND — körplan
 // ────────────────────────────────
@@ -33,7 +34,7 @@
 //
 //   Fas 3 — Komplexa objekt (kräver immer eller manuell spridning)
 //     S.metrics / S.prev
-//     S.feed[]
+//     S.feed[]           → useGameStore.feed             [✓]
 //     S.checkIns[]
 //     S.weeklyCheckouts{}
 //
@@ -58,14 +59,8 @@ import { BASE_QUESTS } from '../data/quests';
 import { syncToSupabase } from '../hooks/useSupabaseSync';
 import { STORAGE_KEY, SEASON_DEFAULTS, SYNC_CONFIG, DEFAULT_METRICS } from '../lib/config';
 import { clearRuntimeIssue, setRuntimeIssue } from '../lib/runtimeHealth';
+import type { CalendarCheckInEntry } from '../lib/calendarState';
 import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification, Reminder } from '../types/game';
-
-// ── Zustand store ────────────────────────────────────────────────
-
-export const useGameStore = create<GameStoreState>(() => ({
-  tick:          0,
-  notifications: [],
-}));
 
 /**
  * notify() — triggar re-render i alla Zustand-prenumeranter.
@@ -174,7 +169,7 @@ export function defChar(id: string): CharData {
 // ── State-typer för S ────────────────────────────────────────────
 
 interface SState {
-  checkIns:       unknown[];
+  checkIns:       CalendarCheckInEntry[];
   reminders:      Reminder[];
   me:             string | null;
   onboarded:      boolean;
@@ -182,7 +177,6 @@ interface SState {
   quests:         Quest[];
   metrics:        Metrics;
   prev:           Metrics;
-  feed:           FeedEntry[];
   tab:            string;
   coachText:      string;
   weekNum:        number;
@@ -202,8 +196,14 @@ const RAW = (() => {
 })();
 
 const LEGACY_REMINDERS_KEY = 'hq_reminders';
+const FEED_STORAGE_KEY = 'hq_feed_v1';
+
+function canUseLocalStorage(): boolean {
+  return typeof localStorage !== 'undefined';
+}
 
 function loadLegacyReminders(): Reminder[] {
+  if (!canUseLocalStorage()) return [];
   try {
     const raw = JSON.parse(localStorage.getItem(LEGACY_REMINDERS_KEY) || '[]');
     return Array.isArray(raw) ? raw as Reminder[] : [];
@@ -212,12 +212,58 @@ function loadLegacyReminders(): Reminder[] {
   }
 }
 
-useGameStore.setState({
+function persistFeedSlice(feed: FeedEntry[]): void {
+  if (!canUseLocalStorage()) return;
+  localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(feed));
+}
+
+function loadPersistedFeed(): FeedEntry[] {
+  if (!canUseLocalStorage()) return dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []);
+  try {
+    const slice = JSON.parse(localStorage.getItem(FEED_STORAGE_KEY) || 'null');
+    if (Array.isArray(slice)) return dedupeLocalFeed(slice as FeedEntry[]);
+  } catch {
+    // Fall through to legacy envelope data below.
+  }
+
+  return dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []);
+}
+
+const initialFeed = loadPersistedFeed().slice(0, 50);
+persistFeedSlice(initialFeed);
+
+// ── Zustand store ────────────────────────────────────────────────
+
+export const useGameStore = create<GameStoreState>((set) => ({
+  tick:          0,
   notifications: ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit),
-});
+  feed:          initialFeed,
+  feedHydrated:  initialFeed.length > 0,
+  setFeed: (feed) => {
+    const nextFeed = dedupeLocalFeed(feed || []).slice(0, 50);
+    persistFeedSlice(nextFeed);
+    set({ feed: nextFeed, feedHydrated: true });
+  },
+  appendFeedEntry: (entry) => {
+    set((prev) => {
+      const nextFeed = dedupeLocalFeed([entry, ...(prev.feed || [])]).slice(0, 50);
+      persistFeedSlice(nextFeed);
+      return { feed: nextFeed, feedHydrated: true };
+    });
+  },
+  replaceFeedEntry: (id, entry) => {
+    set((prev) => {
+      const nextFeed = dedupeLocalFeed(
+        (prev.feed || []).map((item) => String(item.id || '') === String(id) ? entry : item)
+      ).slice(0, 50);
+      persistFeedSlice(nextFeed);
+      return { feed: nextFeed, feedHydrated: true };
+    });
+  },
+}));
 
 export const S: SState = {
-  checkIns:       (RAW?.checkIns as unknown[])  || [],
+  checkIns:       (RAW?.checkIns as CalendarCheckInEntry[])  || [],
   reminders:      (RAW?.reminders as Reminder[]) || loadLegacyReminders(),
   me:             (RAW?.me as string | null)     || null,
   onboarded:      (RAW?.onboarded as boolean)    || false,
@@ -233,7 +279,6 @@ export const S: SState = {
   })) as Quest[],
   metrics:        (RAW?.metrics as Metrics) || DEFAULT_METRICS,
   prev:           (RAW?.prev    as Metrics) || DEFAULT_METRICS,
-  feed:           dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []),
   tab:            'personal',
   coachText:      '',
   weekNum:        calcWeekNum(),
@@ -244,28 +289,38 @@ export const S: SState = {
   seasonEnd:      (RAW?.seasonEnd   as string)    || SEASON_DEFAULTS.end,
 };
 
+Object.defineProperty(S as Record<string, unknown>, 'feed', {
+  configurable: true,
+  enumerable: false,
+  get: () => useGameStore.getState().feed,
+  set: (value: unknown) => {
+    const nextFeed = Array.isArray(value) ? value as FeedEntry[] : [];
+    useGameStore.getState().setFeed(nextFeed);
+  },
+});
+
 // ── Persist + notify ─────────────────────────────────────────────
 
 export function save(): void {
-  S.feed = dedupeLocalFeed(S.feed || []);
   const notifications = useGameStore.getState().notifications;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    me:              S.me,
-    onboarded:       S.onboarded,
-    chars:           S.chars,
-    quests:          S.quests,
-    feed:            S.feed,
-    metrics:         S.metrics,
-    prev:            S.prev,
-    checkIns:        S.checkIns,
-    reminders:       S.reminders,
-    operationName:   S.operationName,
-    weeklyCheckouts: S.weeklyCheckouts,
-    notifications,
-    seasonStart:     S.seasonStart,
-    seasonEnd:       S.seasonEnd,
-  }));
-  localStorage.removeItem(LEGACY_REMINDERS_KEY);
+  if (canUseLocalStorage()) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      me:              S.me,
+      onboarded:       S.onboarded,
+      chars:           S.chars,
+      quests:          S.quests,
+      metrics:         S.metrics,
+      prev:            S.prev,
+      checkIns:        S.checkIns,
+      reminders:       S.reminders,
+      operationName:   S.operationName,
+      weeklyCheckouts: S.weeklyCheckouts,
+      notifications,
+      seasonStart:     S.seasonStart,
+      seasonEnd:       S.seasonEnd,
+    }));
+    localStorage.removeItem(LEGACY_REMINDERS_KEY);
+  }
 
   // Trigga Zustand-reaktivitet
   notify();
