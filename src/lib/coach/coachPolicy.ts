@@ -1,4 +1,4 @@
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import type { ReengagementStage } from '@/lib/reengagement';
 import type { FeedEntry, Notification } from '@/types/game';
@@ -128,6 +128,23 @@ export function isInActiveFlow(memberKey: string, now = Date.now()): boolean {
     (quest) => quest.owner === memberKey && !isQuestDoneNow(quest)
   );
   if (hasOngoingQuest) return true;
+
+  const presenceMember = useGameStore
+    .getState()
+    .presenceMembers
+    .find((member) => member.member_key === memberKey);
+  const presenceLastSeenAt = presenceMember?.last_seen_at
+    ? Date.parse(String(presenceMember.last_seen_at))
+    : 0;
+
+  if (
+    presenceMember?.current_surface === 'bandhub' &&
+    presenceMember.is_online !== false &&
+    presenceLastSeenAt > 0 &&
+    now - presenceLastSeenAt <= ACTIVE_FLOW_WINDOW_MS
+  ) {
+    return true;
+  }
 
   const recentSurface = readSurfaceActivity(memberKey);
   if (!recentSurface) return false;

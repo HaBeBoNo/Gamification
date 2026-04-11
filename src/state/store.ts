@@ -12,6 +12,7 @@
 //     useGameStore(s => s.tick)              → re-render vid varje save()/notify()
 //     useGameStore(s => s.notifications)     → direkt reactive slice (migrerat)
 //     useGameStore(s => s.feed)              → direkt reactive slice (migrerat)
+//     useGameStore(s => s.presenceMembers)   → direkt reactive slice (migrerat)
 //
 // MIGRATION S → ZUSTAND — körplan
 // ────────────────────────────────
@@ -35,6 +36,7 @@
 //   Fas 3 — Komplexa objekt (kräver immer eller manuell spridning)
 //     S.metrics / S.prev
 //     S.feed[]           → useGameStore.feed             [✓]
+//     member_presence    → useGameStore.presenceMembers  [✓]
 //     S.checkIns[]
 //     S.weeklyCheckouts{}
 //
@@ -60,7 +62,7 @@ import { syncToSupabase } from '../hooks/useSupabaseSync';
 import { STORAGE_KEY, SEASON_DEFAULTS, SYNC_CONFIG, DEFAULT_METRICS } from '../lib/config';
 import { clearRuntimeIssue, setRuntimeIssue } from '../lib/runtimeHealth';
 import type { CalendarCheckInEntry } from '../lib/calendarState';
-import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification, Reminder } from '../types/game';
+import type { GameStoreState, CharData, Quest, Metrics, FeedEntry, Notification, PresenceMember, Reminder } from '../types/game';
 
 /**
  * notify() — triggar re-render i alla Zustand-prenumeranter.
@@ -154,6 +156,33 @@ function dedupeLocalFeed(feed: FeedEntry[]): FeedEntry[] {
   return deduped;
 }
 
+function dedupePresenceMembers(members: PresenceMember[]): PresenceMember[] {
+  const byMemberKey = new Map<string, PresenceMember>();
+
+  for (const member of members || []) {
+    const memberKey = String(member?.member_key || '');
+    if (!memberKey) continue;
+
+    const existing = byMemberKey.get(memberKey);
+    const existingTs = existing?.last_seen_at ? Date.parse(existing.last_seen_at) : 0;
+    const nextTs = member?.last_seen_at ? Date.parse(String(member.last_seen_at)) : 0;
+
+    if (!existing || nextTs >= existingTs) {
+      byMemberKey.set(memberKey, {
+        ...existing,
+        ...member,
+        member_key: memberKey,
+      });
+    }
+  }
+
+  return [...byMemberKey.values()].sort((left, right) => {
+    const leftTs = left.last_seen_at ? Date.parse(String(left.last_seen_at)) : 0;
+    const rightTs = right.last_seen_at ? Date.parse(String(right.last_seen_at)) : 0;
+    return rightTs - leftTs;
+  });
+}
+
 export function defChar(id: string): CharData {
   const rt = (MEMBERS as Record<string, { roleType?: string }>)[id]?.roleType || 'amplifier';
   return {
@@ -239,6 +268,8 @@ export const useGameStore = create<GameStoreState>((set) => ({
   notifications: ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit),
   feed:          initialFeed,
   feedHydrated:  initialFeed.length > 0,
+  presenceMembers: [],
+  presenceHydrated: false,
   setFeed: (feed) => {
     const nextFeed = dedupeLocalFeed(feed || []).slice(0, 50);
     persistFeedSlice(nextFeed);
@@ -259,6 +290,24 @@ export const useGameStore = create<GameStoreState>((set) => ({
       persistFeedSlice(nextFeed);
       return { feed: nextFeed, feedHydrated: true };
     });
+  },
+  setPresenceMembers: (members) => {
+    set({
+      presenceMembers: dedupePresenceMembers(members || []),
+      presenceHydrated: true,
+    });
+  },
+  upsertPresenceMember: (member) => {
+    set((prev) => ({
+      presenceMembers: dedupePresenceMembers([member, ...(prev.presenceMembers || [])]),
+      presenceHydrated: true,
+    }));
+  },
+  removePresenceMember: (memberKey) => {
+    set((prev) => ({
+      presenceMembers: (prev.presenceMembers || []).filter((member) => member.member_key !== memberKey),
+      presenceHydrated: true,
+    }));
   },
 }));
 

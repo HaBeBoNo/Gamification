@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { canInitiate, getReengagementMode, isInActiveFlow, markCoachInitiated } from './coachPolicy';
 
 const originalQuests = [...S.quests];
 
 afterEach(() => {
   S.quests = [...originalQuests];
+  useGameStore.setState({
+    presenceMembers: [],
+    presenceHydrated: true,
+  });
 });
 
 describe('coachPolicy', () => {
@@ -31,6 +35,23 @@ describe('coachPolicy', () => {
     }];
 
     expect(isInActiveFlow('coach-policy-member')).toBe(true);
+  });
+
+  it('treats a fresh bandhub presence row as an active flow', () => {
+    const now = Date.parse('2026-04-11T10:00:00.000Z');
+    useGameStore.setState({
+      presenceMembers: [
+        {
+          member_key: 'coach-policy-bandhub',
+          current_surface: 'bandhub',
+          is_online: true,
+          last_seen_at: '2026-04-11T09:57:30.000Z',
+        },
+      ],
+      presenceHydrated: true,
+    });
+
+    expect(isInActiveFlow('coach-policy-bandhub', now)).toBe(true);
   });
 
   it('maps reengagement stages to the expected coach mode', () => {

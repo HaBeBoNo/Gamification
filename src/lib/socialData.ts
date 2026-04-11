@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { Notification } from '@/types/game';
+import type { Notification, PresenceMember } from '@/types/game';
 import { getFeedCommentMeta } from '@/lib/feed';
+import { summarizeBandActivitySnapshot } from '@/lib/bandActivity';
 
 type SocialCapability =
   | 'notifications'
@@ -19,6 +20,8 @@ type FeedWitnessRow = {
   feed_item_id: string;
   member_key: string;
 };
+
+type PresenceMemberRow = PresenceMember;
 
 type RemoteNotificationRow = {
   id: string;
@@ -531,61 +534,37 @@ export async function upsertPresence(params: {
 export async function fetchPresenceSnapshot(
   withinMinutes = 5
 ): Promise<{ supported: boolean; activeNow: number }> {
-  if (!supabase) return { supported: false, activeNow: 0 };
-  if (getCapability('member_presence') === false) return { supported: false, activeNow: 0 };
+  const result = await fetchActivePresenceMembers(withinMinutes);
+  return {
+    supported: result.supported,
+    activeNow: result.members.length,
+  };
+}
+
+export async function fetchActivePresenceMembers(
+  withinMinutes = 5
+): Promise<{ supported: boolean; members: PresenceMemberRow[] }> {
+  if (!supabase) return { supported: false, members: [] };
+  if (getCapability('member_presence') === false) return { supported: false, members: [] };
 
   const cutoff = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('member_presence')
-    .select('member_key')
+    .select('member_key, current_surface, is_online, last_seen_at, updated_at, metadata')
     .eq('is_online', true)
     .gte('last_seen_at', cutoff);
 
   if (error) {
     if (isMissingSocialResourceError(error)) {
       setCapability('member_presence', false);
-      return { supported: false, activeNow: 0 };
+      return { supported: false, members: [] };
     }
     console.warn('[SocialData] presence snapshot failed:', error.message);
-    return { supported: false, activeNow: 0 };
+    return { supported: false, members: [] };
   }
 
   setCapability('member_presence', true);
-  return { supported: true, activeNow: (data || []).length };
-}
-
-function getMemberRowChar(row: Record<string, any>): Record<string, any> | null {
-  const chars = row?.data?.chars;
-  if (!chars || typeof chars !== 'object') return null;
-  return chars[row.member_key] || Object.values(chars)[0] || null;
-}
-
-function isSameLocalDay(timestamp: number | null | undefined): boolean {
-  if (!timestamp) return false;
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return false;
-  return date.toDateString() === new Date().toDateString();
-}
-
-function dedupeCompletedQuestEntries(entries: any[]): any[] {
-  const seen = new Set<string>();
-  const deduped: any[] = [];
-
-  for (const entry of entries || []) {
-    const completedAt = Number(entry?.completedAt || 0);
-    const key = [
-      entry?.id || '',
-      entry?.title || '',
-      Number(entry?.xp || 0),
-      completedAt,
-    ].join('|');
-
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(entry);
-  }
-
-  return deduped;
+  return { supported: true, members: (data || []) as PresenceMemberRow[] };
 }
 
 export async function fetchBandActivitySnapshot(
@@ -597,63 +576,39 @@ export async function fetchBandActivitySnapshot(
   }
 
   const now = Date.now();
-  const sinceMs = now - withinHours * 60 * 60 * 1000;
-  const startOfToday = new Date();
+  const sinceIso = new Date(now - withinHours * 60 * 60 * 1000).toISOString();
+  const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const startOfTodayIso = startOfToday.toISOString();
 
-  const [{ data, error }, presence, feedTodayResult] = await Promise.all([
+  const [recentFeedResult, presence, todayFeedResult, todayPresenceResult] = await Promise.all([
     supabase
-      .from('member_data')
-      .select('member_key, data')
-      .not('data', 'is', null),
+      .from('activity_feed')
+      .select('who, created_at, xp')
+      .gte('created_at', sinceIso),
     fetchPresenceSnapshot(presenceMinutes),
     supabase
       .from('activity_feed')
       .select('who, created_at')
       .gte('created_at', startOfTodayIso),
+    supabase
+      .from('member_presence')
+      .select('member_key, last_seen_at')
+      .gte('last_seen_at', startOfTodayIso),
   ]);
 
-  if (error) {
-    console.warn('[SocialData] band snapshot failed:', error.message);
-    return {
-      activeToday: 0,
-      xp48h: 0,
-      activeNow: presence.supported ? presence.activeNow : null,
-    };
+  if (recentFeedResult.error) {
+    console.warn('[SocialData] band snapshot recent feed failed:', recentFeedResult.error.message);
   }
 
-  if (feedTodayResult.error) {
-    console.warn('[SocialData] band snapshot feed fallback failed:', feedTodayResult.error.message);
+  if (todayFeedResult.error) {
+    console.warn('[SocialData] band snapshot today feed failed:', todayFeedResult.error.message);
   }
 
-  const activeMemberKeys = new Set<string>();
-  let activeToday = 0;
-  let xp48h = 0;
-
-  for (const row of (data || []) as Record<string, any>[]) {
-    const memberKey = String(row.member_key || '');
-    if (!memberKey) continue;
-
-    const char = getMemberRowChar(row);
-    const completedQuests = dedupeCompletedQuestEntries(char?.completedQuests || []);
-    const hasQuestToday = completedQuests.some((entry) => isSameLocalDay(Number(entry?.completedAt || 0)));
-    const lastSeen = Number(char?.lastSeen || char?.lastQuestDate || 0);
-    const isActiveToday = isSameLocalDay(lastSeen) || hasQuestToday;
-
-    if (isActiveToday) activeMemberKeys.add(memberKey);
-
-    xp48h += completedQuests.reduce((sum: number, entry: any) => {
-      const completedAt = Number(entry?.completedAt || 0);
-      if (!completedAt || completedAt < sinceMs) return sum;
-      return sum + Number(entry?.xp || 0);
-    }, 0);
-  }
-
-  for (const row of (feedTodayResult.data || []) as Record<string, any>[]) {
-    const memberKey = String(row?.who || '');
-    if (!memberKey) continue;
-    activeMemberKeys.add(memberKey);
+  if (todayPresenceResult.error) {
+    if (!isMissingSocialResourceError(todayPresenceResult.error)) {
+      console.warn('[SocialData] band snapshot today presence failed:', todayPresenceResult.error.message);
+    }
   }
 
   const localMemberIsLive = typeof document !== 'undefined'
@@ -661,18 +616,11 @@ export async function fetchBandActivitySnapshot(
     && typeof navigator !== 'undefined'
     && navigator.onLine;
 
-  activeToday = activeMemberKeys.size;
-  if (localMemberIsLive) {
-    activeToday = Math.max(activeToday, 1);
-  }
-
-  const activeNow = presence.supported
-    ? Math.max(presence.activeNow, localMemberIsLive ? 1 : 0)
-    : (localMemberIsLive ? 1 : null);
-
-  return {
-    activeToday,
-    xp48h,
-    activeNow,
-  };
+  return summarizeBandActivitySnapshot({
+    recentFeedRows: (recentFeedResult.data || []) as Array<Record<string, any>>,
+    todayFeedRows: (todayFeedResult.data || []) as Array<Record<string, any>>,
+    todayPresenceRows: (todayPresenceResult.data || []) as Array<Record<string, any>>,
+    activeNow: presence.supported ? presence.activeNow : null,
+    localMemberIsLive,
+  });
 }

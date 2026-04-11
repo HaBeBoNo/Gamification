@@ -185,6 +185,15 @@ export interface FeedEntry {
   witnesses?: string[];
 }
 
+export interface PresenceMember {
+  member_key: string;
+  current_surface?: string | null;
+  is_online?: boolean | null;
+  last_seen_at?: string | null;
+  updated_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
 // ── Zustand store state ──────────────────────────────────────────
 
 export interface GameStoreState {
@@ -192,7 +201,12 @@ export interface GameStoreState {
   notifications: Notification[];
   feed:          FeedEntry[];
   feedHydrated:  boolean;
+  presenceMembers: PresenceMember[];
+  presenceHydrated: boolean;
   setFeed:       (feed: FeedEntry[]) => void;
   appendFeedEntry: (entry: FeedEntry) => void;
   replaceFeedEntry: (id: string, entry: FeedEntry) => void;
+  setPresenceMembers: (members: PresenceMember[]) => void;
+  upsertPresenceMember: (member: PresenceMember) => void;
+  removePresenceMember: (memberKey: string) => void;
 }

@@ -34,6 +34,8 @@ import {
 } from '@/lib/homeSurface';
 
 export function useHomeBandStatusCards(totalMembers: number) {
+  const presenceMembers = useGameStore((state) => state.presenceMembers);
+  const presenceHydrated = useGameStore((state) => state.presenceHydrated);
   const [activeToday, setActiveToday] = useState(0);
   const [activeNow, setActiveNow] = useState<number | null>(null);
   const [xp48h, setXp48h] = useState(0);
@@ -115,14 +117,16 @@ export function useHomeBandStatusCards(totalMembers: number) {
     };
   }, []);
 
+  const resolvedActiveNow = presenceHydrated ? presenceMembers.length : activeNow;
+
   return useMemo(() => buildHomeBandStatusCards({
     totalMembers,
     activeToday,
-    activeNow,
+    activeNow: resolvedActiveNow,
     xp48h,
     nextEvent,
     myRank,
-  }), [activeNow, activeToday, myRank, nextEvent, totalMembers, xp48h]);
+  }), [activeToday, myRank, nextEvent, presenceHydrated, presenceMembers.length, resolvedActiveNow, totalMembers, xp48h]);
 }
 
 export function useDailyCoachSurface() {

@@ -3,7 +3,7 @@ import { DEFAULT_COACH_NAMES } from '@/lib/coach/coachPrompts';
 import { getDaysSinceActivity, getReengagementStage, type ReengagementStage } from '@/lib/reengagement';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { S, useGameStore } from '@/state/store';
-import type { CharData, FeedEntry, Notification, Quest, ResponseProfile } from '@/types/game';
+import type { CharData, FeedEntry, Notification, PresenceMember, Quest, ResponseProfile } from '@/types/game';
 import type { Member } from '@/data/members';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -81,6 +81,10 @@ function getNotificationActorMemberKey(notification: Notification): string | nul
   return null;
 }
 
+function getPresenceTimestamp(member: PresenceMember): number {
+  return parseTimestamp(member.last_seen_at || member.updated_at);
+}
+
 function getCoachName(memberKey: string, char: CharData): string {
   return String(char.coachName || DEFAULT_COACH_NAMES[memberKey] || 'Coach');
 }
@@ -132,24 +136,20 @@ function getNextBandEvent(nowTs: number): CoachBandEvent | null {
 
 function getActiveMemberKeysNow(
   memberKey: string,
-  feed: FeedEntry[],
-  notifications: Notification[],
+  presenceMembers: PresenceMember[],
   nowTs: number,
 ): string[] {
   const activeMembers = new Set<string>();
   const cutoff = nowTs - ACTIVE_NOW_WINDOW_MS;
 
-  feed.forEach((item) => {
-    const ts = getFeedTimestamp(item);
-    if (ts < cutoff || !item.who) return;
-    activeMembers.add(item.who);
-  });
-
-  notifications.forEach((notification) => {
-    const ts = Number(notification.ts || 0);
-    const actor = getNotificationActorMemberKey(notification);
-    if (ts < cutoff || !actor) return;
-    activeMembers.add(actor);
+  presenceMembers.forEach((presenceMember) => {
+    const ts = getPresenceTimestamp(presenceMember);
+    if (
+      ts < cutoff ||
+      !presenceMember.member_key ||
+      presenceMember.is_online === false
+    ) return;
+    activeMembers.add(presenceMember.member_key);
   });
 
   if (
@@ -188,6 +188,7 @@ export function getCoachContext(memberKey: string, nowTs = Date.now()): CoachCon
 
   const feed = useGameStore.getState().feed || [];
   const notifications = useGameStore.getState().notifications || [];
+  const presenceMembers = useGameStore.getState().presenceMembers || [];
   const activeQuests = (S.quests || []).filter(
     (quest) => quest.owner === memberKey && !isQuestDoneNow(quest)
   );
@@ -216,7 +217,11 @@ export function getCoachContext(memberKey: string, nowTs = Date.now()): CoachCon
     (item) => Boolean(item.who) && item.who !== memberKey,
   )[0] || null;
   const daysSinceActivity = getDaysSinceActivity(char.lastSeen, char.lastQuestDate, nowTs);
-  const activeMemberKeysNow = getActiveMemberKeysNow(memberKey, feed, notifications, nowTs);
+  const activeMemberKeysNow = getActiveMemberKeysNow(
+    memberKey,
+    presenceMembers,
+    nowTs,
+  );
   const recentInsights = (S.quests || [])
     .filter((quest) => quest.owner === memberKey && quest.insight)
     .slice(-5)

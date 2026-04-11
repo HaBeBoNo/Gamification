@@ -7,6 +7,8 @@ import type { FeedEntry } from '@/types/game';
 export function useActivityFeedData() {
   const feedItems = useGameStore((state) => state.feed);
   const feedHydrated = useGameStore((state) => state.feedHydrated);
+  const presenceMembers = useGameStore((state) => state.presenceMembers);
+  const presenceHydrated = useGameStore((state) => state.presenceHydrated);
   const setFeed = useGameStore((state) => state.setFeed);
   const [bandSnapshot, setBandSnapshot] = useState<{ activeToday: number; activeNow: number | null; xp48h: number }>({
     activeToday: 0,
@@ -57,6 +59,9 @@ export function useActivityFeedData() {
     feedItems,
     setFeedItems,
     loading: !feedHydrated,
-    bandSnapshot,
+    bandSnapshot: {
+      ...bandSnapshot,
+      activeNow: presenceHydrated ? presenceMembers.length : bandSnapshot.activeNow,
+    },
   };
 }
