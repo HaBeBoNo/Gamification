@@ -16,6 +16,8 @@ export default async function handler(req) {
   }
 
   const body = await req.json();
+  // Anthropic credentials must remain server-side only.
+  // Client code always talks to this proxy via /api/claude.
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
