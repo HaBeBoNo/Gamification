@@ -7,7 +7,10 @@ import { S, save } from '@/state/store'
 import { checkIn } from '@/hooks/useCheckIn'
 import { MEMBERS } from '@/data/members'
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals'
-import { getCalendarEventParticipationState, hasEventDecline, hasEventRSVP } from '@/lib/calendarState'
+import {
+  getCalendarEventParticipationState,
+  toggleCalendarEventResponse,
+} from '@/lib/calendarState'
 
 export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -37,26 +40,17 @@ export default function CalendarView() {
   function handleRSVP(event: CalendarEvent) {
     if (!S.me) return
 
-    if (hasEventRSVP(S.checkIns, event.id, S.me)) {
-      // Ta bort RSVP
-      S.checkIns = (S.checkIns ?? []).filter(
-        (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
-      )
-    } else {
-      S.checkIns = (S.checkIns ?? []).filter(
-        (c: any) => !(c.eventId === event.id && c.type === 'decline' && c.memberKey === S.me)
-      )
-      // Lägg till RSVP
-      if (!S.checkIns) S.checkIns = []
-      S.checkIns.push({
-        eventId: event.id,
-        eventTitle: event.title,
-        memberKey: S.me,
-        type: 'rsvp',
-        eventStart: event.start,
-        ts: Date.now(),
-      })
+    const currentLength = S.checkIns.length
+    S.checkIns = toggleCalendarEventResponse(S.checkIns, {
+      eventId: event.id,
+      eventTitle: event.title,
+      eventStart: event.start,
+      memberKey: S.me,
+      responseType: 'rsvp',
+      ts: Date.now(),
+    })
 
+    if (S.checkIns.length > currentLength) {
       const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
       void notifyMembersSignal({
         targetMemberKeys: getBandmateKeys(S.me),
@@ -84,25 +78,17 @@ export default function CalendarView() {
   function handleDecline(event: CalendarEvent) {
     if (!S.me) return
 
-    if (hasEventDecline(S.checkIns, event.id, S.me)) {
-      S.checkIns = (S.checkIns ?? []).filter(
-        (c: any) => !(c.eventId === event.id && c.type === 'decline' && c.memberKey === S.me)
-      )
-    } else {
-      S.checkIns = (S.checkIns ?? []).filter(
-        (c: any) => !(c.eventId === event.id && c.type === 'rsvp' && c.memberKey === S.me)
-      )
+    const currentLength = S.checkIns.length
+    S.checkIns = toggleCalendarEventResponse(S.checkIns, {
+      eventId: event.id,
+      eventTitle: event.title,
+      eventStart: event.start,
+      memberKey: S.me,
+      responseType: 'decline',
+      ts: Date.now(),
+    })
 
-      if (!S.checkIns) S.checkIns = []
-      S.checkIns.push({
-        eventId: event.id,
-        eventTitle: event.title,
-        memberKey: S.me,
-        type: 'decline',
-        eventStart: event.start,
-        ts: Date.now(),
-      })
-
+    if (S.checkIns.length > currentLength) {
       const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
       void notifyMembersSignal({
         targetMemberKeys: getBandmateKeys(S.me),

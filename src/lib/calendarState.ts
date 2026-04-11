@@ -1,16 +1,161 @@
+export type CalendarCheckInType = 'check_in' | 'rsvp' | 'decline';
+
 export type CalendarCheckInEntry = {
+  id?: string | number;
   eventId?: string;
+  eventTitle?: string;
+  eventStart?: string;
   memberKey?: string;
   member?: string;
-  type?: string;
+  type?: CalendarCheckInType | string;
+  ts?: number;
+};
+
+type CalendarCheckInSource = {
+  entries?: readonly unknown[] | null;
+  fallbackMemberKey?: string;
 };
 
 function asCheckInEntries(entries: readonly unknown[] | null | undefined): CalendarCheckInEntry[] {
   return Array.isArray(entries) ? (entries as CalendarCheckInEntry[]) : [];
 }
 
+export function normalizeCalendarCheckInType(
+  entry: CalendarCheckInEntry | null | undefined
+): CalendarCheckInType {
+  return entry?.type === 'rsvp' || entry?.type === 'decline'
+    ? entry.type
+    : 'check_in';
+}
+
+export function getCalendarCheckInActor(
+  entry: CalendarCheckInEntry | null | undefined,
+  fallbackMemberKey?: string
+): string {
+  return String(entry?.memberKey || entry?.member || fallbackMemberKey || '');
+}
+
 export function isPresenceCheckIn(entry: CalendarCheckInEntry | null | undefined): boolean {
-  return entry?.type !== 'rsvp' && entry?.type !== 'decline';
+  return normalizeCalendarCheckInType(entry) === 'check_in';
+}
+
+export function dedupeCalendarCheckIns(
+  entries: readonly unknown[] | null | undefined,
+  fallbackMemberKey?: string
+): CalendarCheckInEntry[] {
+  const merged = new Map<string, CalendarCheckInEntry>();
+
+  for (const rawEntry of asCheckInEntries(entries)) {
+    const eventId = String(rawEntry?.eventId || '');
+    const actor = getCalendarCheckInActor(rawEntry, fallbackMemberKey);
+    const type = normalizeCalendarCheckInType(rawEntry);
+    if (!eventId || !actor) continue;
+
+    const key = `${actor}:${eventId}:${type}`;
+    merged.set(key, {
+      ...rawEntry,
+      memberKey: actor,
+      member: String(rawEntry?.member || actor),
+      type: type === 'check_in' ? undefined : type,
+    });
+  }
+
+  return [...merged.values()].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
+}
+
+export function mergeCalendarCheckInSources(
+  sources: CalendarCheckInSource[]
+): CalendarCheckInEntry[] {
+  return dedupeCalendarCheckIns(
+    sources.flatMap((source) =>
+      dedupeCalendarCheckIns(source.entries, source.fallbackMemberKey)
+    )
+  );
+}
+
+export function getOwnCalendarCheckIns(
+  entries: readonly unknown[] | null | undefined,
+  memberKey: string
+): CalendarCheckInEntry[] {
+  return dedupeCalendarCheckIns(entries, memberKey).filter(
+    (entry) => getCalendarCheckInActor(entry, memberKey) === memberKey
+  );
+}
+
+export function toggleCalendarEventResponse(
+  entries: readonly unknown[] | null | undefined,
+  params: {
+    eventId: string;
+    eventTitle: string;
+    eventStart: string;
+    memberKey: string;
+    responseType: 'rsvp' | 'decline';
+    ts?: number;
+  }
+): CalendarCheckInEntry[] {
+  const nextEntries = dedupeCalendarCheckIns(entries, params.memberKey).filter((entry) => {
+    if (entry.eventId !== params.eventId) return true;
+    const actor = getCalendarCheckInActor(entry, params.memberKey);
+    const type = normalizeCalendarCheckInType(entry);
+    return actor !== params.memberKey || (type !== 'rsvp' && type !== 'decline');
+  });
+
+  const alreadySelected = dedupeCalendarCheckIns(entries, params.memberKey).some((entry) => (
+    entry.eventId === params.eventId &&
+    getCalendarCheckInActor(entry, params.memberKey) === params.memberKey &&
+    normalizeCalendarCheckInType(entry) === params.responseType
+  ));
+
+  if (alreadySelected) {
+    return nextEntries;
+  }
+
+  return dedupeCalendarCheckIns([
+    ...nextEntries,
+    {
+      eventId: params.eventId,
+      eventTitle: params.eventTitle,
+      eventStart: params.eventStart,
+      memberKey: params.memberKey,
+      member: params.memberKey,
+      type: params.responseType,
+      ts: params.ts ?? Date.now(),
+    },
+  ], params.memberKey);
+}
+
+export function addCalendarPresenceCheckIn(
+  entries: readonly unknown[] | null | undefined,
+  params: {
+    eventId: string;
+    eventTitle: string;
+    memberKey: string;
+    eventStart?: string;
+    ts?: number;
+    id?: string | number;
+  }
+): CalendarCheckInEntry[] {
+  const deduped = dedupeCalendarCheckIns(entries, params.memberKey);
+  const alreadyCheckedIn = deduped.some((entry) => (
+    entry.eventId === params.eventId &&
+    getCalendarCheckInActor(entry, params.memberKey) === params.memberKey &&
+    isPresenceCheckIn(entry)
+  ));
+
+  if (alreadyCheckedIn) return deduped;
+
+  return dedupeCalendarCheckIns([
+    ...deduped,
+    {
+      id: params.id,
+      eventId: params.eventId,
+      eventTitle: params.eventTitle,
+      eventStart: params.eventStart,
+      member: params.memberKey,
+      memberKey: params.memberKey,
+      ts: params.ts ?? Date.now(),
+    },
+  ], params.memberKey);
 }
 
 export function hasEventRSVP(
@@ -20,7 +165,7 @@ export function hasEventRSVP(
 ): boolean {
   if (!eventId || !memberKey) return false;
   return asCheckInEntries(entries).some(
-    (entry) => entry?.eventId === eventId && entry?.type === 'rsvp' && entry?.memberKey === memberKey
+    (entry) => entry?.eventId === eventId && normalizeCalendarCheckInType(entry) === 'rsvp' && entry?.memberKey === memberKey
   );
 }
 
@@ -31,7 +176,7 @@ export function hasEventDecline(
 ): boolean {
   if (!eventId || !memberKey) return false;
   return asCheckInEntries(entries).some(
-    (entry) => entry?.eventId === eventId && entry?.type === 'decline' && entry?.memberKey === memberKey
+    (entry) => entry?.eventId === eventId && normalizeCalendarCheckInType(entry) === 'decline' && entry?.memberKey === memberKey
   );
 }
 
@@ -41,7 +186,7 @@ export function getEventRSVPCount(
 ): number {
   if (!eventId) return 0;
   return asCheckInEntries(entries).filter(
-    (entry) => entry?.eventId === eventId && entry?.type === 'rsvp'
+    (entry) => entry?.eventId === eventId && normalizeCalendarCheckInType(entry) === 'rsvp'
   ).length;
 }
 
@@ -51,7 +196,7 @@ export function getEventDeclineCount(
 ): number {
   if (!eventId) return 0;
   return asCheckInEntries(entries).filter(
-    (entry) => entry?.eventId === eventId && entry?.type === 'decline'
+    (entry) => entry?.eventId === eventId && normalizeCalendarCheckInType(entry) === 'decline'
   ).length;
 }
 
@@ -72,7 +217,11 @@ export function isCheckedInByMember(
 ): boolean {
   if (!eventId || !memberKey) return false;
   return asCheckInEntries(entries).some(
-    (entry) => entry?.eventId === eventId && isPresenceCheckIn(entry) && (entry?.memberKey === memberKey || entry?.member === memberKey)
+    (entry) => (
+      entry?.eventId === eventId &&
+      isPresenceCheckIn(entry) &&
+      getCalendarCheckInActor(entry, memberKey) === memberKey
+    )
   );
 }
 

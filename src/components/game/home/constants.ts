@@ -1,0 +1,9 @@
+export const MOBILE_GUTTER = 'var(--layout-gutter-mobile)';
+export const ROOM_GUTTER = 'var(--layout-gutter-room)';
+export const SECTION_GAP = 'var(--section-gap)';
+export const SECTION_GAP_COMPACT = 'var(--section-gap-compact)';
+export const CARD_PAD = 'var(--card-padding)';
+export const CARD_PAD_COMPACT = 'var(--card-padding-compact)';
+export const CARD_PAD_ROOM = 'var(--card-padding-room)';
+export const CONTROL_HEIGHT = 'var(--control-height)';
+export const ICON_BUTTON_SIZE = 'var(--icon-button-size)';

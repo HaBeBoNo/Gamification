@@ -3,97 +3,17 @@ import { S, save, useGameStore } from '@/state/store';
 import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
 import { fetchRemoteNotifications } from '@/lib/socialData';
 import { upsertNotifications } from '@/state/notifications';
-import type { Notification, Reminder } from '@/types/game';
+import type { Reminder } from '@/types/game';
+import {
+  buildMemberDataPayload,
+  mergeMemberCheckIns,
+  mergeReminders,
+  MEMBER_DATA_PAYLOAD_KEYS,
+  type MemberDataPayload,
+} from '@/lib/memberData';
 
-export const MEMBER_DATA_PAYLOAD_KEYS = [
-  'chars',
-  'quests',
-  'metrics',
-  'prev',
-  'checkIns',
-  'reminders',
-  'onboarded',
-  'operationName',
-  'weeklyCheckouts',
-  'notifications',
-  'seasonStart',
-  'seasonEnd',
-] as const;
-
-export type MemberDataPayload = {
-  chars: Record<string, unknown>;
-  quests: unknown[];
-  metrics: unknown;
-  prev: unknown;
-  checkIns: unknown[];
-  reminders: Reminder[];
-  onboarded: boolean;
-  operationName: string;
-  weeklyCheckouts: Record<string, unknown>;
-  notifications: Notification[];
-  seasonStart: string;
-  seasonEnd: string;
-};
-
-type CheckInEntry = {
-  eventId?: string;
-  memberKey?: string;
-  member?: string;
-  type?: string;
-  [key: string]: unknown;
-};
-
-function getCheckInActor(entry: CheckInEntry, fallbackMemberKey?: string): string {
-  return String(entry?.memberKey || entry?.member || fallbackMemberKey || '');
-}
-
-function getCheckInType(entry: CheckInEntry): string {
-  return String(entry?.type || 'check_in');
-}
-
-function mergeCheckIns(
-  sources: Array<{ entries?: unknown[]; fallbackMemberKey?: string }>
-): CheckInEntry[] {
-  const merged = new Map<string, CheckInEntry>();
-
-  for (const source of sources) {
-    for (const rawEntry of source.entries || []) {
-      if (!rawEntry || typeof rawEntry !== 'object') continue;
-      const entry = rawEntry as CheckInEntry;
-      const eventId = String(entry.eventId || '');
-      const actor = getCheckInActor(entry, source.fallbackMemberKey);
-      const type = getCheckInType(entry);
-      if (!eventId || !actor) continue;
-
-      const key = `${actor}:${eventId}:${type}`;
-      merged.set(key, {
-        ...entry,
-        memberKey: actor,
-        member: String(entry.member || actor),
-        type: type === 'check_in' ? undefined : type,
-      });
-    }
-  }
-
-  return [...merged.values()].sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
-}
-
-function getOwnCheckIns(entries: unknown[], memberKey: string): CheckInEntry[] {
-  return mergeCheckIns([{ entries, fallbackMemberKey: memberKey }]).filter(
-    (entry) => getCheckInActor(entry, memberKey) === memberKey
-  );
-}
-
-function mergeReminders(localReminders: Reminder[] = [], remoteReminders: Reminder[] = []): Reminder[] {
-  const merged = new Map<string, Reminder>();
-
-  [...remoteReminders, ...localReminders].forEach((reminder) => {
-    if (!reminder?.eventId || !reminder?.memberKey) return;
-    merged.set(`${reminder.memberKey}:${reminder.eventId}`, reminder);
-  });
-
-  return [...merged.values()].sort((a, b) => (a.eventStart || '').localeCompare(b.eventStart || ''));
-}
+export { buildMemberDataPayload, MEMBER_DATA_PAYLOAD_KEYS };
+export type { MemberDataPayload };
 
 export async function syncToSupabase(memberKey: string): Promise<void> {
   if (!supabase || !memberKey) return;
@@ -116,23 +36,6 @@ export async function syncToSupabase(memberKey: string): Promise<void> {
   }
 
   clearRuntimeIssue('sync');
-}
-
-export function buildMemberDataPayload(memberKey: string, notifications: Notification[]): MemberDataPayload {
-  return {
-    chars: { [memberKey]: S.chars[memberKey] }, // Bara inloggad members char — övriga hämtas lazily
-    quests: S.quests,
-    metrics: S.metrics,
-    prev: S.prev,
-    checkIns: getOwnCheckIns(S.checkIns, memberKey),
-    reminders: S.reminders,
-    onboarded: S.onboarded,
-    operationName: S.operationName,
-    weeklyCheckouts: S.weeklyCheckouts,
-    notifications: notifications.filter((notification) => notification.source !== 'supabase'),
-    seasonStart: S.seasonStart,
-    seasonEnd: S.seasonEnd,
-  };
 }
 
 // Minimala fält som behövs för leaderboard
@@ -212,13 +115,7 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
 
   // Applicera minimala leaderboard-fält för övriga members
   if (!othersError && othersData) {
-    S.checkIns = mergeCheckIns([
-      { entries: remote.checkIns, fallbackMemberKey: memberKey },
-      ...othersData.map((row: any) => ({
-        entries: row?.data?.checkIns as unknown[] | undefined,
-        fallbackMemberKey: row?.member_key as string | undefined,
-      })),
-    ]);
+    S.checkIns = mergeMemberCheckIns(memberKey, remote.checkIns, othersData as any[]);
 
     for (const row of othersData) {
       const otherKey = row.member_key as string;
@@ -237,7 +134,7 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
       }
     }
   } else if (remote.checkIns) {
-    S.checkIns = mergeCheckIns([{ entries: remote.checkIns, fallbackMemberKey: memberKey }]);
+    S.checkIns = mergeMemberCheckIns(memberKey, remote.checkIns, []);
   }
 
   // Spara explicit till localStorage via save()
