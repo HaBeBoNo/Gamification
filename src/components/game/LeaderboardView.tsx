@@ -87,7 +87,6 @@ function LeaderboardView() {
   const [loadingData, setLoadingData] = useState(true);
   const [memberDataMap, setMemberDataMap] = useState<Record<string, any>>({});
   const [endorsementsMap, setEndorsementsMap] = useState<Record<string, Record<string, string[]>>>({});
-  const [expandedEndorse, setExpandedEndorse] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -330,80 +329,8 @@ function LeaderboardView() {
                       <span className="lt-streak-val">{streak}</span>
                     </div>
                     <span className="lt-xp-val">{row.totalXp}</span>
-                    {row.id !== S.me && (
-                      <button
-                        onClick={e => { e.stopPropagation(); setExpandedEndorse(expandedEndorse === row.id ? null : row.id); }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '0 4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          color: expandedEndorse === row.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                          opacity: expandedEndorse === row.id ? 1 : 0.4,
-                          transition: 'opacity 0.15s, color 0.15s',
-                        }}
-                        title="Endorsa"
-                      >
-                        <Star size={12} fill={expandedEndorse === row.id ? 'currentColor' : 'none'} strokeWidth={1.5} />
-                      </button>
-                    )}
                   </div>
                 </div>
-
-                {expandedEndorse === row.id && (
-                  <div style={{
-                    padding: 'var(--space-sm) var(--space-lg)',
-                    display: 'flex',
-                    gap: 'var(--space-sm)',
-                    flexWrap: 'wrap',
-                    borderTop: '1px solid var(--color-border)',
-                  }}>
-                    {(['vit', 'wis', 'for', 'cha'] as const).map(stat => {
-                      const labels: Record<string, string> = { vit: 'Vitality', wis: 'Wisdom', for: 'Fortitude', cha: 'Charisma' };
-                      const endorsers = endorsementsMap[row.id]?.[stat] ?? [];
-                      const hasEndorsed = endorsers.includes(S.me!);
-                      return (
-                        <button
-                          key={stat}
-                          onClick={() => giveEndorsement(row.id, stat)}
-                          disabled={hasEndorsed}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '2px 10px',
-                            borderRadius: 'var(--radius-pill)',
-                            border: `1px solid ${hasEndorsed ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                            background: hasEndorsed ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
-                            color: hasEndorsed ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            fontSize: 'var(--text-caption)',
-                            cursor: hasEndorsed ? 'default' : 'pointer',
-                          }}
-                        >
-                          {labels[stat]}
-                          {endorsers.length > 0 && (
-                            <span style={{
-                              background: 'var(--color-primary)',
-                              color: 'var(--color-surface)',
-                              borderRadius: '50%',
-                              width: 16,
-                              height: 16,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 10,
-                              fontFamily: 'var(--font-mono)',
-                            }}>
-                              {endorsers.length}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
 
                 <AnimatePresence>
                   {isExpanded && (
@@ -450,6 +377,80 @@ function LeaderboardView() {
                                 <Check size={14} style={{ color: row.xpColor, flexShrink: 0 }} /> {title}
                               </div>
                             ))}
+                          </div>
+                        )}
+
+                        {row.id !== S.me && (
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                            paddingTop: 6,
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 'var(--text-micro)',
+                              color: 'var(--color-text-muted)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.08em',
+                            }}>
+                              <Star size={12} />
+                              Ge cred
+                            </div>
+                            <div style={{
+                              display: 'flex',
+                              gap: 'var(--space-sm)',
+                              flexWrap: 'wrap',
+                            }}>
+                              {(['vit', 'wis', 'for', 'cha'] as const).map(stat => {
+                                const labels: Record<string, string> = { vit: 'Vitality', wis: 'Wisdom', for: 'Fortitude', cha: 'Charisma' };
+                                const endorsers = endorsementsMap[row.id]?.[stat] ?? [];
+                                const hasEndorsed = endorsers.includes(S.me!);
+                                return (
+                                  <button
+                                    key={stat}
+                                    onClick={() => giveEndorsement(row.id, stat)}
+                                    disabled={hasEndorsed}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                      minHeight: 36,
+                                      padding: '0 12px',
+                                      borderRadius: 'var(--radius-pill)',
+                                      border: `1px solid ${hasEndorsed ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                      background: hasEndorsed ? 'var(--color-primary-muted)' : 'var(--color-surface-elevated)',
+                                      color: hasEndorsed ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                      fontSize: 'var(--text-caption)',
+                                      cursor: hasEndorsed ? 'default' : 'pointer',
+                                      touchAction: 'manipulation',
+                                    }}
+                                  >
+                                    {labels[stat]}
+                                    {endorsers.length > 0 && (
+                                      <span style={{
+                                        background: 'var(--color-primary)',
+                                        color: 'var(--color-surface)',
+                                        borderRadius: '999px',
+                                        minWidth: 18,
+                                        height: 18,
+                                        padding: '0 5px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 10,
+                                        fontFamily: 'var(--font-mono)',
+                                      }}>
+                                        {endorsers.length}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>

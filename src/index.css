@@ -2190,16 +2190,16 @@ button, input, textarea {
   align-items: stretch;
 }
 .activity-thread-card {
-  width: min(920px, calc(100vw - 24px));
-  max-width: min(920px, calc(100vw - 24px));
-  height: min(92vh, 920px);
-  max-height: min(92vh, 920px);
+  width: min(1040px, calc(100vw - 16px));
+  max-width: min(1040px, calc(100vw - 16px));
+  height: min(96vh, 980px);
+  max-height: min(96vh, 980px);
   padding: 0;
   gap: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-radius: 18px;
+  border-radius: 24px;
 }
 .activity-thread-card.is-mobile {
   width: 100vw;
@@ -2213,7 +2213,7 @@ button, input, textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 18px 14px;
+  padding: 18px 20px 14px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
@@ -2222,14 +2222,14 @@ button, input, textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--card-padding-room);
+  padding: clamp(16px, 2vw, 24px);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 18px;
 }
 .activity-thread-composer-shell {
   flex-shrink: 0;
-  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
 }

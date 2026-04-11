@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapPin, Clock, RefreshCw, CheckCircle, Check, Bell, BellOff, Plus, X } from 'lucide-react'
+import { MapPin, Clock, RefreshCw, CheckCircle, Check, Bell, BellOff, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
 } from '@/lib/googleCalendar'
@@ -16,8 +16,21 @@ export default function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
 
   useEffect(() => { loadEvents() }, [])
+
+  useEffect(() => {
+    if (events.length === 0) return
+    if (expandedEventId && events.some((event) => event.id === expandedEventId)) return
+
+    const nextExpanded = events.find((event) => {
+      const participation = getCalendarEventParticipationState(S.checkIns, event.id, S.me || undefined)
+      return isEventActive(event.start, event.end) || (!participation.hasRsvp && !participation.hasDeclined)
+    }) || events[0]
+
+    setExpandedEventId(nextExpanded.id)
+  }, [events, expandedEventId])
 
   async function loadEvents() {
     setLoading(true)
@@ -182,125 +195,231 @@ export default function CalendarView() {
         const hasRsvp = participation.hasRsvp
         const hasDeclined = participation.hasDeclined
         const canCheckIn = active
+        const isExpanded = expandedEventId === event.id
+        const personalStatus = checkedIn
+          ? 'Du är incheckad'
+          : hasRsvp
+            ? 'Du kommer'
+            : hasDeclined
+              ? 'Du kan inte'
+              : hasReminder(event.id)
+                ? 'Påminnelse på'
+                : active
+                  ? 'Live nu'
+                  : 'Öppna'
 
         return (
           <div key={event.id} style={{
             background: active ? 'var(--color-primary-muted, rgba(124,106,247,0.08))' : 'var(--color-surface-elevated)',
             border: `1px solid ${active ? 'var(--color-primary)' : soon ? 'var(--color-accent)' : 'var(--color-border)'}`,
-            borderRadius: 'var(--radius-md)',
-            padding: 'var(--space-md)',
+            borderRadius: '18px',
+            overflow: 'hidden',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, fontSize: 'var(--text-body)', color: 'var(--color-text-primary)' }}>
-                {active && <span style={{ color: 'var(--color-primary)', marginRight: 6, fontSize: 11 }}>● LIVE</span>}
-                {soon && !active && <span style={{ color: 'var(--color-accent)', marginRight: 6, fontSize: 11 }}>● SNART</span>}
-                {event.title}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)', marginBottom: event.location ? 4 : 0 }}>
-              <Clock size={12} />
-              {formatEventDate(event.start)}
-            </div>
-
-            {event.location && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)', marginBottom: 4 }}>
-                <MapPin size={12} />
-                {event.location}
-              </div>
-            )}
-
-            {(checkInCount > 0 || rsvpCount > 0 || declineCount > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>
-                {checkInCount > 0 && (
-                  <span>
-                    {checkInCount} {checkInCount === 1 ? 'member' : 'members'} incheckad{checkInCount > 1 ? 'e' : ''}
-                  </span>
-                )}
-                {rsvpCount > 0 && (
-                  <span>
-                    {rsvpCount} kommer
-                  </span>
-                )}
-                {declineCount > 0 && (
-                  <span>
-                    {declineCount} kan inte
-                  </span>
-                )}
-              </div>
-            )}
-
-            {canCheckIn && (
-              <button
-                onClick={() => handleCheckIn(event)}
-                disabled={checkedIn}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, marginTop: 8,
-                  background: checkedIn ? 'transparent' : 'var(--color-primary)',
-                  color: checkedIn ? 'var(--color-accent)' : '#fff',
-                  border: checkedIn ? '1px solid var(--color-accent)' : 'none',
-                  borderRadius: '999px', padding: '8px 16px',
-                  fontSize: 12, fontFamily: 'var(--font-ui)',
-                  cursor: checkedIn ? 'default' : 'pointer',
-                  touchAction: 'manipulation',
-                }}
-              >
-                {checkedIn
-                  ? <><Check size={14} /> Incheckad (+40 XP)</>
-                  : <><CheckCircle size={14} /> Checka in (+40 XP)</>}
-              </button>
-            )}
-
-            {/* RSVP */}
-            <div style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', marginTop: 8, gap: 10
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  onClick={() => handleRSVP(event)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: 'transparent',
-                    color: hasRsvp ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                    border: `1px solid ${hasRsvp ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                    borderRadius: '999px', padding: '6px 14px',
-                    fontSize: 12, fontFamily: 'var(--font-ui)',
-                    cursor: 'pointer', touchAction: 'manipulation',
+            <button
+              onClick={() => setExpandedEventId((current) => current === event.id ? null : event.id)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                padding: '16px 16px 14px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 10,
+                textAlign: 'left',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    marginBottom: 6,
                   }}>
-                  {hasRsvp ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
-                </button>
-                <button
-                  onClick={() => handleDecline(event)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    background: 'transparent',
-                    color: hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-text-muted)',
-                    border: `1px solid ${hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-border)'}`,
-                    borderRadius: '999px', padding: '6px 14px',
-                    fontSize: 12, fontFamily: 'var(--font-ui)',
-                    cursor: 'pointer', touchAction: 'manipulation',
-                  }}
-                >
-                  {hasDeclined ? <><X size={13} /> Kan inte</> : 'Kan inte'}
-                </button>
+                    {active && <span style={{ color: 'var(--color-primary)', fontSize: 11, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>● LIVE</span>}
+                    {soon && !active && <span style={{ color: 'var(--color-accent)', fontSize: 11, fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>● SNART</span>}
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      minHeight: 26,
+                      padding: '0 10px',
+                      borderRadius: '999px',
+                      background: checkedIn || hasRsvp
+                        ? 'var(--color-primary-muted)'
+                        : hasDeclined
+                          ? 'color-mix(in srgb, var(--color-error, #e05555) 16%, transparent)'
+                          : 'var(--color-surface)',
+                      border: `1px solid ${checkedIn || hasRsvp
+                        ? 'var(--color-primary)'
+                        : hasDeclined
+                          ? 'var(--color-error, #e05555)'
+                          : 'var(--color-border)'}`,
+                      color: checkedIn || hasRsvp
+                        ? 'var(--color-primary)'
+                        : hasDeclined
+                          ? 'var(--color-error, #e05555)'
+                          : 'var(--color-text-muted)',
+                      fontSize: 'var(--text-micro)',
+                      fontFamily: 'var(--font-ui)',
+                      letterSpacing: '0.04em',
+                    }}>
+                      {personalStatus}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 'var(--text-body)', color: 'var(--color-text-primary)', lineHeight: 1.35 }}>
+                    {event.title}
+                  </div>
+                </div>
+                <div style={{
+                  width: 32,
+                  minHeight: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--color-text-muted)',
+                  flexShrink: 0,
+                }}>
+                  {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <button
-                  onClick={() => handleReminder(event)}
-                  style={{
-                    background: 'transparent',
-                    color: hasReminder(event.id) ? 'var(--color-accent)' : 'var(--color-text-muted)',
-                    border: 'none', padding: '6px',
-                    cursor: 'pointer', fontSize: 16,
-                    touchAction: 'manipulation',
-                  }}
-                  title={hasReminder(event.id) ? 'Ta bort påminnelse' : 'Sätt påminnelse'}
-                >
-                  {hasReminder(event.id) ? <Bell size={16} strokeWidth={1.9} /> : <BellOff size={16} strokeWidth={1.9} />}
-                </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)' }}>
+                <Clock size={12} />
+                {formatEventDate(event.start)}
               </div>
-            </div>
+
+              {(checkInCount > 0 || rsvpCount > 0 || declineCount > 0) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  {checkInCount > 0 && <span>{checkInCount} incheckade</span>}
+                  {rsvpCount > 0 && <span>{rsvpCount} kommer</span>}
+                  {declineCount > 0 && <span>{declineCount} kan inte</span>}
+                </div>
+              )}
+            </button>
+
+            {isExpanded && (
+              <div style={{
+                padding: '0 16px 16px',
+                borderTop: '1px solid var(--color-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}>
+                {event.location && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: 'var(--text-caption)', paddingTop: 14 }}>
+                    <MapPin size={12} />
+                    {event.location}
+                  </div>
+                )}
+
+                {!event.location && <div style={{ paddingTop: 14 }} />}
+
+                {canCheckIn && (
+                  <button
+                    onClick={() => handleCheckIn(event)}
+                    disabled={checkedIn}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      minHeight: 44,
+                      background: checkedIn ? 'transparent' : 'var(--color-primary)',
+                      color: checkedIn ? 'var(--color-accent)' : '#fff',
+                      border: checkedIn ? '1px solid var(--color-accent)' : 'none',
+                      borderRadius: '999px',
+                      padding: '0 16px',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-ui)',
+                      cursor: checkedIn ? 'default' : 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {checkedIn
+                      ? <><Check size={14} /> Incheckad (+40 XP)</>
+                      : <><CheckCircle size={14} /> Checka in (+40 XP)</>}
+                  </button>
+                )}
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                }}>
+                  <button
+                    onClick={() => handleRSVP(event)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      minHeight: 40,
+                      background: hasRsvp ? 'var(--color-primary-muted)' : 'transparent',
+                      color: hasRsvp ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      border: `1px solid ${hasRsvp ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '999px',
+                      padding: '0 14px',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-ui)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}>
+                    {hasRsvp ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
+                  </button>
+                  <button
+                    onClick={() => handleDecline(event)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      minHeight: 40,
+                      background: hasDeclined ? 'color-mix(in srgb, var(--color-error, #e05555) 16%, transparent)' : 'transparent',
+                      color: hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-text-muted)',
+                      border: `1px solid ${hasDeclined ? 'var(--color-error, #e05555)' : 'var(--color-border)'}`,
+                      borderRadius: '999px',
+                      padding: '0 14px',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-ui)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                  >
+                    {hasDeclined ? <><X size={13} /> Kan inte</> : 'Kan inte'}
+                  </button>
+                  <button
+                    onClick={() => handleReminder(event)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      minHeight: 40,
+                      background: hasReminder(event.id) ? 'var(--color-primary-muted)' : 'transparent',
+                      color: hasReminder(event.id) ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      border: `1px solid ${hasReminder(event.id) ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      borderRadius: '999px',
+                      padding: '0 14px',
+                      fontSize: 12,
+                      fontFamily: 'var(--font-ui)',
+                      cursor: 'pointer',
+                      touchAction: 'manipulation',
+                    }}
+                    title={hasReminder(event.id) ? 'Ta bort påminnelse' : 'Sätt påminnelse'}
+                  >
+                    {hasReminder(event.id)
+                      ? <><Bell size={14} strokeWidth={1.9} /> Påminnelse på</>
+                      : <><BellOff size={14} strokeWidth={1.9} /> Påminn mig</>}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )
       })}
