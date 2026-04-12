@@ -8,6 +8,27 @@ import { SectionEyebrow } from './SectionEyebrow';
 import { StatCard } from './StatCard';
 import { emptyCardStyle } from './styles';
 
+function getCompactCalendarDateLabel(dateString?: string): string {
+  if (!dateString) return '—';
+
+  const eventDate = new Date(dateString);
+  if (Number.isNaN(eventDate.getTime())) return '—';
+
+  const today = new Date();
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+
+  const eventStart = new Date(eventDate);
+  eventStart.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((eventStart.getTime() - todayStart.getTime()) / 86400000);
+
+  if (diffDays === 0) return 'Idag';
+  if (diffDays === 1) return 'Imorgon';
+
+  return eventDate.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+}
+
 export function CalendarSpotlight() {
   const [events, setEvents] = useState<Array<{
     id: string;
@@ -50,6 +71,9 @@ export function CalendarSpotlight() {
   const checkInCount = participation?.checkInCount || 0;
   const active = nextEvent ? isEventActive(nextEvent.start, nextEvent.end) : false;
   const needsResponse = nextEvent ? isCalendarResponseNeeded(nextEvent.start, Boolean(participation?.hasResponded)) : false;
+  const nextCompactLabel = nextEvent
+    ? getCompactCalendarDateLabel(nextEvent.start)
+    : '—';
   const nextLabel = nextEvent
     ? new Date(nextEvent.start).toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
     : '—';
@@ -74,20 +98,20 @@ export function CalendarSpotlight() {
             <StatCard
               icon={<CalendarDays size={15} />}
               label="Nästa"
-              value={nextLabel}
-              detail={nextEvent ? `${nextEvent.title} · ${nextTime}` : 'Tomt'}
+              value={nextCompactLabel}
+              detail={nextEvent ? nextTime : 'Tomt'}
             />
             <StatCard
               icon={<Clock3 size={15} />}
               label="Kommer"
               value={nextEvent ? String(rsvpCount) : '0'}
-              detail={nextEvent ? (hasRsvp ? 'Med' : hasDeclined ? 'Kan inte' : 'Väntar') : '—'}
+              detail={nextEvent ? (rsvpCount > 0 ? 'Svarat ja' : 'Inga ännu') : '—'}
             />
             <StatCard
               icon={<CircleOff size={15} />}
               label="Kan inte"
               value={nextEvent ? String(declineCount) : '0'}
-              detail={nextEvent ? 'Frånvaro' : '—'}
+              detail={nextEvent ? (declineCount > 0 ? 'Svarat nej' : 'Inga ännu') : '—'}
             />
           </div>
 
