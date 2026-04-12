@@ -1,54 +1,63 @@
 import React, { useMemo } from 'react';
-import { S, useGameStore } from '@/state/store';
+import { motion } from 'framer-motion';
+import { Star, Flame, Target, Clock, Compass, LineChart } from 'lucide-react';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import ActivityHeatmap from './ActivityHeatmap';
-import { Star, Flame, Target, Clock, Compass, LineChart } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { wasQuestCompletedByMember } from '@/lib/questUtils';
+import { getFeedCommentMeta } from '@/lib/feed';
+import { formatRelativeActivity, getFeedTimestampValue } from '@/lib/activityFeed';
+import { isQuestDoneNow, isQuestRelevantToMember, wasQuestCompletedByMember } from '@/lib/questUtils';
+import { S, useGameStore } from '@/state/store';
+import type { FeedEntry } from '@/types/game';
 
-// ── Helpers ──────────────────────────────────────────────────────
-
-function xpForLevel(lv: number): number {
-  return Math.floor(100 * Math.pow(1.18, lv - 1));
+function xpForLevel(level: number): number {
+  return Math.floor(100 * Math.pow(1.18, level - 1));
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
+function formatNumber(value: number): string {
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
 }
 
 function getTemporalLabel(pattern?: string): string {
   switch (pattern) {
-    case 'early': return 'Tidig Avslutare';
-    case 'deadline-driven': return 'Deadline-driven';
-    case 'steady': return 'Stadig Arbetare';
-    default: return 'Tar form';
+    case 'early':
+      return 'Tidig avslutare';
+    case 'deadline-driven':
+      return 'Deadline-driven';
+    case 'steady':
+      return 'Jämn rytm';
+    default:
+      return 'Tar form';
   }
 }
 
 function getCategoryBreakdown(memberId: string) {
   const counts: Record<string, number> = {};
-  const cats = ['wisdom', 'tech', 'social', 'money', 'health', 'global'];
-  cats.forEach(c => { counts[c] = 0; });
-  (S.quests || []).forEach((q: any) => {
-    if (wasQuestCompletedByMember(q, memberId) && cats.includes(q.cat)) {
-      counts[q.cat]++;
+  const categories = ['wisdom', 'tech', 'social', 'money', 'health', 'global'];
+  categories.forEach((category) => {
+    counts[category] = 0;
+  });
+
+  (S.quests || []).forEach((quest: any) => {
+    if (wasQuestCompletedByMember(quest, memberId) && categories.includes(quest.cat)) {
+      counts[quest.cat] += 1;
     }
   });
+
   return counts;
 }
 
 function getDominantCategory(counts: Record<string, number>) {
-  return Object.entries(counts).sort(([, a], [, b]) => b - a)[0] || ['wisdom', 0];
+  return Object.entries(counts).sort(([, left], [, right]) => right - left)[0] || ['wisdom', 0];
 }
 
 function getTopCategories(counts: Record<string, number>, limit = 2): string[] {
   return Object.entries(counts)
     .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, left], [, right]) => right - left)
     .slice(0, limit)
-    .map(([cat]) => cat);
+    .map(([category]) => category);
 }
 
 const CAT_COLORS: Record<string, string> = {
@@ -107,21 +116,79 @@ function getCoachReading({
   return `${paceMap[temporalPattern || ''] || 'Rör sig bäst när uppgiften känns direkt relevant.'} ${categoryPart}${streakPart}`;
 }
 
-// ── Form Dots (last 5 quest results) ────────────────────────────
+function truncateText(value: string, max = 78): string {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max - 1).trimEnd()}...`;
+}
+
+function extractQuotedText(value: string): string | null {
+  const match = value.match(/"([^"]+)"/);
+  return match?.[1] || null;
+}
+
+function summarizeProfileFeedEntry(item: FeedEntry): { title: string; detail?: string } {
+  const commentMeta = getFeedCommentMeta(item);
+  if (commentMeta) {
+    return {
+      title: `Kommenterade ${commentMeta.targetName}`,
+      detail: commentMeta.contextLabel === 'aktivitet'
+        ? truncateText(commentMeta.comment || 'I tråden')
+        : `${commentMeta.contextLabel} · ${truncateText(commentMeta.comment || 'Kommenterade')}`,
+    };
+  }
+
+  const action = String(item.action || '').trim();
+  const quoted = extractQuotedText(action);
+
+  if (/completed\s+"/i.test(action) && quoted) {
+    return { title: 'Klarade uppdrag', detail: quoted };
+  }
+
+  if (/reflekterade över/i.test(action) && quoted) {
+    return { title: 'Reflekterade', detail: quoted };
+  }
+
+  if (/checkade in på/i.test(action)) {
+    const place = action
+      .replace(/^.*checkade in på\s*/i, '')
+      .replace(/\s+[^\w\s]+$/g, '')
+      .trim();
+    return { title: 'Checkade in', detail: place || undefined };
+  }
+
+  if (/gav en high-five till/i.test(action)) {
+    const target = action
+      .replace(/^.*gav en high-five till\s*/i, '')
+      .replace(/\s+[^\w\s]+$/g, '')
+      .trim();
+    return { title: 'Skickade energi', detail: target || undefined };
+  }
+
+  if (/anslöt sig till/i.test(action) && quoted) {
+    return { title: 'Klev in i samarbete', detail: quoted };
+  }
+
+  if (/leveled up/i.test(action)) {
+    const levelMatch = action.match(/level\s+\d+/i)?.[0];
+    return { title: 'Nådde ny nivå', detail: levelMatch || undefined };
+  }
+
+  return { title: truncateText(action) };
+}
 
 function FormDots({ form, color }: { form: ('W' | 'L')[]; color: string }) {
   const dots = [...(form || [])];
-  while (dots.length < 5) dots.unshift('L'); // pad to 5
+  while (dots.length < 5) dots.unshift('L');
 
   return (
     <div className="pv-form-dots">
-      {dots.map((d, i) => (
+      {dots.map((dot, index) => (
         <div
-          key={i}
+          key={index}
           className="pv-form-dot"
           style={{
-            background: d === 'W' ? color : 'var(--color-surface-elevated)',
-            boxShadow: d === 'W' ? `0 0 6px ${color}40` : 'none',
+            background: dot === 'W' ? color : 'var(--color-surface-elevated)',
+            boxShadow: dot === 'W' ? `0 0 6px ${color}40` : 'none',
           }}
         />
       ))}
@@ -129,46 +196,52 @@ function FormDots({ form, color }: { form: ('W' | 'L')[]; color: string }) {
   );
 }
 
-// ── Main Profile View ───────────────────────────────────────────
-
 export default function ProfileView() {
-  // Subscribe to Zustand for reactivity
-  useGameStore(s => s.tick);
+  useGameStore((state) => state.tick);
+  const feed = useGameStore((state) => state.feed);
 
   const me = S.me || '';
   const member = (MEMBERS as Record<string, any>)[me];
-  const char = S.chars[me];
-  const questsDone = char?.questsDone || 0;
-  const catCounts = useMemo(
+  const character = S.chars[me];
+  const questsDone = character?.questsDone || 0;
+  const categoryCounts = useMemo(
     () => (me ? getCategoryBreakdown(me) : EMPTY_CAT_COUNTS),
     [me, questsDone],
   );
-  if (!member || !char) return null;
+
+  if (!member || !character) return null;
 
   const xpColor = member.xpColor || 'var(--color-accent)';
-  const level = char.level || 1;
-  const xp = char.xp || 0;
-  const xpToNext = char.xpToNext || xpForLevel(level);
-  const totalXp = char.totalXp || 0;
-  const streak = char.streak || 0;
-  const stats = char.stats || { vit: 10, wis: 10, for: 10, cha: 10 };
-  const form = char.form || [];
-  const roleType = char.roleType || member.roleType || 'amplifier';
-  const rtLabel = (ROLE_TYPE_LABEL as Record<string, any>)[roleType];
-  const temporalPattern = char.temporalBehavior?.pattern;
+  const level = character.level || 1;
+  const xp = character.xp || 0;
+  const xpToNext = character.xpToNext || xpForLevel(level);
+  const totalXp = character.totalXp || 0;
+  const streak = character.streak || 0;
+  const stats = character.stats || { vit: 10, wis: 10, for: 10, cha: 10 };
+  const form = character.form || [];
+  const roleType = character.roleType || member.roleType || 'amplifier';
+  const roleTypeLabel = (ROLE_TYPE_LABEL as Record<string, any>)[roleType];
+  const temporalPattern = character.temporalBehavior?.pattern;
   const xpPercent = xpToNext > 0 ? Math.round((xp / xpToNext) * 100) : 0;
-  const coachName = (char as any).coachName ||
-    ({ hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
-       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn'
-    } as Record<string, string>)[me] || 'Coach';
-  const [dominantCategory, dominantCount] = getDominantCategory(catCounts);
+  const coachName = (character as any).coachName || ({
+    hannes: 'Scout',
+    martin: 'Brodern',
+    niklas: 'Arkitekten',
+    carl: 'Analytikern',
+    nisse: 'Spegeln',
+    simon: 'Rådgivaren',
+    johannes: 'Kartläggaren',
+    ludvig: 'Katalysatorn',
+  } as Record<string, string>)[me] || 'Coach';
+  const [dominantCategory, dominantCount] = getDominantCategory(categoryCounts);
   const focusLabel = dominantCount > 0 ? CAT_LABELS[dominantCategory] : 'Tar form';
   const topCategories = useMemo(
-    () => getTopCategories(catCounts, 2),
-    [catCounts],
+    () => getTopCategories(categoryCounts, 2),
+    [categoryCounts],
   );
+  const topCategoryLabels = topCategories.map((category) => CAT_LABELS[category]);
   const coachReading = getCoachReading({
-    motivation: char.motivation,
+    motivation: character.motivation,
     streak,
     temporalPattern,
     dominantCategory,
@@ -179,10 +252,33 @@ export default function ProfileView() {
     { key: 'wis', label: 'Visdom', value: stats.wis || 10 },
     { key: 'for', label: 'Styrka', value: stats.for || 10 },
     { key: 'cha', label: 'Karisma', value: stats.cha || 10 },
-  ].sort((a, b) => b.value - a.value);
+  ].sort((left, right) => right.value - left.value);
   const strongestStat = strengthRows[0];
   const xpRemaining = Math.max(0, xpToNext - xp);
   const rhythmLabel = getTemporalLabel(temporalPattern);
+  const focusSubline = topCategoryLabels.length > 0 ? topCategoryLabels.join(' · ') : 'Riktningen tar form';
+  const openQuestCount = (S.quests || []).filter((quest: any) => (
+    isQuestRelevantToMember(quest, me) && !isQuestDoneNow(quest) && !wasQuestCompletedByMember(quest, me)
+  )).length;
+
+  const recentProfileEntries = useMemo(() => {
+    const seen = new Set<string>();
+
+    return [...(feed || [])]
+      .filter((item) => item?.who === me && (item.action || item.comment_body))
+      .sort((left, right) => getFeedTimestampValue(right) - getFeedTimestampValue(left))
+      .filter((item) => {
+        const key = String(item.id || item.syncId || `${item.action}|${getFeedTimestampValue(item)}`);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 3)
+      .map((item) => ({
+        ...summarizeProfileFeedEntry(item),
+        age: formatRelativeActivity(getFeedTimestampValue(item)),
+      }));
+  }, [feed, me]);
 
   return (
     <div className="pv-view">
@@ -192,7 +288,10 @@ export default function ProfileView() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="pv-hero-bg" style={{ background: `radial-gradient(ellipse at 50% 0%, ${xpColor}15 0%, transparent 70%)` }} />
+        <div
+          className="pv-hero-bg"
+          style={{ background: `radial-gradient(ellipse at 50% 0%, ${xpColor}15 0%, transparent 70%)` }}
+        />
         <div className="pv-kicker">Profil</div>
 
         <div className="pv-hero-top pv-hero-top-profile">
@@ -209,10 +308,15 @@ export default function ProfileView() {
               </div>
             </div>
             <div className="pv-role">{member.role}</div>
-            <div className="pv-role-type" style={{ color: rtLabel?.labelColor || xpColor }}>
-              {rtLabel?.label || roleType}
+            <div className="pv-role-type" style={{ color: roleTypeLabel?.labelColor || xpColor }}>
+              {roleTypeLabel?.label || roleType}
             </div>
           </div>
+        </div>
+
+        <div className="pv-voice-card">
+          <div className="pv-voice-kicker">{coachName} om dig just nu</div>
+          <div className="pv-voice-body">{coachReading}</div>
         </div>
 
         <div className="pv-xp-section">
@@ -234,50 +338,52 @@ export default function ProfileView() {
 
         <div className="pv-hero-strip">
           <div className="pv-hero-chip">
+            <Flame size={12} />
+            <span>{streak} dagar</span>
+          </div>
+          <div className="pv-hero-chip">
             <Compass size={12} />
-            <span>{focusLabel}</span>
+            <span>{openQuestCount} öppna</span>
           </div>
           <div className="pv-hero-chip">
-            <Clock size={12} />
-            <span>{rhythmLabel}</span>
-          </div>
-          <div className="pv-hero-chip">
-            <LineChart size={12} />
-            <span>{coachName}</span>
+            <Star size={12} />
+            <span>{formatNumber(totalXp)} total XP</span>
           </div>
         </div>
       </motion.div>
 
       <motion.div
-        className="pv-section pv-glance-section"
+        className="pv-section pv-state-section"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.1 }}
       >
         <div className="pv-section-header">
-          <Target size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">NU</span>
+          <Compass size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">Läge nu</span>
         </div>
-        <div className="pv-now-grid">
-          <div className="pv-now-card">
-            <span className="pv-now-label">Fokus</span>
-            <span className="pv-now-value pv-now-value-text">{focusLabel}</span>
-            <span className="pv-now-meta">{dominantCount > 0 ? `${dominantCount} klart` : 'Tar form'}</span>
+        <div className="pv-state-shell">
+          <div className="pv-state-focus" style={{ borderColor: `${xpColor}2E` }}>
+            <span className="pv-state-focus-label">Riktning</span>
+            <span className="pv-state-focus-value">{focusLabel}</span>
+            <span className="pv-state-focus-sub">{focusSubline}</span>
           </div>
-          <div className="pv-now-card">
-            <span className="pv-now-label">Rytm</span>
-            <span className="pv-now-value pv-now-value-text">{rhythmLabel}</span>
-            <span className="pv-now-meta">{formWins}/5 senaste med fart</span>
-          </div>
-          <div className="pv-now-card">
-            <span className="pv-now-label">Streak</span>
-            <span className="pv-now-value">{streak}</span>
-            <span className="pv-now-meta">dagar i rad</span>
-          </div>
-          <div className="pv-now-card">
-            <span className="pv-now-label">Nästa nivå</span>
-            <span className="pv-now-value">{formatNumber(xpRemaining)}</span>
-            <span className="pv-now-meta">XP kvar</span>
+          <div className="pv-state-list">
+            <div className="pv-state-row">
+              <span className="pv-state-row-label">Tempo</span>
+              <span className="pv-state-row-value">{rhythmLabel}</span>
+              <span className="pv-state-row-meta">{formWins}/5 senaste steg med fart</span>
+            </div>
+            <div className="pv-state-row">
+              <span className="pv-state-row-label">Öppna uppdrag</span>
+              <span className="pv-state-row-value">{openQuestCount}</span>
+              <span className="pv-state-row-meta">{questsDone} klara totalt</span>
+            </div>
+            <div className="pv-state-row">
+              <span className="pv-state-row-label">Nästa nivå</span>
+              <span className="pv-state-row-value">{formatNumber(xpRemaining)} XP</span>
+              <span className="pv-state-row-meta">{xpPercent}% av nivån fylld</span>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -290,12 +396,12 @@ export default function ProfileView() {
       >
         <div className="pv-section-header">
           <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">RYTM</span>
+          <span className="pv-section-title">Rörelse</span>
         </div>
         <div className="pv-rhythm-top">
           <div className="pv-rhythm-copy">
             <div className="pv-rhythm-title">{rhythmLabel}</div>
-            <div className="pv-rhythm-sub">Så här har du rört dig den senaste tiden.</div>
+            <div className="pv-rhythm-sub">Senaste veckornas tempo och belastning.</div>
           </div>
           <FormDots form={form} color={xpColor} />
         </div>
@@ -326,18 +432,51 @@ export default function ProfileView() {
       </motion.div>
 
       <motion.div
-        className="pv-section"
+        className="pv-section pv-trace-section"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.2 }}
       >
         <div className="pv-section-header">
-          <Compass size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">STYRKOR</span>
+          <LineChart size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">Senaste avtryck</span>
+        </div>
+        <div className="pv-trace-list">
+          {recentProfileEntries.length > 0 ? recentProfileEntries.map((item, index) => (
+            <div key={`${item.title}-${index}`} className="pv-trace-row">
+              <div className="pv-trace-head">
+                <span className="pv-trace-title">{item.title}</span>
+                <span className="pv-trace-age">{item.age}</span>
+              </div>
+              {item.detail ? <span className="pv-trace-detail">{item.detail}</span> : null}
+            </div>
+          )) : (
+            <div className="pv-trace-empty">Dina senaste spår landar här.</div>
+          )}
+        </div>
+      </motion.div>
+
+      <motion.div
+        className="pv-section pv-signature-section"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.25 }}
+      >
+        <div className="pv-section-header">
+          <Target size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">Profilsignatur</span>
         </div>
         <div className="pv-strength-lead">
-          <span className="pv-strength-head">{strongestStat.label}</span>
-          <span className="pv-strength-sub">Tydligast just nu</span>
+          <div>
+            <div className="pv-strength-head">{strongestStat.label}</div>
+            <div className="pv-strength-sub">Tydligast i ditt uttryck just nu</div>
+          </div>
+          <div className="pv-signature-tags">
+            <span className="pv-signature-tag">{roleTypeLabel?.label || roleType}</span>
+            {topCategoryLabels.slice(0, 2).map((label) => (
+              <span key={label} className="pv-signature-tag">{label}</span>
+            ))}
+          </div>
         </div>
         <div className="pv-strength-list">
           {strengthRows.map((row) => (
@@ -357,24 +496,6 @@ export default function ProfileView() {
               </div>
             </div>
           ))}
-        </div>
-      </motion.div>
-
-      <motion.div
-        className="pv-coach-card"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.25 }}
-      >
-        <div className="pv-section-label">COACHENS LÄSNING</div>
-        <div className="pv-coach-name" style={{ color: xpColor }}>{coachName}</div>
-        <div className="pv-coach-motivation">
-          <span className="pv-coach-quote-label">Läsning</span>
-          <span className="pv-coach-quote">{coachReading}</span>
-        </div>
-        <div className="pv-coach-tags">
-          <span className="pv-coach-tag">{rtLabel?.label || roleType}</span>
-          <span className="pv-coach-tag">{focusLabel}</span>
         </div>
       </motion.div>
     </div>

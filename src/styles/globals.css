@@ -1078,11 +1078,36 @@ body::after {
   letter-spacing: 0.04em;
   margin-top: 4px;
 }
+.pv-voice-card {
+  position: relative;
+  margin: 16px 0 14px;
+  padding: 14px 15px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-elevated) 78%, transparent), color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-elevated)));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pv-voice-kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.pv-voice-body {
+  max-width: 48ch;
+  font-size: var(--text-caption);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
 .pv-hero-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 .pv-hero-chip {
   display: inline-flex;
@@ -1136,43 +1161,79 @@ body::after {
   text-align: left;
 }
 
-/* Quick Stats Grid */
-.pv-now-grid {
+/* State Layer */
+.pv-state-shell {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.3fr);
+  gap: 14px;
 }
-.pv-now-card {
-  background: color-mix(in srgb, var(--color-surface) 82%, var(--color-surface-elevated));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  padding: 14px;
+.pv-state-focus {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 148px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-elevated)), var(--color-surface));
 }
-.pv-now-label {
+.pv-state-focus-label {
   font-family: var(--font-mono);
   font-size: var(--text-micro);
-  color: var(--color-text-muted);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-.pv-now-value {
-  font-family: var(--font-heading);
-  font-size: var(--text-subheading);
-  font-weight: 600;
-  color: var(--color-text-primary);
-  line-height: 1.2;
-}
-.pv-now-value-text {
-  font-size: 0.95rem;
-  line-height: 1.35;
-}
-.pv-now-meta {
-  font-size: var(--text-micro);
   color: var(--color-text-muted);
-  line-height: 1.4;
+}
+.pv-state-focus-value {
+  font-family: var(--font-heading);
+  font-size: clamp(1.25rem, 5vw, 1.7rem);
+  line-height: 1.08;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.pv-state-focus-sub {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.pv-state-list {
+  display: flex;
+  flex-direction: column;
+}
+.pv-state-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+.pv-state-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.pv-state-row:first-child {
+  padding-top: 0;
+}
+.pv-state-row-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.pv-state-row-value {
+  font-size: var(--text-body);
+  line-height: 1.25;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.pv-state-row-meta {
+  font-size: var(--text-micro);
+  line-height: 1.45;
+  color: var(--color-text-muted);
 }
 
 /* Radar + Form Section */
@@ -1327,6 +1388,23 @@ body::after {
   border-radius: var(--radius-pill);
   min-width: 6px;
 }
+.pv-signature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pv-signature-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
 .pv-focus-card {
   align-items: stretch;
 }
@@ -1415,13 +1493,13 @@ body::after {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
-  padding: 16px;
+  padding: 18px;
 }
 .pv-section-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .pv-section-title {
   font-family: var(--font-mono);
@@ -1429,6 +1507,52 @@ body::after {
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
   text-transform: uppercase;
+}
+.pv-trace-list {
+  display: flex;
+  flex-direction: column;
+}
+.pv-trace-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+.pv-trace-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.pv-trace-row:last-child {
+  padding-bottom: 0;
+}
+.pv-trace-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pv-trace-title {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+.pv-trace-age {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--color-text-muted);
+}
+.pv-trace-detail {
+  font-size: var(--text-caption);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+.pv-trace-empty {
+  font-size: var(--text-caption);
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 /* Season Card */
@@ -1508,12 +1632,14 @@ body::after {
 }
 
 @media (max-width: 380px) {
-  .pv-now-grid { grid-template-columns: 1fr; }
+  .pv-state-shell {
+    grid-template-columns: 1fr;
+  }
   .pv-rhythm-top,
   .pv-strength-lead,
+  .pv-trace-head,
   .pv-xp-labels,
-  .pv-name-row,
-  .pv-focus-summary {
+  .pv-name-row {
     flex-direction: column;
     align-items: flex-start;
   }
