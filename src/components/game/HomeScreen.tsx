@@ -30,7 +30,7 @@ export function HomeScreen({
       paddingBottom: 'calc(var(--bottom-nav-height) + var(--safe-bottom) + var(--space-xl))',
     }}>
       <HeroCard />
-      <BandStatusRow />
+      <BandStatusRow onNavigate={onNavigate} />
       <DailyCoachCard onNavigate={onNavigate} onOpenCoach={onOpenCoach} />
       <ReengagementCard
         onNavigate={onNavigate}

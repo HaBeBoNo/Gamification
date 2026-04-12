@@ -11,7 +11,23 @@ const CARD_ICONS = {
   rank: Trophy,
 } as const;
 
-export function BandStatusRow() {
+const CARD_TARGETS = {
+  activity: 'activity',
+  calendar: 'bandhub',
+  rank: 'leaderboard',
+} as const;
+
+const CARD_ARIA = {
+  activity: 'Öppna aktivitet',
+  calendar: 'Öppna kalender',
+  rank: 'Öppna ranking',
+} as const;
+
+type BandStatusRowProps = {
+  onNavigate?: (tab: string) => void;
+};
+
+export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
   const cards = useHomeBandStatusCards(TOTAL_MEMBERS);
 
   return (
@@ -23,15 +39,27 @@ export function BandStatusRow() {
     }}>
       {cards.map((card) => {
         const Icon = CARD_ICONS[card.kind];
+        const target = CARD_TARGETS[card.kind];
         return (
-          <div key={card.kind} style={{
-            background: 'var(--color-surface-elevated)',
-            borderRadius: 'var(--radius-card)',
-            padding: CARD_PAD_COMPACT,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-          }}>
+          <button
+            key={card.kind}
+            type="button"
+            onClick={() => onNavigate?.(target)}
+            style={{
+              background: 'var(--color-surface-elevated)',
+              borderRadius: 'var(--radius-card)',
+              padding: CARD_PAD_COMPACT,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              width: '100%',
+              border: 'none',
+              textAlign: 'left',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+            }}
+            aria-label={CARD_ARIA[card.kind]}
+          >
             <div style={{
               width: 18,
               height: 18,
@@ -69,7 +97,7 @@ export function BandStatusRow() {
             }}>
               {card.sub}
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
