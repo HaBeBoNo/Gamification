@@ -5,6 +5,30 @@ import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
 import { ensurePushRegistration } from '@/lib/webPush';
 
+async function ensureProfileRecord(supabaseUser: any, memberKey: string): Promise<boolean> {
+  if (!supabase || !supabaseUser?.id || !memberKey) return false;
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({
+      id: supabaseUser.id,
+      member_key: memberKey,
+      email: String(supabaseUser.email || '').trim().toLowerCase() || null,
+    }, {
+      onConflict: 'id',
+    });
+
+  if (error) {
+    console.warn('[Auth] Could not ensure profile row:', error.message);
+    window.dispatchEvent(new CustomEvent('sek:auth-error', {
+      detail: { message: 'Kopplingen till bandidentiteten blev inte helt klar. Logga ut och in igen om notiser saknas.' },
+    }));
+    return false;
+  }
+
+  return true;
+}
+
 export function useAuth() {
   const [user, setUser] = useState<any>(null);
   const [memberKey, setMemberKey] = useState<string | null>(null);
@@ -36,6 +60,8 @@ export function useAuth() {
 
     setLoading(false);
     setSynced(true);
+
+    await ensureProfileRecord(supabaseUser, resolvedMemberKey);
 
     void syncFromSupabase(resolvedMemberKey).catch((error) => {
       console.warn('[Auth] Background sync failed:', error);

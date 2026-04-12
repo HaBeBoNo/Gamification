@@ -136,6 +136,25 @@ export function createFeedCommentAction({
   return `kommenterade ${getPossessiveLabel(targetName)} ${labelPart}: ${COMMENT_PAYLOAD_MARKER}${payload}`;
 }
 
+export function getCommentActionTargetName(params: {
+  ownerName?: string | null;
+  replyTargetName?: string | null;
+}): string {
+  return params.replyTargetName?.trim() || params.ownerName?.trim() || 'Någon';
+}
+
+export function getCommentNotificationTargets(params: {
+  actorKey?: string | null;
+  ownerKey?: string | null;
+  replyTargetKey?: string | null;
+}): string[] {
+  const targets = [params.ownerKey, params.replyTargetKey]
+    .filter((memberKey): memberKey is string => Boolean(memberKey))
+    .filter((memberKey) => memberKey !== params.actorKey);
+
+  return [...new Set(targets)];
+}
+
 export function parseFeedCommentAction(action?: string): ParsedFeedCommentAction | null {
   if (!action || !action.startsWith('kommenterade ')) return null;
 

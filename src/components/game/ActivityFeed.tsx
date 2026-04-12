@@ -7,7 +7,13 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
-import { createFeedCommentAction, getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
+import {
+  createFeedCommentAction,
+  getCommentActionTargetName,
+  getCommentNotificationTargets,
+  getFeedCommentMeta,
+  getFeedContextLabel,
+} from '@/lib/feed';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { insertFeedCommentActivity, toggleStructuredReaction, toggleStructuredWitness } from '@/lib/socialData';
 import {
@@ -281,11 +287,14 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
     const comment = rawDraft.trim();
     if (!isCommentReady(rawDraft, replyTarget)) return;
 
-    const targetMemberKey = replyTarget?.memberKey || item.who || null;
-    const targetName = getMemberName(targetMemberKey || undefined);
+    const targetMemberKey = item.who || replyTarget?.memberKey || null;
+    const targetName = getCommentActionTargetName({
+      ownerName: getMemberName(item.who),
+      replyTargetName: replyTarget?.memberName,
+    });
     const itemLabel = getFeedContextLabel(item);
     const action = createFeedCommentAction({
-      targetName: getMemberName(item.who),
+      targetName,
       contextLabel: itemLabel,
       comment,
       parentFeedItemId: itemId,
@@ -307,10 +316,11 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
     setCommentDrafts(prev => ({ ...prev, [itemId]: '' }));
     setFeedItems(prev => mergeIncomingFeedItem(prev, optimisticItem));
 
-    const targetMemberKeys = [...new Set([
-      replyTarget?.memberKey,
-      !replyTarget?.memberKey ? item.who : undefined,
-    ].filter((memberKey): memberKey is string => Boolean(memberKey) && memberKey !== me))];
+    const targetMemberKeys = getCommentNotificationTargets({
+      actorKey: me,
+      ownerKey: item.who,
+      replyTargetKey: replyTarget?.memberKey,
+    });
 
     if (!supabase) {
       setSubmittingCommentId(null);

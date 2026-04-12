@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createFeedCommentAction, getFeedCommentMeta, parseFeedCommentAction } from './feed';
+import {
+  createFeedCommentAction,
+  getCommentActionTargetName,
+  getCommentNotificationTargets,
+  getFeedCommentMeta,
+  parseFeedCommentAction,
+} from './feed';
 import { resolveFeedIntentItem } from './feedIntent';
 
 describe('feed comment actions', () => {
@@ -49,6 +55,23 @@ describe('feed comment actions', () => {
       comment: 'Vi har en tydlig refräng här.',
       parentFeedItemId: 'feed-42',
     });
+  });
+
+  it('targets both owner and reply target for comment signals', () => {
+    const targets = getCommentNotificationTargets({
+      actorKey: 'hannes',
+      ownerKey: 'ludvig',
+      replyTargetKey: 'niklas',
+    });
+
+    expect(targets).toEqual(['ludvig', 'niklas']);
+  });
+
+  it('falls back to reply target name for comment actions when replying in a thread', () => {
+    expect(getCommentActionTargetName({
+      ownerName: 'Ludvig',
+      replyTargetName: 'Niklas',
+    })).toBe('Niklas');
   });
 });
 
