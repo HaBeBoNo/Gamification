@@ -19,6 +19,10 @@ import { getDaysSinceActivity, getReengagementStage, isCalendarResponseNeeded } 
 import { getCalendarEventParticipationState } from '@/lib/calendarState';
 import { getFeedCommentMeta } from '@/lib/feed';
 import {
+  cacheCurrentHomeAttentionSignals,
+  filterSeenHomeAttentionSignals,
+} from '@/lib/homeAttentionState';
+import {
   buildHomeBandStatusCards,
   formatActivityAge,
   getActivityTimestamp,
@@ -192,7 +196,7 @@ export function useReengagementSurface() {
     let cancelled = false;
 
     async function loadPlan() {
-      setLoading(true);
+      setLoading((current) => current && !plan);
 
       const focusQuest = getRelevantActiveQuests(S.quests || [], me || undefined, 1)[0];
       const unreadActionable = sortNotificationsForAttention(notifications)
@@ -301,6 +305,14 @@ export function useReengagementSurface() {
 }
 
 export function useWaitingOnYouSurface() {
+  return useWaitingOnYouSurfaceInternal(false);
+}
+
+export function useWaitingOnYouInboxSurface() {
+  return useWaitingOnYouSurfaceInternal(true);
+}
+
+function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
   const unreadCount = useGameStore((state) => state.notifications.filter((notification) => !notification.read).length);
@@ -313,7 +325,7 @@ export function useWaitingOnYouSurface() {
     let cancelled = false;
 
     async function loadSignals() {
-      setLoading(true);
+      setLoading((current) => current && signals.length === 0);
 
       const nextSignals: HomeAttentionSignal[] = [];
       const unreadActionable = sortNotificationsForAttention(notifications)
@@ -354,7 +366,19 @@ export function useWaitingOnYouSurface() {
       });
 
       try {
-        const nextEvent = (await getUpcomingEvents(1))?.[0];
+        const [events, collabs, activityResult] = await Promise.all([
+          getUpcomingEvents(1).catch(() => []),
+          fetchMyCollaborativeQuests().catch(() => []),
+          supabase
+            ?.from('activity_feed')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(40)
+            .then(async ({ data }) => hydrateFeedItems(data || []))
+            .catch(() => []),
+        ]);
+
+        const nextEvent = events?.[0];
         if (nextEvent && nextSignals.length < 3) {
           const live = isEventActive(nextEvent.start, nextEvent.end);
           const soon = isEventSoon(nextEvent.start);
@@ -362,45 +386,40 @@ export function useWaitingOnYouSurface() {
           const needsResponse = isCalendarResponseNeeded(nextEvent.start, participation.hasResponded);
 
           if (live || needsResponse) {
-          nextSignals.push({
-            id: 'calendar-focus',
-            tone: live ? 'checkin' : 'calendar',
-            title: live ? 'Live nu' : `Svara på ${nextEvent.title}`,
-            subtitle: live
-              ? `${participation.checkInCount} incheckad${participation.checkInCount === 1 ? '' : 'e'}`
+            nextSignals.push({
+              id: `calendar-focus:${nextEvent.id}:${live ? 'live' : 'respond'}`,
+              tone: live ? 'checkin' : 'calendar',
+              title: live ? 'Live nu' : `Svara på ${nextEvent.title}`,
+              subtitle: live
+                ? `${participation.checkInCount} incheckad${participation.checkInCount === 1 ? '' : 'e'}`
                 : `${getRelativeCalendarLabel(nextEvent.start)} · ${participation.rsvpCount} kommer`,
-            target: 'bandhub',
-            cta: live ? 'Checka in' : 'Svara',
-          });
-        } else if (soon && nextSignals.length < 2) {
+              target: 'bandhub',
+              cta: live ? 'Checka in' : 'Svara',
+            });
+          } else if (soon && nextSignals.length < 2) {
+            nextSignals.push({
+              id: `calendar-upcoming:${nextEvent.id}`,
+              tone: 'calendar',
+              title: 'Snart',
+              subtitle: `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
+              target: 'bandhub',
+              cta: 'Kalender',
+            });
+          }
+        }
+
+        const delegated = (S.quests || []).filter((quest: any) => quest.delegatedTo === me && !quest.delegationHandled);
+        if (delegated.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
-            id: 'calendar-upcoming',
-            tone: 'calendar',
-            title: 'Snart',
-            subtitle: `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
-            target: 'bandhub',
-            cta: 'Kalender',
+            id: `delegation:${delegated.map((quest: any) => String(quest.id || quest.title)).join('|')}`,
+            tone: 'delegation',
+            title: `${delegated.length} uppdrag väntar på ditt svar`,
+            subtitle: delegated[0]?.title || 'Skickat till dig',
+            target: 'quests',
+            cta: 'Öppna uppdrag',
           });
         }
-        }
-      } catch {
-        // Ignore transient calendar failures.
-      }
 
-      const delegated = (S.quests || []).filter((quest: any) => quest.delegatedTo === me && !quest.delegationHandled);
-      if (delegated.length > 0 && nextSignals.length < 3) {
-        nextSignals.push({
-          id: 'delegation',
-          tone: 'delegation',
-          title: `${delegated.length} uppdrag väntar på ditt svar`,
-          subtitle: delegated[0]?.title || 'Skickat till dig',
-          target: 'quests',
-          cta: 'Öppna uppdrag',
-        });
-      }
-
-      try {
-        const collabs = await fetchMyCollaborativeQuests();
         const collabWaiting = collabs.filter((quest: any) =>
           quest.participants?.includes(me) &&
           !(quest.completed_by ?? []).includes(me) &&
@@ -410,7 +429,7 @@ export function useWaitingOnYouSurface() {
         if (collabWaiting.length > 0 && nextSignals.length < 3) {
           const first = collabWaiting[0];
           nextSignals.push({
-            id: 'collaborative',
+            id: `collaborative:${String(first.id || first.quest_id || first.quest_data?.title || 'unknown')}:${collabWaiting.length}`,
             tone: 'collaborative',
             title: `${collabWaiting.length} samarbetsuppdrag väntar`,
             subtitle: first.quest_data?.title || 'Din del väntar',
@@ -418,17 +437,7 @@ export function useWaitingOnYouSurface() {
             cta: 'Quests',
           });
         }
-      } catch {
-        // Ignore transient collaborative quest failures.
-      }
-
-      try {
-        const { data } = await supabase
-          .from('activity_feed')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(40);
-        const hydrated = await hydrateFeedItems(data || []);
+        const hydrated = activityResult || [];
 
         const directComments = hydrated.filter((item: any) => {
           const parsed = getFeedCommentMeta(item);
@@ -437,7 +446,7 @@ export function useWaitingOnYouSurface() {
 
         if (directComments.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
-            id: 'comments',
+            id: `comments:${String(directComments[0].id || 'latest')}:${directComments.length}`,
             tone: 'comment',
             title: `${directComments.length} kommentar${directComments.length > 1 ? 'er' : ''} till dig`,
             subtitle: `${getMemberName(directComments[0].who)} svarade`,
@@ -458,7 +467,7 @@ export function useWaitingOnYouSurface() {
 
         if (feedbackItems.length > 0 && nextSignals.length < 3) {
           nextSignals.push({
-            id: 'feedback',
+            id: `feedback:${String(feedbackItems[0].id || 'latest')}:${feedbackItems.length}`,
             tone: 'reaction',
             title: `Respons på ${feedbackItems.length} aktivitet${feedbackItems.length > 1 ? 'er' : ''}`,
             subtitle: 'Aktivitet',
@@ -467,7 +476,7 @@ export function useWaitingOnYouSurface() {
           });
         }
       } catch {
-        // Ignore transient activity failures.
+        // Ignore transient waiting-on-you failures.
       }
 
       if (unreadCount > 0 && nextSignals.length < 3) {
@@ -482,7 +491,13 @@ export function useWaitingOnYouSurface() {
       }
 
       if (!cancelled) {
-        setSignals(nextSignals.slice(0, 3));
+        if (!me) return;
+        const memberKey = me;
+        const nextVisibleSignals = includeSeen
+          ? nextSignals.slice(0, 3)
+          : filterSeenHomeAttentionSignals(memberKey, nextSignals.slice(0, 3));
+        cacheCurrentHomeAttentionSignals(memberKey, nextSignals.slice(0, 3));
+        setSignals(nextVisibleSignals);
         setLoading(false);
       }
     }
@@ -509,7 +524,7 @@ export function useWaitingOnYouSurface() {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [me, notifications, tick, unreadCount]);
+  }, [includeSeen, me, notifications, tick, unreadCount]);
 
   return { me, loading, signals, unreadCount };
 }

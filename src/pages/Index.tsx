@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { unregisterPush } from '@/lib/webPush';
+import { clearHomeAttentionSeen, markCurrentHomeAttentionSeen } from '@/lib/homeAttentionState';
 import { clearBaselineSession, consumePushOpenMarker, recordAppOpenOncePerSession } from '@/lib/productBaseline';
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 
@@ -91,6 +92,9 @@ export default function Index() {
   }, [activeView, handlePullEnd, handleTouchEnd]);
 
   function openNotifications() {
+    if (S.me) {
+      markCurrentHomeAttentionSeen(S.me);
+    }
     setShowNotifications(true);
     markAllRead();
   }
@@ -169,6 +173,7 @@ export default function Index() {
       localStorage.removeItem(STORAGE_KEY);
       if (currentMember) {
         clearSocialSignalSync(currentMember);
+        clearHomeAttentionSeen(currentMember);
         clearBaselineSession(currentMember);
       }
       window.location.reload();

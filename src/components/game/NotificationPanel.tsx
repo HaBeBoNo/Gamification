@@ -5,7 +5,8 @@ import { useGameStore } from '@/state/store';
 import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin, Users, Hand, Inbox } from 'lucide-react';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention } from '@/lib/notificationMeta';
-import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
+import { markHomeAttentionSeen } from '@/lib/homeAttentionState';
+import { useWaitingOnYouInboxSurface } from '@/hooks/useHomeSurface';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -107,11 +108,14 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
   // Reactive: re-renders whenever the notifications slice changes in Zustand
   const notifications = useGameStore(s => s.notifications);
   const orderedNotifications = sortNotificationsForAttention(notifications);
-  const { signals } = useWaitingOnYouSurface();
+  const { me, signals } = useWaitingOnYouInboxSurface();
   const liveSignals = signals.filter((signal) => signal.target !== 'notifications');
 
   function handleNotificationPress(notification: Notification) {
     markRead(notification.id);
+    if (me) {
+      markHomeAttentionSeen(me, [`notification-${notification.id}`]);
+    }
 
     const target = getNotificationTarget(notification);
     const feedIntent = getNotificationFeedIntent(notification);
@@ -132,6 +136,9 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
   }
 
   function handleSignalPress(signal: (typeof liveSignals)[number]) {
+    if (me) {
+      markHomeAttentionSeen(me, [signal.id]);
+    }
     if (signal.notificationId) {
       markRead(signal.notificationId);
     }

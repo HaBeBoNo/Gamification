@@ -2,6 +2,7 @@ import { Bell, CalendarDays, Hand, Inbox, MapPin, MessageCircle, Users, X } from
 import { markRead } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationFeedIntent } from '@/lib/notificationMeta';
+import { markHomeAttentionSeen } from '@/lib/homeAttentionState';
 import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
 import { CARD_PAD, CARD_PAD_ROOM, ICON_BUTTON_SIZE, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
@@ -69,6 +70,9 @@ export function WaitingOnYouCard({
             <button
               key={signal.id}
               onClick={() => {
+                if (me) {
+                  markHomeAttentionSeen(me, [signal.id]);
+                }
                 if (signal.notificationId) markRead(signal.notificationId);
                 if (signal.notification) {
                   const feedIntent = getNotificationFeedIntent(signal.notification);
