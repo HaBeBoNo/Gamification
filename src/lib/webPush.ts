@@ -35,7 +35,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 async function getPushRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
-  await navigator.serviceWorker.register('/sw.js')
+  await navigator.serviceWorker.register('/service-worker.js')
   return navigator.serviceWorker.ready
 }
 

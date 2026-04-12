@@ -8,9 +8,16 @@ export default defineConfig({
     react(),
 
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'service-worker.js',
       registerType: 'autoUpdate',
       manifest: false,
-      devOptions: { enabled: false }
+      devOptions: { enabled: false },
+      injectManifest: {
+        // Säkerställ att workbox-moduler bundlas korrekt
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      },
     }),
   ],
 

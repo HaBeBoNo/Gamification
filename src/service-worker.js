@@ -15,6 +15,11 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { clientsClaim } from 'workbox-core';
+
+// ── Aktivera ny SW direkt (krävs för autoUpdate) ──
+self.skipWaiting();
+clientsClaim();
 
 // ── Precache app-shell (injiceras av vite-plugin-pwa vid build) ──
 precacheAndRoute(self.__WB_MANIFEST);
