@@ -22,6 +22,12 @@ import {
   filterSeenHomeAttentionSignals,
 } from '@/lib/homeAttentionState';
 import {
+  loadCachedReengagementPlan,
+  loadCachedWaitingSignals,
+  saveCachedReengagementPlan,
+  saveCachedWaitingSignals,
+} from '@/lib/homeSurfaceCache';
+import {
   buildHomeBandStatusCards,
   formatActivityAge,
   getActivityTimestamp,
@@ -52,6 +58,48 @@ const sharedCollaborativeCache = new Map<string, {
 
 const reengagementPlanCache = new Map<string, HomeReengagementPlan | null>();
 const waitingSignalCache = new Map<string, HomeAttentionSignal[]>();
+
+function readCachedCoachMessage(memberKey: string | null | undefined): string {
+  if (!memberKey) return '';
+  const char = (S.chars as Record<string, any>)?.[memberKey];
+  return typeof char?.dailyCoachMessage === 'string' ? char.dailyCoachMessage : '';
+}
+
+function getCachedReengagementPlan(memberKey: string): {
+  hasEntry: boolean;
+  value: HomeReengagementPlan | null;
+} {
+  if (reengagementPlanCache.has(memberKey)) {
+    return {
+      hasEntry: true,
+      value: reengagementPlanCache.get(memberKey) ?? null,
+    };
+  }
+
+  const cached = loadCachedReengagementPlan(memberKey);
+  if (cached.hasEntry) {
+    reengagementPlanCache.set(memberKey, cached.value);
+  }
+  return cached;
+}
+
+function getCachedWaitingSignals(memberKey: string): {
+  hasEntry: boolean;
+  value: HomeAttentionSignal[];
+} {
+  if (waitingSignalCache.has(memberKey)) {
+    return {
+      hasEntry: true,
+      value: waitingSignalCache.get(memberKey) || [],
+    };
+  }
+
+  const cached = loadCachedWaitingSignals(memberKey);
+  if (cached.hasEntry) {
+    waitingSignalCache.set(memberKey, cached.value);
+  }
+  return cached;
+}
 
 function getSharedUpcomingEvents(maxResults: number): Promise<CalendarEvent[]> {
   const now = Date.now();
@@ -225,15 +273,40 @@ export function useHomeBandStatusCards(totalMembers: number) {
 export function useDailyCoachSurface() {
   const me = S.me;
   const feed = useGameStore((state) => state.feed);
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState(() => readCachedCoachMessage(me));
+  const [loading, setLoading] = useState(() => Boolean(me) && !readCachedCoachMessage(me));
 
   useEffect(() => {
-    if (!me) return;
-    setLoading(true);
+    if (!me) {
+      setMessage('');
+      setLoading(false);
+      return;
+    }
+
+    const cachedMessage = readCachedCoachMessage(me);
+    if (cachedMessage) {
+      setMessage(cachedMessage);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    let cancelled = false;
+
     getDailyCoachMessage(me)
-      .then((msg) => setMessage(msg))
-      .finally(() => setLoading(false));
+      .then((msg) => {
+        if (cancelled) return;
+        setMessage(msg || cachedMessage);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [me]);
 
   const coachName = me ? ((S.chars[me] as any)?.coachName || 'Coach') : 'Coach';
@@ -266,8 +339,14 @@ export function useReengagementSurface() {
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
   const tick = useGameStore((state) => state.tick);
-  const [loading, setLoading] = useState(() => (me ? !reengagementPlanCache.has(me) : false));
-  const [plan, setPlan] = useState<HomeReengagementPlan | null>(() => (me ? reengagementPlanCache.get(me) ?? null : null));
+  const [loading, setLoading] = useState(() => {
+    if (!me) return false;
+    const cached = getCachedReengagementPlan(me);
+    return !cached.hasEntry;
+  });
+  const [plan, setPlan] = useState<HomeReengagementPlan | null>(() => (
+    me ? getCachedReengagementPlan(me).value : null
+  ));
 
   useEffect(() => {
     if (!me) {
@@ -276,18 +355,20 @@ export function useReengagementSurface() {
       return;
     }
 
-  const char = (S.chars as Record<string, any>)?.[me];
-  const daysSinceActivity = getDaysSinceActivity(char?.lastSeen, char?.lastQuestDate);
-  const stage = getReengagementStage(daysSinceActivity);
-  const memberKey = me;
+    const char = (S.chars as Record<string, any>)?.[me];
+    const daysSinceActivity = getDaysSinceActivity(char?.lastSeen, char?.lastQuestDate);
+    const stage = getReengagementStage(daysSinceActivity);
+    const memberKey = me;
+    const cachedPlan = getCachedReengagementPlan(memberKey);
 
-    if (reengagementPlanCache.has(memberKey)) {
-      setPlan(reengagementPlanCache.get(memberKey) ?? null);
+    if (cachedPlan.hasEntry) {
+      setPlan(cachedPlan.value);
       setLoading(false);
     }
 
     if (stage === 'active') {
       reengagementPlanCache.set(memberKey, null);
+      saveCachedReengagementPlan(memberKey, null);
       setPlan(null);
       setLoading(false);
       return;
@@ -296,7 +377,7 @@ export function useReengagementSurface() {
     let cancelled = false;
 
     async function loadPlan() {
-      setLoading((current) => current && !plan);
+      setLoading((current) => current && !cachedPlan.hasEntry);
 
       const focusQuest = getRelevantActiveQuests(S.quests || [], me || undefined, 1)[0];
       const unreadActionable = sortNotificationsForAttention(notifications)
@@ -378,6 +459,7 @@ export function useReengagementSurface() {
 
         if (!cancelled) {
           reengagementPlanCache.set(memberKey, nextPlan);
+          saveCachedReengagementPlan(memberKey, nextPlan);
           setPlan(nextPlan);
           setLoading(false);
         }
@@ -391,6 +473,7 @@ export function useReengagementSurface() {
             target: 'coach',
           } satisfies HomeReengagementPlan;
           reengagementPlanCache.set(memberKey, fallbackPlan);
+          saveCachedReengagementPlan(memberKey, fallbackPlan);
           setPlan(fallbackPlan);
           setLoading(false);
         }
@@ -421,8 +504,13 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
   const feed = useGameStore((state) => state.feed);
   const unreadCount = useGameStore((state) => state.notifications.filter((notification) => !notification.read).length);
   const tick = useGameStore((state) => state.tick);
-  const [signals, setSignals] = useState<HomeAttentionSignal[]>(() => (me ? waitingSignalCache.get(me) || [] : []));
-  const [loading, setLoading] = useState(() => (enabled && me ? !waitingSignalCache.has(me) : false));
+  const [signals, setSignals] = useState<HomeAttentionSignal[]>(() => (
+    me ? getCachedWaitingSignals(me).value : []
+  ));
+  const [loading, setLoading] = useState(() => {
+    if (!enabled || !me) return false;
+    return !getCachedWaitingSignals(me).hasEntry;
+  });
 
   useEffect(() => {
     if (!me) {
@@ -437,16 +525,16 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
     }
 
     const memberKey = me;
-    const cachedSignals = waitingSignalCache.get(memberKey);
-    if (cachedSignals) {
-      setSignals(includeSeen ? cachedSignals : filterSeenHomeAttentionSignals(memberKey, cachedSignals));
+    const cachedSignals = getCachedWaitingSignals(memberKey);
+    if (cachedSignals.hasEntry) {
+      setSignals(includeSeen ? cachedSignals.value : filterSeenHomeAttentionSignals(memberKey, cachedSignals.value));
       setLoading(false);
     }
 
     let cancelled = false;
 
     async function loadSignals() {
-      setLoading((current) => current && signals.length === 0 && !cachedSignals);
+      setLoading((current) => current && signals.length === 0 && !cachedSignals.hasEntry);
 
       const nextSignals: HomeAttentionSignal[] = [];
       const unreadActionable = sortNotificationsForAttention(notifications)
@@ -610,6 +698,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
           ? nextSignalSlice
           : filterSeenHomeAttentionSignals(memberKey, nextSignalSlice);
         waitingSignalCache.set(memberKey, nextSignalSlice);
+        saveCachedWaitingSignals(memberKey, nextSignalSlice);
         cacheCurrentHomeAttentionSignals(memberKey, nextSignalSlice);
         setSignals(nextVisibleSignals);
         setLoading(false);
@@ -652,7 +741,7 @@ export function useHomeBandEchoSurface() {
   return {
     me,
     items,
-    loading: !feedHydrated,
+    loading: !feedHydrated && items.length === 0,
     formatActivityAge,
     getHomeEchoSummary,
   };
