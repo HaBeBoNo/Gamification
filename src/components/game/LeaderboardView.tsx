@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { S, notify } from '@/state/store';
+import { S } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { Trophy, Flame, Zap, Check, Star } from 'lucide-react';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -70,6 +70,10 @@ const SORT_PILLS: { key: SortKey; label: string }[] = [
   { key: 'streak', label: 'Streak' },
 ];
 
+let leaderboardMemberDataCache: Record<string, any> = {};
+let leaderboardEndorsementsCache: Record<string, Record<string, string[]>> = {};
+let leaderboardRemoteHydrated = false;
+
 function isActiveTodayFromChar(char: any): boolean {
   const today = new Date().toDateString();
   const lastSeen = Number(char?.lastSeen || char?.lastQuestDate || 0);
@@ -84,37 +88,55 @@ function isActiveTodayFromChar(char: any): boolean {
 function LeaderboardView() {
   const [sortKey, setSortKey] = useState<SortKey>('xp');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
-  const [memberDataMap, setMemberDataMap] = useState<Record<string, any>>({});
-  const [endorsementsMap, setEndorsementsMap] = useState<Record<string, Record<string, string[]>>>({});
+  const [loadingData, setLoadingData] = useState(() => !leaderboardRemoteHydrated);
+  const [memberDataMap, setMemberDataMap] = useState<Record<string, any>>(() => leaderboardMemberDataCache);
+  const [endorsementsMap, setEndorsementsMap] = useState<Record<string, Record<string, string[]>>>(() => leaderboardEndorsementsCache);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setLoadingData(false);
+      return;
+    }
+
+    let cancelled = false;
 
     async function fetchAllMembers() {
-      setLoadingData(true);
+      if (!leaderboardRemoteHydrated) {
+        setLoadingData(true);
+      }
       const { data } = await supabase
         .from('member_data')
         .select('member_key, data');
 
+      if (cancelled) return;
+
       if (data) {
         const dataMap: Record<string, any> = {};
-        data.forEach(row => {
+        const nextEndorsementsMap: Record<string, Record<string, string[]>> = {};
+
+        data.forEach((row) => {
           if (row.data?.chars?.[row.member_key]) {
             S.chars[row.member_key] = {
               ...S.chars[row.member_key],
               ...row.data.chars[row.member_key],
             };
           }
-          // Spara full data (inkl. feed) för isActiveToday
+
           dataMap[row.member_key] = row.data;
+          nextEndorsementsMap[row.member_key] = row.data?.endorsements ?? {};
         });
+
+        leaderboardMemberDataCache = dataMap;
+        leaderboardEndorsementsCache = nextEndorsementsMap;
+        leaderboardRemoteHydrated = true;
         setMemberDataMap(dataMap);
+        setEndorsementsMap(nextEndorsementsMap);
       }
+
       setLoadingData(false);
     }
 
-    fetchAllMembers();
+    void fetchAllMembers();
 
     const channel = supabase
       .channel('leaderboard_realtime')
@@ -127,42 +149,38 @@ function LeaderboardView() {
         },
         (payload) => {
           const remote = payload.new as any;
-          if (remote?.member_key && remote.member_key !== S.me) {
+          if (remote?.member_key) {
             const remoteChars = remote.data?.chars;
             if (remoteChars?.[remote.member_key]) {
               S.chars[remote.member_key] = {
                 ...S.chars[remote.member_key],
                 ...remoteChars[remote.member_key],
               };
-              notify();
             }
-            setMemberDataMap(prev => ({
-              ...prev,
+
+            const nextMemberDataMap = {
+              ...leaderboardMemberDataCache,
               [remote.member_key]: remote.data,
-            }));
+            };
+            const nextEndorsementsMap = {
+              ...leaderboardEndorsementsCache,
+              [remote.member_key]: remote.data?.endorsements ?? {},
+            };
+
+            leaderboardMemberDataCache = nextMemberDataMap;
+            leaderboardEndorsementsCache = nextEndorsementsMap;
+            leaderboardRemoteHydrated = true;
+            setMemberDataMap(nextMemberDataMap);
+            setEndorsementsMap(nextEndorsementsMap);
           }
         }
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
-
-  useEffect(() => {
-    async function loadEndorsements() {
-      const { data } = await supabase
-        .from('member_data')
-        .select('member_key, data');
-      if (!data) return;
-      const map: Record<string, Record<string, string[]>> = {};
-      for (const row of data) {
-        map[row.member_key] = row.data?.endorsements ?? {};
-      }
-      setEndorsementsMap(map);
-    }
-    loadEndorsements();
   }, []);
 
   async function giveEndorsement(targetKey: string, stat: string) {
@@ -186,7 +204,9 @@ function LeaderboardView() {
       .update({ data: { ...(existing?.data ?? {}), endorsements: updated } })
       .eq('member_key', targetKey);
 
-    setEndorsementsMap(prev => ({ ...prev, [targetKey]: updated }));
+    const nextEndorsementsMap = { ...endorsementsMap, [targetKey]: updated };
+    leaderboardEndorsementsCache = nextEndorsementsMap;
+    setEndorsementsMap(nextEndorsementsMap);
   }
 
   const rows: MemberRow[] = Object.entries(S.chars)
@@ -220,7 +240,7 @@ function LeaderboardView() {
     return [...rows].sort(compare).map((r, i) => ({ ...r, rank: i + 1 }));
   }, [rows, sortKey]);
 
-  if (loadingData) {
+  if (loadingData && sorted.length === 0) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center',

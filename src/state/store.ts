@@ -226,6 +226,7 @@ const RAW = (() => {
 
 const LEGACY_REMINDERS_KEY = 'hq_reminders';
 const FEED_STORAGE_KEY = 'hq_feed_v1';
+const NOTIFICATIONS_STORAGE_KEY = 'hq_notifications_v1';
 
 function canUseLocalStorage(): boolean {
   return typeof localStorage !== 'undefined';
@@ -246,6 +247,14 @@ function persistFeedSlice(feed: FeedEntry[]): void {
   localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(feed));
 }
 
+export function persistNotificationsSlice(notifications: Notification[]): void {
+  if (!canUseLocalStorage()) return;
+  localStorage.setItem(
+    NOTIFICATIONS_STORAGE_KEY,
+    JSON.stringify((notifications || []).slice(0, SYNC_CONFIG.notificationLimit))
+  );
+}
+
 function loadPersistedFeed(): FeedEntry[] {
   if (!canUseLocalStorage()) return dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []);
   try {
@@ -258,14 +267,33 @@ function loadPersistedFeed(): FeedEntry[] {
   return dedupeLocalFeed((RAW?.feed as FeedEntry[]) || []);
 }
 
+function loadPersistedNotifications(): Notification[] {
+  if (!canUseLocalStorage()) {
+    return ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit);
+  }
+
+  try {
+    const slice = JSON.parse(localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) || 'null');
+    if (Array.isArray(slice)) {
+      return (slice as Notification[]).slice(0, SYNC_CONFIG.notificationLimit);
+    }
+  } catch {
+    // Fall through to legacy envelope data below.
+  }
+
+  return ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit);
+}
+
 const initialFeed = loadPersistedFeed().slice(0, 50);
+const initialNotifications = loadPersistedNotifications();
 persistFeedSlice(initialFeed);
+persistNotificationsSlice(initialNotifications);
 
 // ── Zustand store ────────────────────────────────────────────────
 
 export const useGameStore = create<GameStoreState>((set) => ({
   tick:          0,
-  notifications: ((RAW?.notifications as Notification[]) || []).slice(0, SYNC_CONFIG.notificationLimit),
+  notifications: initialNotifications,
   feed:          initialFeed,
   feedHydrated:  initialFeed.length > 0,
   presenceMembers: [],
@@ -352,6 +380,7 @@ Object.defineProperty(S as Record<string, unknown>, 'feed', {
 
 export function save(): void {
   const notifications = useGameStore.getState().notifications;
+  persistNotificationsSlice(notifications);
   if (canUseLocalStorage()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       me:              S.me,
@@ -364,7 +393,6 @@ export function save(): void {
       reminders:       S.reminders,
       operationName:   S.operationName,
       weeklyCheckouts: S.weeklyCheckouts,
-      notifications,
       seasonStart:     S.seasonStart,
       seasonEnd:       S.seasonEnd,
     }));

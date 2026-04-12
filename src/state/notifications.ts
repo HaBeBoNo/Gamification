@@ -17,7 +17,7 @@
 //   useGameStore(s => s.notifications)
 // ═══════════════════════════════════════════════════════════════
 
-import { S, save, useGameStore } from './store';
+import { S, persistNotificationsSlice, useGameStore } from './store';
 import type { Notification } from '../types/game';
 import { markRemoteNotificationsRead } from '@/lib/socialData';
 
@@ -80,6 +80,10 @@ function sortAndTrimNotifications(notifications: Notification[]): Notification[]
     });
 
   return [...deduped.values()].sort((a, b) => b.ts - a.ts).slice(0, 50);
+}
+
+function commitNotifications(notifications: Notification[]): void {
+  persistNotificationsSlice(notifications);
 }
 
 // ── Factory-funktioner ───────────────────────────────────────────
@@ -158,18 +162,20 @@ export function addNotification(notification: Omit<Notification, 'id' | 'read'>)
     read: false,
     source: notification.source || 'local',
   };
-  useGameStore.setState(s => ({
-    notifications: sortAndTrimNotifications([notif, ...s.notifications]),
-  }));
-  save();
+  useGameStore.setState((s) => {
+    const nextNotifications = sortAndTrimNotifications([notif, ...s.notifications]);
+    commitNotifications(nextNotifications);
+    return { notifications: nextNotifications };
+  });
 }
 
 /** Lägger till ett redan format notif-objekt (med id + ts) och trunkerar till 50. */
 export function addNotifToAll(notif: Notification): void {
-  useGameStore.setState(s => ({
-    notifications: sortAndTrimNotifications([{ ...notif, source: notif.source || 'local' }, ...s.notifications]),
-  }));
-  save();
+  useGameStore.setState((s) => {
+    const nextNotifications = sortAndTrimNotifications([{ ...notif, source: notif.source || 'local' }, ...s.notifications]);
+    commitNotifications(nextNotifications);
+    return { notifications: nextNotifications };
+  });
 }
 
 /**
@@ -190,26 +196,28 @@ export function addNotifToMembers(
       read:      false,
       source:    notif.source || 'local',
     };
-    useGameStore.setState(s => ({
-      notifications: sortAndTrimNotifications([fullNotif, ...s.notifications]),
-    }));
+    useGameStore.setState((s) => {
+      const nextNotifications = sortAndTrimNotifications([fullNotif, ...s.notifications]);
+      commitNotifications(nextNotifications);
+      return { notifications: nextNotifications };
+    });
   });
-  save();
 }
 
 export function upsertNotifications(notifications: Notification[]): void {
   if (notifications.length === 0) return;
 
-  useGameStore.setState((state) => ({
-    notifications: sortAndTrimNotifications([
+  useGameStore.setState((state) => {
+    const nextNotifications = sortAndTrimNotifications([
       ...notifications.map((notification) => ({
         ...notification,
         source: notification.source || 'supabase',
       })),
       ...state.notifications,
-    ]),
-  }));
-  save();
+    ]);
+    commitNotifications(nextNotifications);
+    return { notifications: nextNotifications };
+  });
 }
 
 /** Markerar alla notifikationer som lästa. */
@@ -219,10 +227,11 @@ export function markAllRead(): void {
     .filter((notification) => !notification.read && notification.source === 'supabase')
     .map((notification) => notification.remoteId || String(notification.id));
 
-  useGameStore.setState(s => ({
-    notifications: s.notifications.map(n => ({ ...n, read: true })),
-  }));
-  save();
+  useGameStore.setState((s) => {
+    const nextNotifications = s.notifications.map((notification) => ({ ...notification, read: true }));
+    commitNotifications(nextNotifications);
+    return { notifications: nextNotifications };
+  });
 
   if (S.me && remoteIds.length > 0) {
     void markRemoteNotificationsRead(S.me, remoteIds);
@@ -234,10 +243,11 @@ export function markRead(id: string | number): void {
   const currentNotifications = useGameStore.getState().notifications;
   const notification = currentNotifications.find((item) => item.id === id);
 
-  useGameStore.setState(s => ({
-    notifications: s.notifications.map(n => n.id === id ? { ...n, read: true } : n),
-  }));
-  save();
+  useGameStore.setState((s) => {
+    const nextNotifications = s.notifications.map((item) => item.id === id ? { ...item, read: true } : item);
+    commitNotifications(nextNotifications);
+    return { notifications: nextNotifications };
+  });
 
   if (S.me && notification?.source === 'supabase') {
     void markRemoteNotificationsRead(S.me, [notification.remoteId || String(notification.id)]);

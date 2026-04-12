@@ -39,8 +39,15 @@ type RemoteNotificationRow = {
 };
 
 type CapabilityState = Partial<Record<SocialCapability, boolean>>;
+type BandActivitySnapshot = { activeToday: number; xp48h: number; activeNow: number | null };
 
 const capabilityState: CapabilityState = {};
+const BAND_SNAPSHOT_CACHE_TTL_MS = 5_000;
+const bandSnapshotCache = new Map<string, {
+  expiresAt: number;
+  value?: BandActivitySnapshot;
+  promise?: Promise<BandActivitySnapshot>;
+}>();
 
 function setCapability(capability: SocialCapability, supported: boolean) {
   capabilityState[capability] = supported;
@@ -570,7 +577,7 @@ export async function fetchActivePresenceMembers(
 export async function fetchBandActivitySnapshot(
   withinHours = 48,
   presenceMinutes = 5,
-): Promise<{ activeToday: number; xp48h: number; activeNow: number | null }> {
+): Promise<BandActivitySnapshot> {
   if (!supabase) {
     return { activeToday: 0, xp48h: 0, activeNow: null };
   }
@@ -623,4 +630,58 @@ export async function fetchBandActivitySnapshot(
     activeNow: presence.supported ? presence.activeNow : null,
     localMemberIsLive,
   });
+}
+
+function getBandSnapshotCacheKey(withinHours: number, presenceMinutes: number): string {
+  return `${withinHours}:${presenceMinutes}`;
+}
+
+export function invalidateBandActivitySnapshotCache(
+  withinHours?: number,
+  presenceMinutes?: number,
+): void {
+  if (typeof withinHours === 'number' && typeof presenceMinutes === 'number') {
+    bandSnapshotCache.delete(getBandSnapshotCacheKey(withinHours, presenceMinutes));
+    return;
+  }
+
+  bandSnapshotCache.clear();
+}
+
+export async function fetchSharedBandActivitySnapshot(
+  withinHours = 48,
+  presenceMinutes = 5,
+  options: { forceFresh?: boolean } = {},
+): Promise<BandActivitySnapshot> {
+  const key = getBandSnapshotCacheKey(withinHours, presenceMinutes);
+  const now = Date.now();
+  const cached = bandSnapshotCache.get(key);
+
+  if (cached?.promise) {
+    return cached.promise;
+  }
+
+  if (!options.forceFresh && cached?.value && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const promise = fetchBandActivitySnapshot(withinHours, presenceMinutes)
+    .then((snapshot) => {
+      bandSnapshotCache.set(key, {
+        value: snapshot,
+        expiresAt: Date.now() + BAND_SNAPSHOT_CACHE_TTL_MS,
+      });
+      return snapshot;
+    })
+    .catch((error) => {
+      bandSnapshotCache.delete(key);
+      throw error;
+    });
+
+  bandSnapshotCache.set(key, {
+    promise,
+    expiresAt: now + BAND_SNAPSHOT_CACHE_TTL_MS,
+  });
+
+  return promise;
 }

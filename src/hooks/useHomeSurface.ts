@@ -6,7 +6,7 @@ import { getUpcomingEvents, isEventActive, isEventSoon, type CalendarEvent } fro
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
 import { fetchMyCollaborativeQuests, type CollaborativeQuest } from '@/lib/collaborativeQuests';
-import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
+import { fetchSharedBandActivitySnapshot } from '@/lib/socialData';
 import {
   getNotificationActionLabel,
   getNotificationTarget,
@@ -132,9 +132,9 @@ export function useHomeBandStatusCards(totalMembers: number) {
   const [myRank, setMyRank] = useState<HomeRankSummary | null>(null);
 
   useEffect(() => {
-    async function loadPulse() {
+    async function loadPulse(options?: { forceFresh?: boolean }) {
       try {
-        const snapshot = await fetchBandActivitySnapshot();
+        const snapshot = await fetchSharedBandActivitySnapshot(48, 5, options);
         setActiveToday(snapshot.activeToday);
         setXp48h(snapshot.xp48h);
         setActiveNow(snapshot.activeNow);
@@ -193,12 +193,16 @@ export function useHomeBandStatusCards(totalMembers: number) {
         event: '*',
         schema: 'public',
         table: 'activity_feed',
-      }, () => { void loadPulse(); })
+      }, () => {
+        void loadPulse({ forceFresh: true });
+      })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'member_presence',
-      }, () => { void loadPulse(); })
+      }, () => {
+        void loadPulse({ forceFresh: true });
+      })
       .subscribe();
 
     return () => {
@@ -636,63 +640,19 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
 
 export function useHomeBandEchoSurface() {
   const me = S.me;
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!me) return;
-    let cancelled = false;
-
-    async function loadEcho() {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('activity_feed')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(24);
-
-        const hydrated = await hydrateFeedItems(data || []);
-        const others = hydrated
-          .filter((item: any) => item?.who && item.who !== me)
-          .sort((left: any, right: any) => getActivityTimestamp(right) - getActivityTimestamp(left))
-          .slice(0, 3);
-
-        if (!cancelled) {
-          setItems(others);
-        }
-      } catch {
-        if (!cancelled) {
-          setItems([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadEcho();
-
-    const channel = supabase
-      .channel('home-band-echo')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'activity_feed',
-      }, () => { void loadEcho(); })
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [me]);
+  const feed = useGameStore((state) => state.feed);
+  const feedHydrated = useGameStore((state) => state.feedHydrated);
+  const items = useMemo(() => (
+    (feed || [])
+      .filter((item: any) => item?.who && item.who !== me)
+      .sort((left: any, right: any) => getActivityTimestamp(right) - getActivityTimestamp(left))
+      .slice(0, 3)
+  ), [feed, me]);
 
   return {
     me,
     items,
-    loading,
+    loading: !feedHydrated,
     formatActivityAge,
     getHomeEchoSummary,
   };

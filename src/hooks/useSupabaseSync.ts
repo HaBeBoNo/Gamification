@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { S, save, useGameStore } from '@/state/store';
+import { S, persistNotificationsSlice, save, useGameStore } from '@/state/store';
 import { clearRuntimeIssue, setRuntimeIssue } from '@/lib/runtimeHealth';
 import { fetchRemoteNotifications } from '@/lib/socialData';
 import { upsertNotifications } from '@/state/notifications';
@@ -90,12 +90,10 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   S.me = memberKey;
   if (remote.onboarded !== undefined) {
     S.onboarded = remote.onboarded
-    save() // ← tvinga Zustand-uppdatering direkt
   }
   // Återställ onboarded-status från chars om den finns där
   if (remote.chars?.[memberKey]?.onboarded === true) {
     S.onboarded = true
-    save() // ← tvinga Zustand-uppdatering direkt
   }
   if (remote.chars) Object.assign(S.chars, remote.chars);
   if (remote.quests?.length) S.quests = remote.quests;
@@ -108,7 +106,9 @@ export async function syncFromSupabase(memberKey: string, onComplete?: () => voi
   if (remoteNotifications.supported) {
     upsertNotifications(remoteNotifications.notifications);
   } else if (remote.notifications) {
-    useGameStore.setState({ notifications: remote.notifications });
+    const nextNotifications = remote.notifications;
+    persistNotificationsSlice(nextNotifications);
+    useGameStore.setState({ notifications: nextNotifications });
   }
   if (remote.seasonStart) S.seasonStart = remote.seasonStart;
   if (remote.seasonEnd) S.seasonEnd = remote.seasonEnd;

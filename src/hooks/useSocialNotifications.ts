@@ -282,32 +282,9 @@ export function useSocialNotifications() {
       if (cancelled) return;
 
       if (remoteResult.supported) {
-        await seed(false);
-        if (cancelled) return;
-
         remoteChannel = subscribeToRemoteNotifications(S.me!, () => {
           void syncRemote();
         });
-
-        legacyChannel = supabase
-          .channel('social-notifications-fallback')
-          .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'activity_feed',
-          }, (payload) => {
-            if (!initialized.current) return;
-            handleInsert(payload.new as any);
-          })
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'activity_feed',
-          }, (payload) => {
-            if (!initialized.current) return;
-            handleUpdate(payload.new as any);
-          })
-          .subscribe();
 
         if (remoteResult.transientError) {
           remoteRetryTimer.current = window.setTimeout(() => {

@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { EMAIL_TO_MEMBER } from '@/data/members';
 import { S, save } from '@/state/store';
 import { syncFromSupabase } from './useSupabaseSync';
-import { ensurePushRegistration } from '@/lib/webPush';
 
 async function ensureProfileRecord(supabaseUser: any, memberKey: string): Promise<boolean> {
   if (!supabase || !supabaseUser?.id || !memberKey) return false;
@@ -62,14 +61,6 @@ export function useAuth() {
     setSynced(true);
 
     await ensureProfileRecord(supabaseUser, resolvedMemberKey);
-
-    void syncFromSupabase(resolvedMemberKey).catch((error) => {
-      console.warn('[Auth] Background sync failed:', error);
-    });
-
-    void ensurePushRegistration(resolvedMemberKey, { promptIfNeeded: false, reason: 'auth' }).catch((error) => {
-      console.error('[Push] Failed:', error);
-    });
   }, []);
 
   useEffect(() => {

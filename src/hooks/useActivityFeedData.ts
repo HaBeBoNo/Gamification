@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { supabase } from '@/lib/supabase';
-import { fetchBandActivitySnapshot } from '@/lib/socialData';
+import { fetchSharedBandActivitySnapshot } from '@/lib/socialData';
 import type { FeedEntry } from '@/types/game';
 
 export function useActivityFeedData() {
@@ -18,8 +18,8 @@ export function useActivityFeedData() {
 
   useEffect(() => {
     if (!S.me || !supabase) return;
-    async function loadBandSnapshot() {
-      const snapshot = await fetchBandActivitySnapshot();
+    async function loadBandSnapshot(options?: { forceFresh?: boolean }) {
+      const snapshot = await fetchSharedBandActivitySnapshot(48, 5, options);
       setBandSnapshot(snapshot);
     }
 
@@ -32,14 +32,14 @@ export function useActivityFeedData() {
         schema: 'public',
         table: 'activity_feed',
       }, () => {
-        void loadBandSnapshot();
+        void loadBandSnapshot({ forceFresh: true });
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'member_presence',
       }, () => {
-        void loadBandSnapshot();
+        void loadBandSnapshot({ forceFresh: true });
       })
       .subscribe();
 
