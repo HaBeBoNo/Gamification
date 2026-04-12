@@ -3,7 +3,7 @@ import { S, useGameStore } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import ActivityHeatmap from './ActivityHeatmap';
-import { Star, Flame, Zap, Target, Clock, Compass, LineChart } from 'lucide-react';
+import { Star, Flame, Target, Clock, Compass, LineChart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
@@ -41,6 +41,14 @@ function getCategoryBreakdown(memberId: string) {
 
 function getDominantCategory(counts: Record<string, number>) {
   return Object.entries(counts).sort(([, a], [, b]) => b - a)[0] || ['wisdom', 0];
+}
+
+function getTopCategories(counts: Record<string, number>, limit = 2): string[] {
+  return Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, limit)
+    .map(([cat]) => cat);
 }
 
 const CAT_COLORS: Record<string, string> = {
@@ -99,103 +107,6 @@ function getCoachReading({
   return `${paceMap[temporalPattern || ''] || 'Rör sig bäst när uppgiften känns direkt relevant.'} ${categoryPart}${streakPart}`;
 }
 
-// ── Stat Radar (compact SVG) ────────────────────────────────────
-
-interface RadarProps {
-  stats: { vit: number; wis: number; for: number; cha: number };
-  color: string;
-}
-
-function StatRadar({ stats, color }: RadarProps) {
-  const labels = [
-    { key: 'vit', label: 'VIT', angle: -90 },
-    { key: 'wis', label: 'WIS', angle: 0 },
-    { key: 'cha', label: 'CHA', angle: 90 },
-    { key: 'for', label: 'FOR', angle: 180 },
-  ];
-
-  const cx = 60, cy = 60, maxR = 44;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-  // Background rings
-  const rings = [0.25, 0.5, 0.75, 1.0];
-
-  // Data points
-  const points = labels.map(l => {
-    const val = Math.min(100, (stats as any)[l.key] || 10);
-    const r = (val / 100) * maxR;
-    const rad = toRad(l.angle);
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  });
-
-  const polygon = points.map(p => `${p.x},${p.y}`).join(' ');
-
-  return (
-    <svg width={120} height={120} viewBox="0 0 120 120" className="pv-radar">
-      {/* Rings */}
-      {rings.map((r, i) => (
-        <polygon
-          key={i}
-          points={labels.map(l => {
-            const rad = toRad(l.angle);
-            const dist = r * maxR;
-            return `${cx + dist * Math.cos(rad)},${cy + dist * Math.sin(rad)}`;
-          }).join(' ')}
-          fill="none"
-          stroke="var(--color-border)"
-          strokeWidth={0.5}
-        />
-      ))}
-      {/* Axes */}
-      {labels.map((l, i) => {
-        const rad = toRad(l.angle);
-        return (
-          <line
-            key={i}
-            x1={cx} y1={cy}
-            x2={cx + maxR * Math.cos(rad)}
-            y2={cy + maxR * Math.sin(rad)}
-            stroke="var(--color-border)"
-            strokeWidth={0.5}
-          />
-        );
-      })}
-      {/* Data polygon */}
-      <polygon
-        points={polygon}
-        fill={`${color}20`}
-        stroke={color}
-        strokeWidth={1.5}
-      />
-      {/* Data points */}
-      {points.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill={color} />
-      ))}
-      {/* Labels */}
-      {labels.map((l, i) => {
-        const rad = toRad(l.angle);
-        const labelR = maxR + 12;
-        const lx = cx + labelR * Math.cos(rad);
-        const ly = cy + labelR * Math.sin(rad);
-        return (
-          <text
-            key={i}
-            x={lx} y={ly}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill="var(--color-text-muted)"
-            fontSize={8}
-            fontFamily="var(--font-mono)"
-            letterSpacing="0.06em"
-          >
-            {l.label}
-          </text>
-        );
-      })}
-    </svg>
-  );
-}
-
 // ── Form Dots (last 5 quest results) ────────────────────────────
 
 function FormDots({ form, color }: { form: ('W' | 'L')[]; color: string }) {
@@ -213,32 +124,6 @@ function FormDots({ form, color }: { form: ('W' | 'L')[]; color: string }) {
             boxShadow: d === 'W' ? `0 0 6px ${color}40` : 'none',
           }}
         />
-      ))}
-    </div>
-  );
-}
-
-// ── Category Bar Chart ──────────────────────────────────────────
-
-function CategoryBars({ counts, color }: { counts: Record<string, number>; color: string }) {
-  const max = Math.max(1, ...Object.values(counts));
-
-  return (
-    <div className="pv-cat-bars">
-      {Object.entries(counts).map(([cat, count]) => (
-        <div key={cat} className="pv-cat-bar-row">
-          <span className="pv-cat-bar-label" style={{ color: CAT_COLORS[cat] }}>{CAT_LABELS[cat]}</span>
-          <div className="pv-cat-bar-track">
-            <motion.div
-              className="pv-cat-bar-fill"
-              initial={{ width: 0 }}
-              animate={{ width: `${(count / max) * 100}%` }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              style={{ background: CAT_COLORS[cat] }}
-            />
-          </div>
-          <span className="pv-cat-bar-value">{count}</span>
-        </div>
       ))}
     </div>
   );
@@ -278,6 +163,10 @@ export default function ProfileView() {
     } as Record<string, string>)[me] || 'Coach';
   const [dominantCategory, dominantCount] = getDominantCategory(catCounts);
   const focusLabel = dominantCount > 0 ? CAT_LABELS[dominantCategory] : 'Tar form';
+  const topCategories = useMemo(
+    () => getTopCategories(catCounts, 2),
+    [catCounts],
+  );
   const coachReading = getCoachReading({
     motivation: char.motivation,
     streak,
@@ -285,6 +174,15 @@ export default function ProfileView() {
     dominantCategory,
   });
   const formWins = form.filter((entry) => entry === 'W').length;
+  const strengthRows = [
+    { key: 'vit', label: 'Vitalitet', value: stats.vit || 10 },
+    { key: 'wis', label: 'Visdom', value: stats.wis || 10 },
+    { key: 'for', label: 'Styrka', value: stats.for || 10 },
+    { key: 'cha', label: 'Karisma', value: stats.cha || 10 },
+  ].sort((a, b) => b.value - a.value);
+  const strongestStat = strengthRows[0];
+  const xpRemaining = Math.max(0, xpToNext - xp);
+  const rhythmLabel = getTemporalLabel(temporalPattern);
 
   return (
     <div className="pv-view">
@@ -295,18 +193,21 @@ export default function ProfileView() {
         transition={{ duration: 0.3 }}
       >
         <div className="pv-hero-bg" style={{ background: `radial-gradient(ellipse at 50% 0%, ${xpColor}15 0%, transparent 70%)` }} />
+        <div className="pv-kicker">Profil</div>
 
-        <div className="pv-hero-top">
+        <div className="pv-hero-top pv-hero-top-profile">
           <div className="pv-avatar">
             <MemberIcon id={me} size={56} color={xpColor} />
-            <div className="pv-level-badge" style={{ background: xpColor }}>
-              <Star size={10} strokeWidth={2.5} />
-              <span>{level}</span>
-            </div>
           </div>
 
           <div className="pv-hero-info">
-            <div className="pv-name">{member.name}</div>
+            <div className="pv-name-row">
+              <div className="pv-name">{member.name}</div>
+              <div className="pv-inline-level">
+                <Star size={11} strokeWidth={2.4} />
+                <span>Nivå {level}</span>
+              </div>
+            </div>
             <div className="pv-role">{member.role}</div>
             <div className="pv-role-type" style={{ color: rtLabel?.labelColor || xpColor }}>
               {rtLabel?.label || roleType}
@@ -337,6 +238,10 @@ export default function ProfileView() {
             <span>{focusLabel}</span>
           </div>
           <div className="pv-hero-chip">
+            <Clock size={12} />
+            <span>{rhythmLabel}</span>
+          </div>
+          <div className="pv-hero-chip">
             <LineChart size={12} />
             <span>{coachName}</span>
           </div>
@@ -351,78 +256,73 @@ export default function ProfileView() {
       >
         <div className="pv-section-header">
           <Target size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">LÄGET JUST NU</span>
+          <span className="pv-section-title">NU</span>
         </div>
-        <div className="pv-glance-grid">
-          <div className="pv-stat-card pv-glance-card">
-            <Target size={16} style={{ color: xpColor }} />
-            <span className="pv-stat-value">{questsDone}</span>
-            <span className="pv-stat-label">Uppdrag</span>
-            <span className="pv-stat-helper">klart</span>
+        <div className="pv-now-grid">
+          <div className="pv-now-card">
+            <span className="pv-now-label">Fokus</span>
+            <span className="pv-now-value pv-now-value-text">{focusLabel}</span>
+            <span className="pv-now-meta">{dominantCount > 0 ? `${dominantCount} klart` : 'Tar form'}</span>
           </div>
-          <div className="pv-stat-card pv-glance-card">
-            <Flame size={16} style={{ color: streak >= 7 ? '#f59e0b' : streak >= 3 ? xpColor : 'var(--color-text-muted)' }} />
-            <span className="pv-stat-value">{streak}</span>
-            <span className="pv-stat-label">Streak</span>
-            <span className="pv-stat-helper">dagar</span>
+          <div className="pv-now-card">
+            <span className="pv-now-label">Rytm</span>
+            <span className="pv-now-value pv-now-value-text">{rhythmLabel}</span>
+            <span className="pv-now-meta">{formWins}/5 senaste med fart</span>
           </div>
-          <div className="pv-stat-card pv-glance-card">
-            <Clock size={16} style={{ color: 'var(--color-text-muted)' }} />
-            <span className="pv-stat-value pv-stat-value-text">{getTemporalLabel(temporalPattern)}</span>
-            <span className="pv-stat-label">Arbetsstil</span>
-            <span className="pv-stat-helper">mönster</span>
+          <div className="pv-now-card">
+            <span className="pv-now-label">Streak</span>
+            <span className="pv-now-value">{streak}</span>
+            <span className="pv-now-meta">dagar i rad</span>
           </div>
-          <div className="pv-stat-card pv-glance-card">
-            <Zap size={16} style={{ color: xpColor }} />
-            <span className="pv-stat-value pv-stat-value-text">{focusLabel}</span>
-            <span className="pv-stat-label">Fokus</span>
-            <span className="pv-stat-helper">nu</span>
+          <div className="pv-now-card">
+            <span className="pv-now-label">Nästa nivå</span>
+            <span className="pv-now-value">{formatNumber(xpRemaining)}</span>
+            <span className="pv-now-meta">XP kvar</span>
           </div>
         </div>
       </motion.div>
 
       <motion.div
-        className="pv-composer-grid"
+        className="pv-section pv-rhythm-section"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.15 }}
       >
-        <div className="pv-radar-card">
-          <div className="pv-section-label">KARAKTÄR</div>
-          <div className="pv-character-layout">
-            <StatRadar stats={stats} color={xpColor} />
-            <div className="pv-stat-row-grid">
-              {[
-                { key: 'vit', label: 'Vitalitet' },
-                { key: 'wis', label: 'Visdom' },
-                { key: 'for', label: 'Styrka' },
-                { key: 'cha', label: 'Karisma' },
-              ].map(s => (
-                <div key={s.key} className="pv-stat-mini">
-                  <span className="pv-stat-mini-label">{s.label}</span>
-                  <span className="pv-stat-mini-value" style={{ color: xpColor }}>
-                    {(stats as any)[s.key] || 10}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="pv-section-header">
+          <Clock size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">RYTM</span>
         </div>
-
-        <div className="pv-form-card pv-focus-card">
-          <div className="pv-section-label">ARBETSMÖNSTER</div>
-          <div className="pv-focus-summary">
-            <div className="pv-focus-copy">
-              <span className="pv-focus-head">Senaste fem</span>
-              <span className="pv-focus-sub">
-                {formWins}/5 med fart.
-              </span>
-            </div>
-            <FormDots form={form} color={xpColor} />
+        <div className="pv-rhythm-top">
+          <div className="pv-rhythm-copy">
+            <div className="pv-rhythm-title">{rhythmLabel}</div>
+            <div className="pv-rhythm-sub">Så här har du rört dig den senaste tiden.</div>
           </div>
-          <div className="pv-section-label pv-section-label-spaced">TYNGDPUNKT</div>
-          <CategoryBars counts={catCounts} color={xpColor} />
+          <FormDots form={form} color={xpColor} />
         </div>
+        <div className="pv-rhythm-chips">
+          <div className="pv-rhythm-chip">
+            <Flame size={12} />
+            <span>{streak} dagar</span>
+          </div>
+          <div className="pv-rhythm-chip">
+            <Target size={12} />
+            <span>{questsDone} klara</span>
+          </div>
+          <div className="pv-rhythm-chip">
+            <Compass size={12} />
+            <span>{focusLabel}</span>
+          </div>
+          {topCategories.map((category) => (
+            <div
+              key={category}
+              className="pv-rhythm-chip"
+              style={{ color: CAT_COLORS[category], borderColor: `${CAT_COLORS[category]}33` }}
+            >
+              <span>{CAT_LABELS[category]}</span>
+            </div>
+          ))}
+        </div>
+        <ActivityHeatmap memberId={me} xpColor={xpColor} />
       </motion.div>
 
       <motion.div
@@ -432,10 +332,32 @@ export default function ProfileView() {
         transition={{ duration: 0.25, delay: 0.2 }}
       >
         <div className="pv-section-header">
-          <LineChart size={14} style={{ color: 'var(--color-text-muted)' }} />
-          <span className="pv-section-title">DIN RYTM</span>
+          <Compass size={14} style={{ color: 'var(--color-text-muted)' }} />
+          <span className="pv-section-title">STYRKOR</span>
         </div>
-        <ActivityHeatmap memberId={me} xpColor={xpColor} />
+        <div className="pv-strength-lead">
+          <span className="pv-strength-head">{strongestStat.label}</span>
+          <span className="pv-strength-sub">Tydligast just nu</span>
+        </div>
+        <div className="pv-strength-list">
+          {strengthRows.map((row) => (
+            <div key={row.key} className="pv-strength-row">
+              <div className="pv-strength-copy">
+                <span className="pv-strength-label">{row.label}</span>
+                <span className="pv-strength-value" style={{ color: xpColor }}>{row.value}</span>
+              </div>
+              <div className="pv-strength-track">
+                <motion.div
+                  className="pv-strength-fill"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, row.value)}%` }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ background: `linear-gradient(90deg, ${xpColor}AA, ${xpColor})` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </motion.div>
 
       <motion.div
