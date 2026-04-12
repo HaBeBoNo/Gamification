@@ -1,3 +1,4 @@
+import type { HomeAttentionSurfaceState } from '@/hooks/useHomeSurface';
 import { HeroCard } from '@/components/game/home/HeroCard';
 import { BandStatusRow } from '@/components/game/home/BandStatusRow';
 import { DailyCoachCard } from '@/components/game/home/DailyCoachCard';
@@ -12,9 +13,15 @@ interface HomeScreenProps {
   onNavigate?: (tab: string) => void;
   onOpenCoach?: (initialMessage?: string) => void;
   onOpenNotifications?: () => void;
+  attentionSurface?: HomeAttentionSurfaceState;
 }
 
-export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: HomeScreenProps) {
+export function HomeScreen({
+  onNavigate,
+  onOpenCoach,
+  onOpenNotifications,
+  attentionSurface,
+}: HomeScreenProps) {
   return (
     <div style={{
       display: 'flex',
@@ -34,6 +41,7 @@ export function HomeScreen({ onNavigate, onOpenCoach, onOpenNotifications }: Hom
         onNavigate={onNavigate}
         onOpenNotifications={onOpenNotifications}
         onOpenCoach={onOpenCoach}
+        surface={attentionSurface}
       />
       <HomeBandEcho onNavigate={onNavigate} />
     </div>

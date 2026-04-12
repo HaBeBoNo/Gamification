@@ -3,7 +3,7 @@ import { markRead } from '@/state/notifications';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationFeedIntent } from '@/lib/notificationMeta';
 import { markHomeAttentionSeen } from '@/lib/homeAttentionState';
-import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
+import { useWaitingOnYouSurface, type HomeAttentionSurfaceState } from '@/hooks/useHomeSurface';
 import { CARD_PAD, CARD_PAD_ROOM, ICON_BUTTON_SIZE, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
 function getSignalIcon(tone: string) {
@@ -34,12 +34,15 @@ export function WaitingOnYouCard({
   onNavigate,
   onOpenNotifications,
   onOpenCoach,
+  surface,
 }: {
   onNavigate?: (tab: string) => void;
   onOpenNotifications?: () => void;
   onOpenCoach?: (initialMessage?: string) => void;
+  surface?: HomeAttentionSurfaceState;
 }) {
-  const { me, loading, signals } = useWaitingOnYouSurface();
+  const fallbackSurface = useWaitingOnYouSurface(!surface);
+  const { me, loading, signals } = surface || fallbackSurface;
 
   if (!me || (!loading && signals.length === 0)) return null;
 

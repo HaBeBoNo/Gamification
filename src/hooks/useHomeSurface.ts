@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { supabase } from '@/lib/supabase';
-import { getUpcomingEvents, isEventActive, isEventSoon } from '@/lib/googleCalendar';
+import { getUpcomingEvents, isEventActive, isEventSoon, type CalendarEvent } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
-import { fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
+import { fetchMyCollaborativeQuests, type CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { fetchBandActivitySnapshot, hydrateFeedItems } from '@/lib/socialData';
 import {
   getNotificationActionLabel,
-  getNotificationFeedIntent,
   getNotificationTarget,
   getNotificationText,
   sortNotificationsForAttention,
@@ -37,6 +36,92 @@ import {
   type HomeRankSummary,
 } from '@/lib/homeSurface';
 
+const HOME_SURFACE_CACHE_TTL_MS = 20_000;
+
+const sharedUpcomingEventsCache = new Map<number, {
+  expiresAt: number;
+  value?: CalendarEvent[];
+  promise?: Promise<CalendarEvent[]>;
+}>();
+
+const sharedCollaborativeCache = new Map<string, {
+  expiresAt: number;
+  value?: CollaborativeQuest[];
+  promise?: Promise<CollaborativeQuest[]>;
+}>();
+
+const reengagementPlanCache = new Map<string, HomeReengagementPlan | null>();
+const waitingSignalCache = new Map<string, HomeAttentionSignal[]>();
+
+function getSharedUpcomingEvents(maxResults: number): Promise<CalendarEvent[]> {
+  const now = Date.now();
+  const cached = sharedUpcomingEventsCache.get(maxResults);
+  if (cached?.value && cached.expiresAt > now) {
+    return Promise.resolve(cached.value);
+  }
+  if (cached?.promise && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  const promise = getUpcomingEvents(maxResults)
+    .then((events) => {
+      sharedUpcomingEventsCache.set(maxResults, {
+        value: events,
+        expiresAt: Date.now() + HOME_SURFACE_CACHE_TTL_MS,
+      });
+      return events;
+    })
+    .catch((error) => {
+      sharedUpcomingEventsCache.delete(maxResults);
+      throw error;
+    });
+
+  sharedUpcomingEventsCache.set(maxResults, {
+    promise,
+    expiresAt: now + HOME_SURFACE_CACHE_TTL_MS,
+  });
+
+  return promise;
+}
+
+function getSharedCollaborativeQuests(memberKey: string): Promise<CollaborativeQuest[]> {
+  const now = Date.now();
+  const cached = sharedCollaborativeCache.get(memberKey);
+  if (cached?.value && cached.expiresAt > now) {
+    return Promise.resolve(cached.value);
+  }
+  if (cached?.promise && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  const promise = fetchMyCollaborativeQuests()
+    .then((quests) => {
+      sharedCollaborativeCache.set(memberKey, {
+        value: quests,
+        expiresAt: Date.now() + HOME_SURFACE_CACHE_TTL_MS,
+      });
+      return quests;
+    })
+    .catch((error) => {
+      sharedCollaborativeCache.delete(memberKey);
+      throw error;
+    });
+
+  sharedCollaborativeCache.set(memberKey, {
+    promise,
+    expiresAt: now + HOME_SURFACE_CACHE_TTL_MS,
+  });
+
+  return promise;
+}
+
+export type HomeAttentionSurfaceState = {
+  me: string | null;
+  loading: boolean;
+  signals: HomeAttentionSignal[];
+  unreadCount: number;
+};
+
 export function useHomeBandStatusCards(totalMembers: number) {
   const presenceMembers = useGameStore((state) => state.presenceMembers);
   const presenceHydrated = useGameStore((state) => state.presenceHydrated);
@@ -60,7 +145,7 @@ export function useHomeBandStatusCards(totalMembers: number) {
 
     async function loadNextEvent() {
       try {
-        const events = await getUpcomingEvents(1);
+        const events = await getSharedUpcomingEvents(1);
         const ev = events?.[0];
         if (!ev) return;
         setNextEvent({
@@ -177,17 +262,28 @@ export function useReengagementSurface() {
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
   const tick = useGameStore((state) => state.tick);
-  const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<HomeReengagementPlan | null>(null);
+  const [loading, setLoading] = useState(() => (me ? !reengagementPlanCache.has(me) : false));
+  const [plan, setPlan] = useState<HomeReengagementPlan | null>(() => (me ? reengagementPlanCache.get(me) ?? null : null));
 
   useEffect(() => {
-    if (!me) return;
+    if (!me) {
+      setPlan(null);
+      setLoading(false);
+      return;
+    }
 
-    const char = (S.chars as Record<string, any>)?.[me];
-    const daysSinceActivity = getDaysSinceActivity(char?.lastSeen, char?.lastQuestDate);
-    const stage = getReengagementStage(daysSinceActivity);
+  const char = (S.chars as Record<string, any>)?.[me];
+  const daysSinceActivity = getDaysSinceActivity(char?.lastSeen, char?.lastQuestDate);
+  const stage = getReengagementStage(daysSinceActivity);
+  const memberKey = me;
+
+    if (reengagementPlanCache.has(memberKey)) {
+      setPlan(reengagementPlanCache.get(memberKey) ?? null);
+      setLoading(false);
+    }
 
     if (stage === 'active') {
+      reengagementPlanCache.set(memberKey, null);
       setPlan(null);
       setLoading(false);
       return;
@@ -204,8 +300,8 @@ export function useReengagementSurface() {
 
       try {
         const [events, collabs] = await Promise.all([
-          getUpcomingEvents(2).catch(() => []),
-          fetchMyCollaborativeQuests().catch(() => []),
+          getSharedUpcomingEvents(2).catch(() => []),
+          getSharedCollaborativeQuests(memberKey).catch(() => []),
         ]);
 
         const nextEvent = events?.[0] || null;
@@ -277,18 +373,21 @@ export function useReengagementSurface() {
         }
 
         if (!cancelled) {
+          reengagementPlanCache.set(memberKey, nextPlan);
           setPlan(nextPlan);
           setLoading(false);
         }
       } catch {
         if (!cancelled) {
-          setPlan({
+          const fallbackPlan = {
             eyebrow: getReengagementEyebrow(stage),
             title: 'Öppna coach',
             subtitle: getReengagementContext(daysSinceActivity, stage),
             cta: 'Coach',
             target: 'coach',
-          });
+          } satisfies HomeReengagementPlan;
+          reengagementPlanCache.set(memberKey, fallbackPlan);
+          setPlan(fallbackPlan);
           setLoading(false);
         }
       }
@@ -304,28 +403,46 @@ export function useReengagementSurface() {
   return { me, loading, plan };
 }
 
-export function useWaitingOnYouSurface() {
-  return useWaitingOnYouSurfaceInternal(false);
+export function useWaitingOnYouSurface(enabled = true): HomeAttentionSurfaceState {
+  return useWaitingOnYouSurfaceInternal(false, enabled);
 }
 
-export function useWaitingOnYouInboxSurface() {
-  return useWaitingOnYouSurfaceInternal(true);
+export function useWaitingOnYouInboxSurface(enabled = true): HomeAttentionSurfaceState {
+  return useWaitingOnYouSurfaceInternal(true, enabled);
 }
 
-function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
+function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean): HomeAttentionSurfaceState {
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
+  const feed = useGameStore((state) => state.feed);
   const unreadCount = useGameStore((state) => state.notifications.filter((notification) => !notification.read).length);
   const tick = useGameStore((state) => state.tick);
-  const [signals, setSignals] = useState<HomeAttentionSignal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [signals, setSignals] = useState<HomeAttentionSignal[]>(() => (me ? waitingSignalCache.get(me) || [] : []));
+  const [loading, setLoading] = useState(() => (enabled && me ? !waitingSignalCache.has(me) : false));
 
   useEffect(() => {
-    if (!me) return;
+    if (!me) {
+      setSignals([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
+    const memberKey = me;
+    const cachedSignals = waitingSignalCache.get(memberKey);
+    if (cachedSignals) {
+      setSignals(includeSeen ? cachedSignals : filterSeenHomeAttentionSignals(memberKey, cachedSignals));
+      setLoading(false);
+    }
+
     let cancelled = false;
 
     async function loadSignals() {
-      setLoading((current) => current && signals.length === 0);
+      setLoading((current) => current && signals.length === 0 && !cachedSignals);
 
       const nextSignals: HomeAttentionSignal[] = [];
       const unreadActionable = sortNotificationsForAttention(notifications)
@@ -366,16 +483,9 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
       });
 
       try {
-        const [events, collabs, activityResult] = await Promise.all([
-          getUpcomingEvents(1).catch(() => []),
-          fetchMyCollaborativeQuests().catch(() => []),
-          supabase
-            ?.from('activity_feed')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(40)
-            .then(async ({ data }) => hydrateFeedItems(data || []))
-            .catch(() => []),
+        const [events, collabs] = await Promise.all([
+          getSharedUpcomingEvents(1).catch(() => []),
+          getSharedCollaborativeQuests(memberKey).catch(() => []),
         ]);
 
         const nextEvent = events?.[0];
@@ -437,7 +547,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
             cta: 'Quests',
           });
         }
-        const hydrated = activityResult || [];
+        const hydrated = feed || [];
 
         const directComments = hydrated.filter((item: any) => {
           const parsed = getFeedCommentMeta(item);
@@ -491,12 +601,12 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
       }
 
       if (!cancelled) {
-        if (!me) return;
-        const memberKey = me;
+        const nextSignalSlice = nextSignals.slice(0, 3);
         const nextVisibleSignals = includeSeen
-          ? nextSignals.slice(0, 3)
-          : filterSeenHomeAttentionSignals(memberKey, nextSignals.slice(0, 3));
-        cacheCurrentHomeAttentionSignals(memberKey, nextSignals.slice(0, 3));
+          ? nextSignalSlice
+          : filterSeenHomeAttentionSignals(memberKey, nextSignalSlice);
+        waitingSignalCache.set(memberKey, nextSignalSlice);
+        cacheCurrentHomeAttentionSignals(memberKey, nextSignalSlice);
         setSignals(nextVisibleSignals);
         setLoading(false);
       }
@@ -511,11 +621,6 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'activity_feed',
-      }, () => { void loadSignals(); })
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
         table: 'collaborative_quests',
       }, () => { void loadSignals(); })
       .subscribe();
@@ -524,7 +629,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [includeSeen, me, notifications, tick, unreadCount]);
+  }, [enabled, feed, includeSeen, me, notifications, tick, unreadCount]);
 
   return { me, loading, signals, unreadCount };
 }

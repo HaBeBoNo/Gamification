@@ -23,6 +23,8 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppBootstrap } from '@/hooks/useAppBootstrap';
+import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY } from '@/lib/config';
 import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
@@ -61,6 +63,8 @@ export default function Index() {
 
   const [coachInsight, setCoachInsight] = useState<string | undefined>();
   const { refreshing, handlePullStart, handlePullMove, handlePullEnd } = usePullToRefresh(S.me);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const homeAttentionSurface = useWaitingOnYouSurface(activeView === 'home');
 
   // Google OAuth auth gate
   const { user, synced } = useAuth();
@@ -260,6 +264,7 @@ export default function Index() {
       onMetricClick={() => setShowMetrics(true)}
       onNavigate={handleTabTap}
       onOpenNotifications={openNotifications}
+      attentionSurface={homeAttentionSurface}
     />
   );
   const secondaryTab = activeView === 'tab' ? overflowItemById[activeTab] : undefined;
@@ -288,6 +293,7 @@ export default function Index() {
       onMetricClick={() => setShowMetrics(true)}
       onNavigate={handleTabTap}
       onOpenNotifications={openNotifications}
+      attentionSurface={homeAttentionSurface}
     />
   );
   const mobileSecondaryTab = activeView === 'tab' ? overflowItemById[mobileTab] : undefined;
@@ -311,6 +317,8 @@ export default function Index() {
       <Topbar
         onNotifications={openNotifications}
         onLogoClick={() => setActiveView('home')}
+        notificationCount={homeAttentionSurface.unreadCount}
+        hasAttention={homeAttentionSurface.unreadCount > 0 || homeAttentionSurface.signals.length > 0}
       />
 
       {refreshing && (
@@ -330,31 +338,31 @@ export default function Index() {
         </div>
 
         <div className="quest-center-wrapper stagger-1">
-          {/* Desktop: render active tab directly */}
-          <div className="desktop-content">
-            {framedContent}
-          </div>
-
-          {/* Mobile: animated tab transitions */}
-          <div
-            className="mobile-content"
-            style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}
-            onTouchStart={handleMobileTouchStart}
-            onTouchMove={handlePullMove}
-            onTouchEnd={handleMobileTouchEnd}
-          >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={mobileTab}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={viewTransition}
-              >
-                {framedMobileContent}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          {isDesktop ? (
+            <div className="desktop-content">
+              {framedContent}
+            </div>
+          ) : (
+            <div
+              className="mobile-content"
+              style={{ paddingBottom: "calc(80px + env(safe-area-inset-bottom))" }}
+              onTouchStart={handleMobileTouchStart}
+              onTouchMove={handlePullMove}
+              onTouchEnd={handleMobileTouchEnd}
+            >
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={mobileTab}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={viewTransition}
+                >
+                  {framedMobileContent}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
         </div>
 
         <div className="sidebar-r">

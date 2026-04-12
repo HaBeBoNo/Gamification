@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { HomeScreen } from '@/components/game/HomeScreen';
+import type { HomeAttentionSurfaceState } from '@/hooks/useHomeSurface';
 import QuestGrid from '@/components/game/QuestGrid';
 import Scoreboard from '@/components/game/Scoreboard';
 import LeaderboardView from '@/components/game/LeaderboardView';
@@ -37,6 +38,7 @@ type TabContentRouterProps = {
   onMetricClick: () => void;
   onNavigate: (tabId: string) => void;
   onOpenNotifications: () => void;
+  attentionSurface?: HomeAttentionSurfaceState;
 };
 
 export function TabContentRouter({
@@ -52,6 +54,7 @@ export function TabContentRouter({
   onMetricClick,
   onNavigate,
   onOpenNotifications,
+  attentionSurface,
 }: TabContentRouterProps) {
   if (activeView === 'home') {
     return (
@@ -61,6 +64,7 @@ export function TabContentRouter({
         onNavigate={onNavigate}
         onOpenCoach={onOpenCoach}
         onOpenNotifications={onOpenNotifications}
+        attentionSurface={attentionSurface}
       />
     );
   }

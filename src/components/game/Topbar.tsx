@@ -1,23 +1,28 @@
 import React from 'react';
 import { S } from '@/state/store';
 import { Flame } from 'lucide-react';
-import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
 import NotificationBell from './NotificationBell';
 
 interface TopbarProps {
   logoRef?: (node: HTMLButtonElement | null) => void;
   onNotifications?: () => void;
   onLogoClick?: () => void;
+  notificationCount?: number;
+  hasAttention?: boolean;
 }
 
-export default function Topbar({ logoRef, onNotifications, onLogoClick }: TopbarProps) {
+export default function Topbar({
+  logoRef,
+  onNotifications,
+  onLogoClick,
+  notificationCount = 0,
+  hasAttention = false,
+}: TopbarProps) {
   const me = S.me;
   const char = me ? S.chars[me] : null;
   const streak = char?.streak ?? 0;
   const operationLabel = S.operationName;
   const weekNumber = S.weekNum;
-  const { signals, unreadCount } = useWaitingOnYouSurface();
-  const hasAttention = signals.length > 0;
 
   return (
     <div style={{
@@ -94,7 +99,7 @@ export default function Topbar({ logoRef, onNotifications, onLogoClick }: Topbar
             }}>
               <NotificationBell
                 onClick={onNotifications}
-                count={unreadCount}
+                count={notificationCount}
                 hasAttention={hasAttention}
               />
             </div>
