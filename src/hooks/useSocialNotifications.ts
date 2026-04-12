@@ -186,7 +186,7 @@ export function useSocialNotifications() {
         });
     }
 
-    async function seed() {
+    async function seed(allowBackfill = true) {
       const { data, error } = await supabase
         .from('activity_feed')
         .select('*')
@@ -201,7 +201,7 @@ export function useSocialNotifications() {
 
       [...(data || [])]
         .sort((a, b) => getActivityTs(a) - getActivityTs(b))
-        .forEach((item) => seedItem(item, true));
+        .forEach((item) => seedItem(item, allowBackfill));
       initialized.current = true;
       maybePersistSync(Date.now());
     }
@@ -282,9 +282,33 @@ export function useSocialNotifications() {
       if (cancelled) return;
 
       if (remoteResult.supported) {
+        await seed(false);
+        if (cancelled) return;
+
         remoteChannel = subscribeToRemoteNotifications(S.me!, () => {
           void syncRemote();
         });
+
+        legacyChannel = supabase
+          .channel('social-notifications-fallback')
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'activity_feed',
+          }, (payload) => {
+            if (!initialized.current) return;
+            handleInsert(payload.new as any);
+          })
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'activity_feed',
+          }, (payload) => {
+            if (!initialized.current) return;
+            handleUpdate(payload.new as any);
+          })
+          .subscribe();
+
         if (remoteResult.transientError) {
           remoteRetryTimer.current = window.setTimeout(() => {
             if (!cancelled) {
@@ -295,7 +319,7 @@ export function useSocialNotifications() {
         return;
       }
 
-      await seed();
+      await seed(true);
       if (cancelled) return;
 
       legacyChannel = supabase

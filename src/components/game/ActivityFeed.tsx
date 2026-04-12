@@ -184,7 +184,12 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
           body: `${emoji} på ${getFeedContextLabel(item)}`,
           dedupeKey: `reaction:${item.id}|${emoji}|${me}`,
           feedItemId: String(item.id),
-          skipRemoteNotification: mode !== 'legacy',
+          payload: {
+            memberId: me,
+            emoji,
+            contextLabel: getFeedContextLabel(item),
+            feedItemId: String(item.id),
+          },
           push: {
             title: `${getMemberName(me)} reagerade på din aktivitet`,
             body: `${emoji} på ${getFeedContextLabel(item)}`,
@@ -247,7 +252,11 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
           body: getFeedContextLabel(item),
           dedupeKey: `witness:${item.id}|${me}`,
           feedItemId: String(item.id),
-          skipRemoteNotification: mode !== 'legacy',
+          payload: {
+            memberId: me,
+            contextLabel: getFeedContextLabel(item),
+            feedItemId: String(item.id),
+          },
           push: {
             title: `${getMemberName(me)} var där`,
             body: getFeedContextLabel(item),
@@ -340,7 +349,14 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
         body: comment,
         dedupeKey: `comment:${data?.id || optimisticId}`,
         feedItemId: String(data?.id || itemId),
-        skipRemoteNotification: true,
+        payload: {
+          memberId: me,
+          comment,
+          contextLabel: itemLabel,
+          feedEventId: String(data?.id || optimisticId),
+          feedItemId: String(data?.id || itemId),
+          parentFeedItemId: itemId,
+        },
         push: {
           title: `${commenterName} kommenterade din aktivitet`,
           body: comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
