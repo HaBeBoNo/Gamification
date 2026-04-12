@@ -58,7 +58,7 @@ export default function Index() {
   const [showMetrics, setShowMetrics] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailQuest, setDetailQuest] = useState<any | null>(null);
-  const unreadCount = useGameStore(s => s.notifications.filter((n: any) => !n.read).length);
+  const unreadCount = useGameStore((s) => s.notifications.filter((n: any) => !n.read).length);
   const currentSurface = activeView === 'home' ? 'home' : activeTab;
 
   const [coachInsight, setCoachInsight] = useState<string | undefined>();

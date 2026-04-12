@@ -171,6 +171,7 @@ export type HomeAttentionSurfaceState = {
 };
 
 export function useHomeBandStatusCards(totalMembers: number) {
+  const me = S.me;
   const presenceMembers = useGameStore((state) => state.presenceMembers);
   const presenceHydrated = useGameStore((state) => state.presenceHydrated);
   const [activeToday, setActiveToday] = useState(0);
@@ -215,7 +216,7 @@ export function useHomeBandStatusCards(totalMembers: number) {
             xp: row.data?.chars?.[row.member_key]?.totalXp ?? row.data?.totalXP ?? 0,
           }))
           .sort((left: any, right: any) => right.xp - left.xp);
-        const myPos = sorted.findIndex((row: any) => row.key === S.me);
+        const myPos = sorted.findIndex((row: any) => row.key === me);
         if (myPos < 0) return;
         const above = myPos > 0 ? sorted[myPos - 1] : null;
         const aboveMember = above ? (MEMBERS as Record<string, any>)[above.key] : null;
@@ -256,7 +257,8 @@ export function useHomeBandStatusCards(totalMembers: number) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  // Återskapar Supabase-kanal vid profilbyte (me) så att gammal prenumeration städas
+  }, [me]);
 
   const resolvedActiveNow = presenceHydrated ? presenceMembers.length : activeNow;
 
@@ -273,6 +275,9 @@ export function useHomeBandStatusCards(totalMembers: number) {
 export function useDailyCoachSurface() {
   const me = S.me;
   const feed = useGameStore((state) => state.feed);
+  // tick som proxy-dependency: S.quests muteras in-place, men save() inkrementerar
+  // tick — använd tick istället för S.quests-referensen i useMemo-deps.
+  const tick = useGameStore((state) => state.tick);
   const [message, setMessage] = useState(() => readCachedCoachMessage(me));
   const [loading, setLoading] = useState(() => Boolean(me) && !readCachedCoachMessage(me));
 
@@ -310,14 +315,16 @@ export function useDailyCoachSurface() {
   }, [me]);
 
   const coachName = me ? ((S.chars[me] as any)?.coachName || 'Coach') : 'Coach';
+  // tick som dep istället för S.quests — S.quests är en mutable referens som aldrig
+  // byts ut, men tick inkrementeras vid varje save() som muterar quests.
   const relevantQuests = useMemo(() => (
     me ? getRelevantActiveQuests(S.quests || [], me, 2) : []
-  ), [me, S.quests]);
+  ), [me, tick]);
   const focusQuest = relevantQuests[0];
   const followUpQuest = relevantQuests[1];
   const activeQuestCount = useMemo(() => (
     me ? (S.quests || []).filter((quest: any) => quest.owner === me && !isQuestDoneNow(quest)).length : 0
-  ), [me, S.quests]);
+  ), [me, tick]);
   const latestSocial = useMemo(() => (
     (feed || []).find((item: any) => item.who && item.who !== me) || null
   ), [feed, me]);
@@ -339,6 +346,18 @@ export function useReengagementSurface() {
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
   const tick = useGameStore((state) => state.tick);
+  const reengagementSignature = useMemo(() => {
+    if (!me) return '';
+    const char = (S.chars as Record<string, any>)?.[me];
+    const focusQuest = getRelevantActiveQuests(S.quests || [], me, 1)[0];
+    return [
+      Number(char?.lastSeen || 0),
+      Number(char?.lastQuestDate || 0),
+      String(focusQuest?.id ?? ''),
+      String(focusQuest?.title ?? ''),
+      focusQuest?.done ? '1' : '0',
+    ].join('|');
+  }, [me, tick]);
   const [loading, setLoading] = useState(() => {
     if (!me) return false;
     const cached = getCachedReengagementPlan(me);
@@ -485,7 +504,9 @@ export function useReengagementSurface() {
     return () => {
       cancelled = true;
     };
-  }, [me, notifications, tick]);
+  // Reagera på den del av tick-driven speldata som faktiskt ändrar planen,
+  // istället för att rebuilda vid varje save() oavsett relevans.
+  }, [me, notifications, reengagementSignature]);
 
   return { me, loading, plan };
 }
@@ -502,7 +523,10 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
   const me = S.me;
   const notifications = useGameStore((state) => state.notifications);
   const feed = useGameStore((state) => state.feed);
-  const unreadCount = useGameStore((state) => state.notifications.filter((notification) => !notification.read).length);
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications],
+  );
   const tick = useGameStore((state) => state.tick);
   const [signals, setSignals] = useState<HomeAttentionSignal[]>(() => (
     me ? getCachedWaitingSignals(me).value : []
@@ -724,7 +748,10 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
     };
   }, [enabled, feed, includeSeen, me, notifications, tick, unreadCount]);
 
-  return { me, loading, signals, unreadCount };
+  return useMemo(
+    () => ({ me, loading, signals, unreadCount }),
+    [me, loading, signals, unreadCount],
+  );
 }
 
 export function useHomeBandEchoSurface() {

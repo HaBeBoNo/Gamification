@@ -2,6 +2,14 @@ import type { HomeAttentionSignal, HomeReengagementPlan } from '@/lib/homeSurfac
 
 const HOME_SURFACE_CACHE_PREFIX = 'sek-home-surface:';
 
+/**
+ * TTL för persistent localStorage-cache.
+ * Poster äldre än detta ignoreras vid läsning så att stale
+ * reengagement-planer och waiting-signals inte visas efter t.ex.
+ * en dags frånvaro.
+ */
+const HOME_SURFACE_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minuter
+
 type HomeSurfaceCacheRecord<T> = {
   updatedAt: number;
   value: T;
@@ -23,6 +31,10 @@ function readCacheRecord<T>(scope: string, memberKey: string): HomeSurfaceCacheR
     if (!raw) return null;
     const parsed = JSON.parse(raw) as HomeSurfaceCacheRecord<T> | null;
     if (!parsed || typeof parsed !== 'object' || !('updatedAt' in parsed) || !('value' in parsed)) {
+      return null;
+    }
+    // Ignorera poster äldre än TTL
+    if (Date.now() - parsed.updatedAt > HOME_SURFACE_CACHE_TTL_MS) {
       return null;
     }
     return parsed;

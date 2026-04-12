@@ -1,4 +1,4 @@
-import { S, save } from '../state/store';
+import { S } from '../state/store';
 import { awardXP } from './useXP';
 import { MEMBERS } from '@/data/members';
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals';
@@ -45,11 +45,10 @@ export async function checkIn(eventId: string, eventTitle: string): Promise<void
 
   S.quests.push(quest);
 
-  // Tilldela XP via awardXP — hanterar level-up, streak, stats, feed
-  // Extra UI-callback-params är valfria och utelämnas avsiktligt här
+  // Tilldela XP via awardXP — hanterar level-up, streak, stats, feed, och save()
+  // Extra UI-callback-params är valfria och utelämnas avsiktligt här.
+  // OBS: awardXP anropar save() internt — inget extra save() behövs här.
   void awardXP(quest, 40, null, undefined, undefined, undefined, undefined);
-
-  save();
 
   const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me;
   await notifyMembersSignal({

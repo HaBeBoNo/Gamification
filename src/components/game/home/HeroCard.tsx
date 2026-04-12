@@ -1,9 +1,11 @@
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { CARD_PAD, CARD_PAD_ROOM, ROOM_GUTTER, SECTION_GAP } from './constants';
 
 export function HeroCard() {
+  // Prenumerera på tick så att XP/level-ändringar via save() triggar re-render
+  useGameStore((s) => s.tick);
   const memberKey = S.me!;
   const member = (MEMBERS as Record<string, any>)[memberKey];
   const char = (S.chars as Record<string, any>)?.[memberKey];

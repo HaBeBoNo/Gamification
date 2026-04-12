@@ -225,8 +225,12 @@ export function awardXP(
   showXPPop?: (xp: number, event: MouseEvent | null) => void,
   rollReward?: (xp: number) => unknown | null,
 ): AwardXPResult | null {
-  const c = S.chars[S.me!];
-  const m = (MEMBERS as any)[S.me!];
+  // Fånga memberKey en gång — använd genomgående istället för S.me
+  // för att undvika stale-referens om S.me ändras under exekvering.
+  const memberKey = S.me;
+  if (!memberKey) return null;
+  const c = S.chars[memberKey];
+  const m = (MEMBERS as any)[memberKey];
   if (!c || !m) return null;
 
   const questIdx = S.quests.findIndex(sq => sq.id === q.id);
@@ -244,7 +248,7 @@ export function awardXP(
   }
 
   // ── Ren beräkning (ingen mutation) ──────────────────────────────
-  const result = calcAwardXP(c, m, liveQuest, xpEarned, S.me!);
+  const result = calcAwardXP(c, m, liveQuest, xpEarned, memberKey);
   const {
     totalXP, milestone, workPts, milestoneWorkBonus,
     newStreak, newLevel, newXp, newXpToNext,
@@ -261,16 +265,16 @@ export function awardXP(
   // Streak milestone notifikationer
   const streakMilestones = [5, 10, 14, 30];
   if (streakMilestones.includes(c.streak)) {
-    const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
-    addNotifToAll(createStreakNotif(S.me!, memberName as string, c.streak));
+    const memberName = (MEMBERS as any)[memberKey]?.name || memberKey;
+    addNotifToAll(createStreakNotif(memberKey, memberName as string, c.streak));
     void notifyMembersSignal({
-      targetMemberKeys: getBandmateKeys(S.me),
+      targetMemberKeys: getBandmateKeys(memberKey),
       type: 'streak',
       title: `${memberName} har ${c.streak} dagars streak! 🔥`,
       body: `${c.streak} dagar i rad — håll i det.`,
-      dedupeKey: `streak:${S.me}:${c.streak}`,
+      dedupeKey: `streak:${memberKey}:${c.streak}`,
       payload: {
-        memberId: S.me,
+        memberId: memberKey,
         streakDays: c.streak,
       },
     });
@@ -285,16 +289,16 @@ export function awardXP(
 
   // Level-up notifikation + push
   if (leveled) {
-    const memberName = (MEMBERS as any)[S.me!]?.name || S.me;
-    addNotifToAll(createLevelUpNotif(S.me!, memberName as string, c.level));
+    const memberName = (MEMBERS as any)[memberKey]?.name || memberKey;
+    addNotifToAll(createLevelUpNotif(memberKey, memberName as string, c.level));
     void notifyMembersSignal({
-      targetMemberKeys: getBandmateKeys(S.me),
+      targetMemberKeys: getBandmateKeys(memberKey),
       type: 'level_up',
       title: `${memberName} nådde nivå ${c.level}! ⚡`,
       body: `Ny nivå uppnådd i Sektionen HQ`,
-      dedupeKey: `level-up:${S.me}:${c.level}`,
+      dedupeKey: `level-up:${memberKey}:${c.level}`,
       payload: {
-        memberId: S.me,
+        memberId: memberKey,
         level: c.level,
       },
     });
@@ -345,10 +349,10 @@ export function awardXP(
       const remaining   = _tq.deadline - Date.now();
       const urgency     = Math.max(0, Math.min(1, 1 - remaining / totalWindow));
 
-      if (!S.chars[S.me!].temporalBehavior) {
-        S.chars[S.me!].temporalBehavior = { history: [], pattern: 'unknown', avgUrgency: 0.5, anomaly: false };
+      if (!S.chars[memberKey].temporalBehavior) {
+        S.chars[memberKey].temporalBehavior = { history: [], pattern: 'unknown', avgUrgency: 0.5, anomaly: false };
       }
-      const tb = S.chars[S.me!].temporalBehavior!;
+      const tb = S.chars[memberKey].temporalBehavior!;
       tb.history = [...(tb.history || []), urgency].slice(-20);
       const avg  = tb.history.reduce((a: number, b: number) => a + b, 0) / tb.history.length;
       tb.avgUrgency  = avg;
@@ -359,11 +363,11 @@ export function awardXP(
   }
 
   // Activity feed
-  pushFeedEntry({ who: S.me!, action: feedAction, xp: totalXP });
+  pushFeedEntry({ who: memberKey, action: feedAction, xp: totalXP });
 
   if (leveled) {
     pushFeedEntry({
-      who: S.me!,
+      who: memberKey,
       action: `leveled up to Level ${c.level} ⚡`,
       xp: 0,
       type: 'level_up',
@@ -426,14 +430,16 @@ export function awardMetricPts(
  */
 export function awardInsightBonus(questId: number, insight: string, questTitle: string): void {
   if (!insight || !insight.trim()) return;
+  const memberKey = S.me;
+  if (!memberKey) return;
   const q = S.quests.find(q => q.id === questId);
   if (!q) return;
 
   q.insight = insight;
-  S.chars[S.me!].xp      = (S.chars[S.me!].xp      || 0) + 15;
-  S.chars[S.me!].totalXp = (S.chars[S.me!].totalXp || 0) + 15;
+  S.chars[memberKey].xp      = (S.chars[memberKey].xp      || 0) + 15;
+  S.chars[memberKey].totalXp = (S.chars[memberKey].totalXp || 0) + 15;
   pushFeedEntry({
-    who:    S.me!,
+    who:    memberKey,
     action: `reflekterade över "${questTitle}"`,
     xp:     15,
     type:   'quest_insight',
