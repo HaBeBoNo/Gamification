@@ -13,6 +13,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "verify:contracts": "node scripts/verify-contracts.mjs",
+    "verify:dist": "node scripts/verify-release-output.mjs",
+    "verify:release": "npm run typecheck && npm test && npm run verify:contracts && npm run build && npm run verify:dist",
     "lint": "eslint src/ --max-warnings 0",
     "lint:fix": "eslint src/ --fix --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css}\""
