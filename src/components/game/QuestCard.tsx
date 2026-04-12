@@ -195,7 +195,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       .finally(() => setThinking(false));
   }
 
-  function handleJoin(quest: any) {
+  async function handleJoin(quest: any) {
     if (!S.me) return;
     if (!quest.participants) quest.participants = [];
     if (quest.participants.includes(S.me)) return;
@@ -212,6 +212,30 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       xp: 0,
       type: 'collaborative_join',
     });
+
+    const joinTargets = [...new Set([quest.initiator, quest.owner].filter(Boolean))]
+      .filter((memberKey) => memberKey !== S.me);
+    const memberName = (MEMBERS as any)[S.me]?.name || S.me;
+
+    if (joinTargets.length > 0) {
+      await notifyMembersSignal({
+        targetMemberKeys: joinTargets,
+        type: 'collaborative_join',
+        title: `${memberName} anslöt sig till uppdraget`,
+        body: quest.title,
+        dedupeKey: `collab-join:${quest.id}:${S.me}`,
+        payload: {
+          memberId: S.me,
+          questId: quest.id,
+          questTitle: quest.title,
+        },
+        push: {
+          title: `${memberName} anslöt sig till uppdraget`,
+          body: `"${quest.title}"`,
+          excludeMember: S.me,
+        },
+      });
+    }
 
     save();
 

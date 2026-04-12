@@ -39,6 +39,7 @@ export const NOTIF_TYPES = {
   LEVEL_UP:               'level_up',
   HIGH_FIVE:              'high_five',
   COLLABORATIVE_INVITE:   'collaborative_invite',
+  COLLABORATIVE_JOIN:     'collaborative_join',
   COLLABORATIVE_PROGRESS: 'collaborative_progress',
   COLLABORATIVE_COMPLETE: 'collaborative_complete',
   QUEST_COMPLETE:         'quest_complete',

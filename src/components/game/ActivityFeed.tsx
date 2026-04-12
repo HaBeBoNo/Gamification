@@ -5,10 +5,10 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { ScrollText, Activity, MessageCircle, X, Zap, Radio, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
-import { sendPush } from '@/lib/sendPush';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
 import { createFeedCommentAction, getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
+import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { insertFeedCommentActivity, toggleStructuredReaction, toggleStructuredWitness } from '@/lib/socialData';
 import {
   buildFeedPresentation,
@@ -175,6 +175,24 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
           .eq('id', item.id);
         if (error) throw error;
       }
+
+      if (!hasReacted && shouldPushForSocialSignal('reaction') && item.who && item.who !== me) {
+        await notifyMembersSignal({
+          targetMemberKeys: [item.who],
+          type: 'feed_reaction',
+          title: `${getMemberName(me)} reagerade på din aktivitet`,
+          body: `${emoji} på ${getFeedContextLabel(item)}`,
+          dedupeKey: `reaction:${item.id}|${emoji}|${me}`,
+          feedItemId: String(item.id),
+          skipRemoteNotification: mode !== 'legacy',
+          push: {
+            title: `${getMemberName(me)} reagerade på din aktivitet`,
+            body: `${emoji} på ${getFeedContextLabel(item)}`,
+            excludeMember: me,
+            url: '/',
+          },
+        });
+      }
     } catch (error: any) {
       console.warn('toggleReaction failed:', error?.message || error);
       updateFeedItemLocal(item.id, current => ({ ...current, reactions: currentReactions }));
@@ -219,6 +237,24 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
           .update({ witnesses: updated })
           .eq('id', item.id);
         if (error) throw error;
+      }
+
+      if (!hasWitnessed && shouldPushForSocialSignal('witness') && item.who && item.who !== me) {
+        await notifyMembersSignal({
+          targetMemberKeys: [item.who],
+          type: 'feed_witness',
+          title: `${getMemberName(me)} var där`,
+          body: getFeedContextLabel(item),
+          dedupeKey: `witness:${item.id}|${me}`,
+          feedItemId: String(item.id),
+          skipRemoteNotification: mode !== 'legacy',
+          push: {
+            title: `${getMemberName(me)} var där`,
+            body: getFeedContextLabel(item),
+            excludeMember: me,
+            url: '/',
+          },
+        });
       }
     } catch (error: any) {
       console.warn('toggleWitness failed:', error?.message || error);
@@ -297,15 +333,21 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
 
     if (shouldPushForSocialSignal('comment') && targetMemberKeys.length > 0) {
       const commenterName = getMemberName(me);
-      void sendPush(
-        `${commenterName} kommenterade din aktivitet`,
-        comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
-        {
+      await notifyMembersSignal({
+        targetMemberKeys,
+        type: 'feed_comment',
+        title: `${commenterName} kommenterade din aktivitet`,
+        body: comment,
+        dedupeKey: `comment:${data?.id || optimisticId}`,
+        feedItemId: String(data?.id || itemId),
+        skipRemoteNotification: true,
+        push: {
+          title: `${commenterName} kommenterade din aktivitet`,
+          body: comment.length > 80 ? `${comment.slice(0, 77)}...` : comment,
           excludeMember: me,
-          targetMemberKeys,
           url: '/',
-        }
-      );
+        },
+      });
     }
 
     if (data) {

@@ -23,6 +23,11 @@ export function getNotificationText(notification: Notification): { title: string
         title: notification.title || `${memberName || 'Någon'} bjöd in dig till ett gemensamt uppdrag`,
         subtitle: str(p.questTitle) || notification.body || '',
       };
+    case 'collaborative_join':
+      return {
+        title: notification.title || `${memberName || 'Någon'} anslöt sig`,
+        subtitle: str(p.questTitle) || notification.body || '',
+      };
     case 'delegation_received':
       return { title: `${memberName} skickade dig ett uppdrag`, subtitle: str(p.questTitle) };
     case 'delegation_accepted':
@@ -114,6 +119,7 @@ export function getNotificationTarget(notification: Notification): NotificationT
     case 'first_login':
       return 'activity';
     case 'collaborative_invite':
+    case 'collaborative_join':
     case 'delegation_received':
     case 'delegation_accepted':
     case 'delegation_declined':
@@ -163,6 +169,8 @@ export function getNotificationPriority(notification: Notification): number {
       return 100;
     case 'collaborative_invite':
       return 96;
+    case 'collaborative_join':
+      return 94;
     case 'delegation_received':
       return 95;
     case 'collaborative_progress':

@@ -327,9 +327,10 @@ export function useWaitingOnYouSurface() {
           ? 'comment'
           : notification.type === 'feed_reaction'
             ? 'reaction'
-            : notification.type === 'feed_witness'
+          : notification.type === 'feed_witness'
               ? 'witness'
-              : notification.type === 'collaborative_invite'
+              : (notification.type === 'collaborative_invite'
+                || notification.type === 'collaborative_join')
                 ? 'invite'
                 : notification.type === 'collaborative_progress' || notification.type === 'collaborative_complete'
                   ? 'collaborative'

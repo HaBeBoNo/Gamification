@@ -37,6 +37,23 @@ describe('notificationMeta', () => {
     });
   });
 
+  it('routes collaborative joins as a quest signal with strong priority', () => {
+    const notification = makeNotification({
+      type: 'collaborative_join',
+      payload: {
+        memberId: 'niklas',
+        questTitle: 'Sätt refrängen tillsammans',
+      },
+    });
+
+    expect(getNotificationTarget(notification)).toBe('quests');
+    expect(getNotificationPriority(notification)).toBe(94);
+    expect(getNotificationText(notification)).toMatchObject({
+      title: 'Niklas anslöt sig',
+      subtitle: 'Sätt refrängen tillsammans',
+    });
+  });
+
   it('prioritizes collaborative progress above completion summaries', () => {
     expect(getNotificationPriority(makeNotification({ type: 'collaborative_progress' }))).toBeGreaterThan(
       getNotificationPriority(makeNotification({ type: 'collaborative_complete' }))

@@ -67,7 +67,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       await fetchMyCollaborativeQuests();
 
       const initiatorName = (MEMBERS as any)[S.me]?.name || S.me;
-      void notifyMembersSignal({
+      await notifyMembersSignal({
         targetMemberKeys: invitedMembers,
         type: 'collaborative_invite',
         title: `${initiatorName} bjöd in dig till ett gemensamt uppdrag`,

@@ -4,7 +4,10 @@ import { sendPush } from '@/lib/sendPush';
 
 const PUSH_SIGNAL_TYPES = new Set([
   'feed_comment',
+  'feed_reaction',
+  'feed_witness',
   'collaborative_invite',
+  'collaborative_join',
   'collaborative_progress',
   'collaborative_complete',
   'high_five',
@@ -25,6 +28,7 @@ export async function notifyMembersSignal(params: {
   body?: string;
   dedupeKey: string;
   payload?: Record<string, unknown>;
+  skipRemoteNotification?: boolean;
   feedItemId?: string | null;
   push?: {
     title: string;
@@ -36,22 +40,24 @@ export async function notifyMembersSignal(params: {
   const targetMemberKeys = [...new Set((params.targetMemberKeys || []).filter(Boolean))];
   if (targetMemberKeys.length === 0) return;
 
-  try {
-    await createRemoteNotifications({
-      targetMemberKeys,
-      type: params.type,
-      title: params.title,
-      body: params.body,
-      dedupeKey: params.dedupeKey,
-      feedItemId: params.feedItemId || null,
-      payload: params.payload,
-    });
-  } catch (error: any) {
-    console.warn('notifyMembersSignal failed:', error?.message || error);
+  if (!params.skipRemoteNotification) {
+    try {
+      await createRemoteNotifications({
+        targetMemberKeys,
+        type: params.type,
+        title: params.title,
+        body: params.body,
+        dedupeKey: params.dedupeKey,
+        feedItemId: params.feedItemId || null,
+        payload: params.payload,
+      });
+    } catch (error: any) {
+      console.warn('notifyMembersSignal failed:', error?.message || error);
+    }
   }
 
   if (params.push && PUSH_SIGNAL_TYPES.has(params.type)) {
-    void sendPush(
+    await sendPush(
       params.push.title,
       params.push.body,
       {
