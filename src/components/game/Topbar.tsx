@@ -1,6 +1,8 @@
 import React from 'react';
 import { S } from '@/state/store';
-import { Bell, Flame } from 'lucide-react';
+import { Flame } from 'lucide-react';
+import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
+import NotificationBell from './NotificationBell';
 
 interface TopbarProps {
   logoRef?: (node: HTMLButtonElement | null) => void;
@@ -14,6 +16,8 @@ export default function Topbar({ logoRef, onNotifications, onLogoClick }: Topbar
   const streak = char?.streak ?? 0;
   const operationLabel = S.operationName;
   const weekNumber = S.weekNum;
+  const { signals, unreadCount } = useWaitingOnYouSurface();
+  const hasAttention = signals.length > 0;
 
   return (
     <div style={{
@@ -78,24 +82,22 @@ export default function Topbar({ logoRef, onNotifications, onLogoClick }: Topbar
           )}
           {/* Notis-klocka */}
           {onNotifications && (
-            <button
-              onClick={onNotifications}
-              style={{
-                width: 'var(--icon-button-size)',
-                height: 'var(--icon-button-size)',
-                background: 'var(--color-surface-elevated)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '999px',
-                cursor: 'pointer',
-                padding: 0,
-                color: 'var(--color-text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Bell size={18} />
-            </button>
+            <div style={{
+              width: 'var(--icon-button-size)',
+              height: 'var(--icon-button-size)',
+              background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '999px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <NotificationBell
+                onClick={onNotifications}
+                count={unreadCount}
+                hasAttention={hasAttention}
+              />
+            </div>
           )}
         </div>
       </div>

@@ -2,9 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { markAllRead, markRead, type Notification } from '@/state/notifications';
 import { useGameStore } from '@/state/store';
-import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin, Users } from 'lucide-react';
+import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin, Users, Hand, Inbox } from 'lucide-react';
 import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention } from '@/lib/notificationMeta';
+import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -77,10 +78,37 @@ interface NotificationPanelProps {
   onOpenCoach?: (initialMessage?: string) => void;
 }
 
+function getAttentionIcon(tone: string): React.ElementType {
+  switch (tone) {
+    case 'comment':
+      return MessageCircle;
+    case 'reaction':
+      return Hand;
+    case 'witness':
+      return Eye;
+    case 'invite':
+      return Inbox;
+    case 'collaborative':
+      return Users;
+    case 'delegation':
+      return Inbox;
+    case 'checkin':
+      return MapPin;
+    case 'decline':
+      return X;
+    case 'calendar':
+      return CalendarDays;
+    default:
+      return Bell;
+  }
+}
+
 export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: NotificationPanelProps) {
   // Reactive: re-renders whenever the notifications slice changes in Zustand
   const notifications = useGameStore(s => s.notifications);
   const orderedNotifications = sortNotificationsForAttention(notifications);
+  const { signals } = useWaitingOnYouSurface();
+  const liveSignals = signals.filter((signal) => signal.target !== 'notifications');
 
   function handleNotificationPress(notification: Notification) {
     markRead(notification.id);
@@ -101,6 +129,30 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
       onNavigate?.(target);
       onClose();
     }
+  }
+
+  function handleSignalPress(signal: (typeof liveSignals)[number]) {
+    if (signal.notificationId) {
+      markRead(signal.notificationId);
+    }
+
+    if (signal.notification) {
+      const feedIntent = getNotificationFeedIntent(signal.notification);
+      if (feedIntent) {
+        setFeedIntent(feedIntent);
+      }
+    }
+
+    if (signal.target === 'coach') {
+      onOpenCoach?.(signal.subtitle || signal.title);
+      onClose();
+      return;
+    }
+
+    if (signal.target === 'notifications') return;
+
+    onNavigate?.(signal.target);
+    onClose();
   }
 
   return (
@@ -139,9 +191,91 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
         </div>
       )}
 
+      {liveSignals.length > 0 && (
+        <div style={{
+          padding: '12px 16px 10px',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 'var(--text-micro)',
+            color: 'var(--color-text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}>
+            Nu
+          </div>
+          {liveSignals.slice(0, 3).map((signal) => {
+            const Icon = getAttentionIcon(signal.tone);
+            return (
+              <button
+                key={signal.id}
+                onClick={() => handleSignalPress(signal)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface-elevated)',
+                  borderRadius: '14px',
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-primary)',
+                  flexShrink: 0,
+                }}>
+                  <Icon size={16} strokeWidth={1.9} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 'var(--text-caption)',
+                    color: 'var(--color-text)',
+                    fontWeight: 600,
+                    marginBottom: 2,
+                  }}>
+                    {signal.title}
+                  </div>
+                  <div style={{
+                    fontSize: 'var(--text-micro)',
+                    color: 'var(--color-text-muted)',
+                    lineHeight: 1.45,
+                  }}>
+                    {signal.subtitle}
+                  </div>
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 'var(--text-micro)',
+                  color: 'var(--color-primary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  flexShrink: 0,
+                }}>
+                  {signal.cta}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="notif-list">
         <AnimatePresence initial={false}>
-          {orderedNotifications.length === 0 ? (
+          {orderedNotifications.length === 0 && liveSignals.length === 0 ? (
             <div className="notif-empty">
               <Bell size={48} strokeWidth={1} />
               <span>Tomt just nu.</span>
