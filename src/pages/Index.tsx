@@ -34,6 +34,65 @@ import { clearBaselineSession, consumePushOpenMarker, recordAppOpenOncePerSessio
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 
 const PRIMARY_TAB_IDS = new Set(['quests', 'bandhub', 'leaderboard']);
+const APP_STORAGE_PREFIXES = ['sek-', 'sektionen-', 'hq_', 'hq-'];
+const APP_STORAGE_KEYS = new Set([STORAGE_KEY, 'sektionen-auth', 'sek-push-registration-v1']);
+
+async function settleWithin(task: Promise<unknown>, timeoutMs = 1500): Promise<void> {
+  await Promise.race([
+    task.catch(() => undefined),
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+}
+
+function clearAppStorage() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const localKeys = Object.keys(window.localStorage);
+    localKeys.forEach((key) => {
+      if (APP_STORAGE_KEYS.has(key) || APP_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        window.localStorage.removeItem(key);
+      }
+    });
+  } catch {
+    // Ignore blocked storage access.
+  }
+
+  try {
+    const sessionKeys = Object.keys(window.sessionStorage);
+    sessionKeys.forEach((key) => {
+      if (APP_STORAGE_KEYS.has(key) || APP_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        window.sessionStorage.removeItem(key);
+      }
+    });
+  } catch {
+    // Ignore blocked storage access.
+  }
+}
+
+async function clearClientShell() {
+  if (typeof window === 'undefined') return;
+
+  if ('caches' in window) {
+    try {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key).catch(() => false)));
+    } catch {
+      // Cache deletion is best effort only.
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+    } catch {
+      // Ignore registration cleanup failures.
+    }
+  }
+}
 
 export default function Index() {
   // Zustand-driven reactivity: alla save()/notify() triggar re-render
@@ -220,17 +279,24 @@ export default function Index() {
     setShowMore(false);
     if (id === 'logout') {
       const currentMember = S.me;
+
       if (currentMember) {
-        await unregisterPush(currentMember);
+        await settleWithin(unregisterPush(currentMember), 1500);
       }
-      if (supabase) await supabase.auth.signOut();
-      localStorage.removeItem(STORAGE_KEY);
+      if (supabase) {
+        await settleWithin(supabase.auth.signOut(), 1500);
+      }
+
       if (currentMember) {
         clearSocialSignalSync(currentMember);
         clearHomeAttentionSeen(currentMember);
         clearBaselineSession(currentMember);
       }
-      window.location.reload();
+
+      S.me = null;
+      clearAppStorage();
+      await clearClientShell();
+      window.location.replace(`${window.location.pathname}?cold=${Date.now()}`);
       return;
     }
     if (id === 'home') { setActiveView('home'); return; }

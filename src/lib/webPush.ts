@@ -308,9 +308,21 @@ export async function unregisterPush(memberKey?: string | null): Promise<void> {
   if (!supabase || !('serviceWorker' in navigator) || !('PushManager' in window)) return
 
   try {
-    const registration = await navigator.serviceWorker.ready
+    const registration = await Promise.race<ServiceWorkerRegistration | null>([
+      navigator.serviceWorker.getRegistration('/').then((value) => value ?? null),
+      new Promise<ServiceWorkerRegistration | null>((resolve) => {
+        window.setTimeout(() => resolve(null), 1200)
+      }),
+    ])
+    if (!registration) {
+      clearPushRegistrationState()
+      clearRuntimeIssue('push')
+      return
+    }
+
     const subscription = await registration.pushManager.getSubscription()
     if (!subscription) {
+      clearPushRegistrationState()
       clearRuntimeIssue('push')
       return
     }
