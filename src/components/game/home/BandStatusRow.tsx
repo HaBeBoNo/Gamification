@@ -1,4 +1,5 @@
 import { CalendarDays, ChevronRight, Trophy, Zap } from 'lucide-react';
+import { useRef } from 'react';
 import { MEMBERS } from '@/data/members';
 import { useHomeBandStatusCards } from '@/hooks/useHomeSurface';
 import { CARD_PAD_COMPACT, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
@@ -29,6 +30,14 @@ type BandStatusRowProps = {
 
 export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
   const cards = useHomeBandStatusCards(TOTAL_MEMBERS);
+  const lastNavigationAt = useRef(0);
+
+  const navigateTo = (target: string) => {
+    const now = Date.now();
+    if (now - lastNavigationAt.current < 250) return;
+    lastNavigationAt.current = now;
+    onNavigate?.(target);
+  };
 
   return (
     <div style={{
@@ -44,7 +53,11 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
           <button
             key={card.kind}
             type="button"
-            onClick={() => onNavigate?.(target)}
+            onClick={() => navigateTo(target)}
+            onTouchEndCapture={(event) => {
+              event.stopPropagation();
+              navigateTo(target);
+            }}
             style={{
               background: 'var(--color-surface-elevated)',
               border: '1px solid var(--color-border)',
@@ -118,6 +131,7 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              marginTop: 2,
             }}>
               {card.sub}
             </span>
