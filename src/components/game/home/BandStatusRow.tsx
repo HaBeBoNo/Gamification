@@ -1,4 +1,4 @@
-import { CalendarDays, Trophy, Zap } from 'lucide-react';
+import { CalendarDays, ChevronRight, Trophy, Zap } from 'lucide-react';
 import { MEMBERS } from '@/data/members';
 import { useHomeBandStatusCards } from '@/hooks/useHomeSurface';
 import { CARD_PAD_COMPACT, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
@@ -47,29 +47,52 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
             onClick={() => onNavigate?.(target)}
             style={{
               background: 'var(--color-surface-elevated)',
+              border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-card)',
               padding: CARD_PAD_COMPACT,
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
               width: '100%',
-              border: 'none',
+              minWidth: 0,
+              appearance: 'none',
+              WebkitAppearance: 'none',
               textAlign: 'left',
               cursor: 'pointer',
               touchAction: 'manipulation',
+              transition: 'transform var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out)',
             }}
             aria-label={CARD_ARIA[card.kind]}
           >
             <div style={{
-              width: 18,
-              height: 18,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-secondary)',
+              justifyContent: 'space-between',
+              gap: 8,
               marginBottom: 2,
             }}>
-              <Icon size={16} strokeWidth={1.9} />
+              <div style={{
+                width: 18,
+                height: 18,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-text-secondary)',
+                flexShrink: 0,
+              }}>
+                <Icon size={16} strokeWidth={1.9} />
+              </div>
+              <div style={{
+                width: 16,
+                height: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-text-muted)',
+                flexShrink: 0,
+              }}>
+                <ChevronRight size={14} strokeWidth={1.9} />
+              </div>
             </div>
             <span style={{
               fontFamily: 'var(--font-mono)',
@@ -94,6 +117,7 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
               color: 'var(--color-text-muted)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}>
               {card.sub}
             </span>

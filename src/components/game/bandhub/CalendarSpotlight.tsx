@@ -1,6 +1,6 @@
 import { CalendarDays, CircleOff, Clock3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { getUpcomingEvents, isEventActive } from '@/lib/googleCalendar';
 import { isCalendarResponseNeeded } from '@/lib/reengagement';
 import { getCalendarEventParticipationState } from '@/lib/calendarState';
@@ -30,6 +30,7 @@ function getCompactCalendarDateLabel(dateString?: string): string {
 }
 
 export function CalendarSpotlight() {
+  useGameStore((state) => state.tick);
   const [events, setEvents] = useState<Array<{
     id: string;
     title: string;
