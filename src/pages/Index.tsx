@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { S, notify, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { MessageCircle, Home, Activity, BarChart2, User, Lightbulb, ChevronRight, LogOut, Clock } from 'lucide-react';
@@ -39,6 +39,7 @@ export default function Index() {
   // Zustand-driven reactivity: alla save()/notify() triggar re-render
   useGameStore(s => s.tick);
   const rerender = notify;
+  const hasReloadedForServiceWorker = useRef(false);
 
   const [activeView, setActiveView] = useState<'home' | 'tab'>('home');
   const [activeTab, setActiveTab] = useState('quests');
@@ -129,24 +130,73 @@ export default function Index() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    navigator.serviceWorker.ready.then((registration) => {
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (!newWorker) return;
+    let mounted = true;
+    let activeRegistration: ServiceWorkerRegistration | null = null;
 
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            if (import.meta.env.DEV) console.warn('[SW] New version available — reloading');
-            window.location.reload();
-          }
-        });
-      });
-    });
-
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (import.meta.env.DEV) console.warn('[SW] Controller changed — reloading');
+    const triggerReload = () => {
+      if (hasReloadedForServiceWorker.current) return;
+      hasReloadedForServiceWorker.current = true;
       window.location.reload();
+    };
+
+    const checkForUpdates = () => {
+      void navigator.serviceWorker.getRegistration().then((registration) => {
+        if (!mounted || !registration) return;
+        activeRegistration = registration;
+        void registration.update().catch(() => undefined);
+      });
+    };
+
+    const handleControllerChange = () => {
+      if (import.meta.env.DEV) console.warn('[SW] Controller changed — reloading');
+      triggerReload();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdates();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      checkForUpdates();
+    };
+
+    const handleUpdateFound = () => {
+      const newWorker = activeRegistration?.installing;
+      if (!newWorker) return;
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          if (import.meta.env.DEV) console.warn('[SW] New version available — reloading');
+          triggerReload();
+        }
+      });
+    };
+
+    navigator.serviceWorker.ready.then((registration) => {
+      if (!mounted) return;
+      activeRegistration = registration;
+      registration.addEventListener('updatefound', handleUpdateFound);
+      void registration.update().catch(() => undefined);
     });
+
+    const updateInterval = window.setInterval(checkForUpdates, 60_000);
+
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    checkForUpdates();
+
+    return () => {
+      mounted = false;
+      window.clearInterval(updateInterval);
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      activeRegistration?.removeEventListener('updatefound', handleUpdateFound);
+    };
   }, []);
 
   useEffect(() => {
