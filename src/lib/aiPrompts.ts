@@ -52,6 +52,19 @@ export function buildQuestGenPrompt(m: Member, c: CharData, refreshMode: boolean
 
   const prevGenerated = (c.generatedHistory || []).slice(-10).join(', ');
 
+  // Borttagna quests — instruera AI:n att undvika liknande
+  const deleted = Array.isArray((c as any).deletedQuests)
+    ? ((c as any).deletedQuests as Array<{ title?: string; cat?: string; reason?: string }>).slice(-5)
+    : [];
+  const deletedIrrelevant = deleted
+    .filter(d => d.reason === 'irrelevant')
+    .map(d => `"${d.title}" (${d.cat})`)
+    .join(', ');
+  const deletedTiming = deleted
+    .filter(d => d.reason === 'timing')
+    .map(d => `"${d.title}" (${d.cat})`)
+    .join(', ');
+
   return `Du är en strategisk AI-coach för Sektionen, ett 8-personersband från Göteborg på väg mot professionell verksamhet.
 ${refreshMode ? 'OBS: REFRESH — personen har completat sina förra quests. Skapa nya som bygger vidare, inte samma som sist. Kontexten: Operation POST II, truminspelning juli 2026, ideell → professionell.' : ''}
 
@@ -99,6 +112,7 @@ Bygg vidare — nästa naturliga steg, inte samma steg igen.
 
 Tidigare genererade quests (upprepa INTE dessa):
 ${prevGenerated || 'inga'}
+${deletedIrrelevant ? `\nBorttagna som IRRELEVANTA (generera INTE liknande i samma kategori):\n${deletedIrrelevant}` : ''}${deletedTiming ? `\nBorttagna pga TIMING (OK att återföreslå om 2–3 veckor, inte nu):\n${deletedTiming}` : ''}
 
 INSTRUKTIONER — skapa 4 personliga quests:
 1. Möt dem där de faktiskt är, inte där rollbeskrivningen säger

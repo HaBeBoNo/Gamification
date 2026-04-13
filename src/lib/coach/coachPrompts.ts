@@ -105,7 +105,7 @@ Kommunikationsprofil:
 Kalibrera ton och djup efter profilen. Spegla personens språk utan att imitera.
 Om metaphorical är true — använd bilder naturligt.
 Om languageComplexity är simple — håll dig konkret och kort.
-Om pronounDominance är vi — koppla alltid till bandet.` : '';
+Om pronounDominance är vi — koppla alltid till bandet.${profile.drift ? `\n\nKommunikativ förändring sedan onboarding: ${profile.drift}\nAnpassa dig — personen uttrycker sig annorlunda nu.` : ''}` : '';
 
   const temporal = char.temporalBehavior;
   const temporalContext = temporal ? `
