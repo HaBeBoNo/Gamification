@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { S } from '@/state/store';
+import { S, save } from '@/state/store';
 import { MEMBERS, ROLE_TYPE_LABEL } from '@/data/members';
 import { Trophy, Flame, Zap, Check, Star } from 'lucide-react';
 import { MemberIcon } from '@/components/icons/MemberIcons';
@@ -113,6 +113,7 @@ function LeaderboardView() {
       if (data) {
         const dataMap: Record<string, any> = {};
         const nextEndorsementsMap: Record<string, Record<string, string[]>> = {};
+        let mergedRemoteChars = false;
 
         data.forEach((row) => {
           if (row.data?.chars?.[row.member_key]) {
@@ -120,11 +121,16 @@ function LeaderboardView() {
               ...S.chars[row.member_key],
               ...row.data.chars[row.member_key],
             };
+            mergedRemoteChars = true;
           }
 
           dataMap[row.member_key] = row.data;
           nextEndorsementsMap[row.member_key] = row.data?.endorsements ?? {};
         });
+
+        if (mergedRemoteChars) {
+          save();
+        }
 
         leaderboardMemberDataCache = dataMap;
         leaderboardEndorsementsCache = nextEndorsementsMap;
@@ -151,11 +157,13 @@ function LeaderboardView() {
           const remote = payload.new as any;
           if (remote?.member_key) {
             const remoteChars = remote.data?.chars;
+            let mergedRemoteChars = false;
             if (remoteChars?.[remote.member_key]) {
               S.chars[remote.member_key] = {
                 ...S.chars[remote.member_key],
                 ...remoteChars[remote.member_key],
               };
+              mergedRemoteChars = true;
             }
 
             const nextMemberDataMap = {
@@ -172,6 +180,10 @@ function LeaderboardView() {
             leaderboardRemoteHydrated = true;
             setMemberDataMap(nextMemberDataMap);
             setEndorsementsMap(nextEndorsementsMap);
+
+            if (mergedRemoteChars) {
+              save();
+            }
           }
         }
       )

@@ -29,9 +29,10 @@ export function getQuestOrigin(quest: any): 'generated' | 'collaborative' | 'per
 }
 
 export function getCompletedByMembers(quest: any): string[] {
-  if (!quest?.completedBy) return [];
-  if (Array.isArray(quest.completedBy)) return quest.completedBy.filter(Boolean);
-  return typeof quest.completedBy === 'string' ? [quest.completedBy] : [];
+  const completedBy = quest?.completedBy ?? quest?.completed_by;
+  if (!completedBy) return [];
+  if (Array.isArray(completedBy)) return completedBy.filter(Boolean);
+  return typeof completedBy === 'string' ? [completedBy] : [];
 }
 
 export function isQuestRelevantToMember(quest: any, memberId: string): boolean {

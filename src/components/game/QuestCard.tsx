@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
-import { supabase } from '@/lib/supabase';
 import { awardXP } from '@/hooks/useXP';
 import { aiValidate } from '@/hooks/useAI';
 import { Check, X, Zap, Paperclip, Globe2, MapPin, User } from 'lucide-react';
 import { getQuestOrigin, ORIGIN_LABELS, isQuestDoneNow } from '@/lib/questUtils';
 import { pushFeedEntry } from '@/lib/feed';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
+import { joinCollaborativeQuest } from '@/lib/collaborativeQuests';
 import { motion } from 'framer-motion';
 import DelegationSheet from './DelegationSheet';
 import QuestCompleteModal from './QuestCompleteModal';
@@ -197,25 +197,30 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
   async function handleJoin(quest: any) {
     if (!S.me) return;
-    if (!quest.participants) quest.participants = [];
-    if (quest.participants.includes(S.me)) return;
-
-    quest.participants.push(S.me);
+    const memberKey = S.me;
+    if ((quest.participants || []).includes(memberKey)) return;
 
     // Spara kommentar på quest-objektet
     const noteValue = delegationNote.trim() || null;
+
+    const updatedQuest = await joinCollaborativeQuest(quest.id, memberKey);
+    if (!updatedQuest) return;
+
+    quest.participants = updatedQuest.participants ?? [];
+    quest.completedBy = updatedQuest.completed_by ?? [];
+    quest.completed_by = updatedQuest.completed_by ?? [];
     if (noteValue) quest.note = noteValue;
 
     pushFeedEntry({
-      who: S.me,
+      who: memberKey,
       action: `anslöt sig till "${quest.title}"`,
       xp: 0,
       type: 'collaborative_join',
     });
 
     const joinTargets = [...new Set([quest.initiator, quest.owner].filter(Boolean))]
-      .filter((memberKey) => memberKey !== S.me);
-    const memberName = (MEMBERS as any)[S.me]?.name || S.me;
+      .filter((targetKey) => targetKey !== memberKey);
+    const memberName = (MEMBERS as any)[memberKey]?.name || memberKey;
 
     if (joinTargets.length > 0) {
       await notifyMembersSignal({
@@ -223,37 +228,22 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         type: 'collaborative_join',
         title: `${memberName} anslöt sig till uppdraget`,
         body: quest.title,
-        dedupeKey: `collab-join:${quest.id}:${S.me}`,
+        dedupeKey: `collab-join:${quest.id}:${memberKey}`,
         payload: {
-          memberId: S.me,
+          memberId: memberKey,
           questId: quest.id,
           questTitle: quest.title,
         },
         push: {
           title: `${memberName} anslöt sig till uppdraget`,
           body: `"${quest.title}"`,
-          excludeMember: S.me,
+          excludeMember: memberKey,
         },
       });
     }
 
     save();
-
-    // Uppdatera participants i collaborative_quests-tabellen
-    if (supabase && quest.id) {
-      const updatedParticipants = quest.participants;
-      supabase
-        .from('collaborative_quests')
-        .update({
-          participants: updatedParticipants,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('quest_id', quest.id)
-        .then(({ error }: any) => {
-          if (error) console.warn('collaborative_quests update failed:', error.message);
-        });
-    }
-
+    setDelegationNote('');
     rerender?.();
   }
 

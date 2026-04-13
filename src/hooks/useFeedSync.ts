@@ -111,6 +111,8 @@ export function useFeedSync() {
     if (newItems.length === 0) return;
 
     async function syncItems() {
+      let syncedAny = false;
+
       for (const item of [...newItems].reverse()) {
         const createdAt = resolveFeedCreatedAt(item);
         const syncId = item.syncId || null;
@@ -170,11 +172,38 @@ export function useFeedSync() {
         }
 
         syncedFingerprints.current.add(fingerprint);
+        syncedAny = true;
+      }
+
+      if (!syncedAny) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('activity_feed')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const hydratedFeed = await hydrateFeedItems((data as FeedEntry[]) || []);
+        hydratedFeed.forEach((item) => {
+          syncedFingerprints.current.add(getFeedFingerprint(item));
+        });
+
+        const localUnsynced = useGameStore
+          .getState()
+          .feed
+          .filter((item) => isUnsyncedLocalItem(item, syncedFingerprints.current));
+
+        setFeed([...hydratedFeed, ...localUnsynced]);
+      } catch (error) {
+        console.error('[FeedSync] post-sync refresh error:', error);
       }
     }
 
     void syncItems();
-  }, [feed, feedHydrated, me]);
+  }, [feed, feedHydrated, me, setFeed]);
 
   useEffect(() => {
     if (!supabase || !me) return;

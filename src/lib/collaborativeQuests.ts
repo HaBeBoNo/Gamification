@@ -1,5 +1,4 @@
 import { supabase } from './supabase'
-import { MEMBERS } from '@/data/members'
 import { S, save } from '@/state/store'
 
 export interface CollaborativeQuest {
@@ -12,6 +11,45 @@ export interface CollaborativeQuest {
   done: boolean
   created_at: string
   updated_at: string
+}
+
+function normalizeCompletedBy(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String)
+  if (typeof value === 'string' && value) return [value]
+  return []
+}
+
+function syncCollaborativeQuestIntoStore(row: CollaborativeQuest | Record<string, any>) {
+  const completedBy = normalizeCompletedBy((row as any).completed_by ?? (row as any).completedBy)
+  const existing = S.quests.find((q: any) => q.id === row.quest_id)
+
+  if (!existing) {
+    S.quests.push({
+      id: row.quest_id,
+      title: row.quest_data?.title ?? '',
+      desc: row.quest_data?.desc ?? '',
+      xp: row.quest_data?.xp ?? 0,
+      cat: row.quest_data?.cat ?? '',
+      collaborative: true,
+      participants: row.participants ?? [],
+      initiator: row.initiator,
+      done: row.done ?? false,
+      completedBy,
+      completed_by: completedBy,
+      owner: row.initiator,
+      region: 'Global',
+      recur: 'none',
+      type: 'collaborative',
+      personal: false,
+    } as any)
+    return
+  }
+
+  existing.participants = row.participants ?? []
+  existing.initiator = row.initiator
+  existing.done = row.done ?? false
+  existing.completedBy = completedBy
+  existing.completed_by = completedBy
 }
 
 // Hämta alla collaborative quests där S.me är initiator eller deltagare
@@ -30,31 +68,7 @@ export async function fetchMyCollaborativeQuests(): Promise<CollaborativeQuest[]
 
   // Synka till S.quests
   for (const row of data) {
-    const existing = S.quests.find((q: any) => q.id === row.quest_id)
-    if (!existing) {
-      S.quests.push({
-        id: row.quest_id,
-        title: row.quest_data?.title ?? '',
-        desc: row.quest_data?.desc ?? '',
-        xp: row.quest_data?.xp ?? 0,
-        cat: row.quest_data?.cat ?? '',
-        collaborative: true,
-        participants: row.participants ?? [],
-        initiator: row.initiator,
-        done: row.done ?? false,
-        completed_by: row.completed_by ?? [],
-        owner: row.initiator,
-        region: 'Global',
-        recur: 'none',
-        type: 'collaborative',
-        personal: false,
-      } as any)
-    } else {
-      existing.participants = row.participants ?? []
-      existing.initiator = row.initiator
-      existing.done = row.done ?? false
-      existing.completed_by = row.completed_by ?? []
-    }
+    syncCollaborativeQuestIntoStore(row)
   }
 
   return activeRows
@@ -120,6 +134,64 @@ export async function completeMyPart(
   return { allDone, completedBy: newCompletedBy }
 }
 
+export async function joinCollaborativeQuest(
+  questId: number,
+  memberKey: string
+): Promise<CollaborativeQuest | null> {
+  if (!supabase || !memberKey) return null
+
+  let attempts = 0
+
+  while (attempts < 3) {
+    attempts += 1
+
+    const { data: row, error: fetchError } = await supabase
+      .from('collaborative_quests')
+      .select('*')
+      .eq('quest_id', questId)
+      .single()
+
+    if (fetchError || !row) {
+      console.error('[CollabQuests] join fetch error:', fetchError)
+      return null
+    }
+
+    const currentParticipants = Array.isArray(row.participants) ? row.participants.filter(Boolean) : []
+    if (currentParticipants.includes(memberKey)) {
+      syncCollaborativeQuestIntoStore(row)
+      return row as CollaborativeQuest
+    }
+
+    const nextParticipants = [...new Set([...currentParticipants, memberKey])]
+    const nextUpdatedAt = new Date().toISOString()
+
+    const { data: updatedRows, error: updateError } = await supabase
+      .from('collaborative_quests')
+      .update({
+        participants: nextParticipants,
+        updated_at: nextUpdatedAt,
+      })
+      .eq('quest_id', questId)
+      .eq('updated_at', row.updated_at)
+      .select('*')
+
+    if (updateError) {
+      console.warn('[CollabQuests] join update error:', updateError)
+      continue
+    }
+
+    const updated = updatedRows?.[0]
+    if (updated) {
+      syncCollaborativeQuestIntoStore(updated)
+      save()
+      return updated as CollaborativeQuest
+    }
+  }
+
+  console.warn('[CollabQuests] join aborted after concurrent retries')
+  return null
+}
+
 // Prenumerera på realtidsuppdateringar för collaborative quests
 export function subscribeCollaborativeQuests(
   onUpdate: (quest: CollaborativeQuest) => void
@@ -137,6 +209,7 @@ export function subscribeCollaborativeQuests(
       (payload) => {
         const quest = payload.new as CollaborativeQuest
         if (S.me && quest.participants?.includes(S.me)) {
+          syncCollaborativeQuestIntoStore(quest)
           onUpdate(quest)
         }
       }
