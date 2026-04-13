@@ -5,6 +5,7 @@ import { getRoleHidden } from '@/data/quests';
 import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
+import WeeklyCheckout from './WeeklyCheckout';
 import { showSidequestNudge, generatePersonalQuests, getDailyCoachMessage } from '@/hooks/useAI';
 import { Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
@@ -340,6 +341,8 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
           ))}
         </div>
       </div>
+
+      <WeeklyCheckout rerender={rerender} />
 
       <DelegationInbox rerender={rerender} />
 

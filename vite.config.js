@@ -3,7 +3,13 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+const appBuildId = new Date().toISOString();
+
 export default defineConfig({
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(appBuildId),
+  },
+
   plugins: [
     react(),
 

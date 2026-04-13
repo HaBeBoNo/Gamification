@@ -5,6 +5,7 @@ import { DailyCoachCard } from '@/components/game/home/DailyCoachCard';
 import { ReengagementCard } from '@/components/game/home/ReengagementCard';
 import { WaitingOnYouCard } from '@/components/game/home/WaitingOnYouCard';
 import { HomeBandEcho } from '@/components/game/home/HomeBandEcho';
+import { BandPulse } from '@/components/game/BandPulse';
 import { SECTION_GAP } from '@/components/game/home/constants';
 
 interface HomeScreenProps {
@@ -43,6 +44,7 @@ export function HomeScreen({
         onOpenCoach={onOpenCoach}
         surface={attentionSurface}
       />
+      <BandPulse onNavigate={onNavigate} />
       <HomeBandEcho onNavigate={onNavigate} />
     </div>
   );

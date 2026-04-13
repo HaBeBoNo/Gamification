@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
-import { Flame, Moon, Zap } from 'lucide-react';
+import { ChevronRight, Flame, Moon, Zap } from 'lucide-react';
+import { MOBILE_GUTTER } from '@/components/game/home/constants';
 
 type PulseLevel = 'Vilande' | 'Aktiv' | 'I eld';
 
-export function BandPulse() {
+interface BandPulseProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export function BandPulse({ onNavigate }: BandPulseProps) {
   const [activeToday, setActiveToday] = useState(0);
   const [xp48h, setXp48h] = useState(0);
   const [pulse, setPulse] = useState<PulseLevel>('Vilande');
@@ -73,14 +78,15 @@ export function BandPulse() {
   }, []);
 
   if (loading) return (
-    <div style={{
-      margin: '0 var(--space-md) var(--space-md)',
-      background: 'var(--color-surface-elevated)',
-      borderRadius: 'var(--radius-md)',
-      padding: 'var(--space-md) var(--space-lg)',
-      height: 72,
-      animation: 'pulse 1.5s ease-in-out infinite',
-    }} />
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
+      <div style={{
+        background: 'var(--color-surface-elevated)',
+        borderRadius: 'var(--radius-card)',
+        height: 88,
+        border: '1px solid var(--color-border)',
+        animation: 'pulse 1.5s ease-in-out infinite',
+      }} />
+    </div>
   );
 
   const pulseColor =
@@ -88,41 +94,90 @@ export function BandPulse() {
     pulse === 'Aktiv' ? 'var(--color-primary)' :
     'var(--color-text-muted)';
   const PulseIcon = pulse === 'I eld' ? Flame : pulse === 'Aktiv' ? Zap : Moon;
+  const Wrapper = onNavigate ? 'button' : 'div';
 
   return (
-    <div style={{
-      background: 'var(--color-surface-elevated)',
-      borderRadius: 'var(--radius-md)',
-      padding: 'var(--space-md) var(--space-lg)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 'var(--space-md)',
-      margin: '0 var(--space-md) var(--space-md)',
-    }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Band Pulse
-        </span>
-        <span style={{ fontSize: 'var(--text-body)', color: pulseColor, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <PulseIcon size={15} strokeWidth={1.9} />
-          {pulse}
-        </span>
+    <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
+      <div style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 'var(--text-micro)',
+        color: 'var(--color-text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        margin: '0 0 var(--section-gap-compact)',
+      }}>
+        Bandpuls
       </div>
-      <div style={{ display: 'flex', gap: 'var(--space-lg)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-heading)', color: 'var(--color-text)' }}>{activeToday}</div>
-          <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>aktiva idag</div>
+      <Wrapper
+        {...(onNavigate ? { type: 'button', onClick: () => onNavigate('activity') } : {})}
+        style={{
+          width: '100%',
+          background: 'var(--color-surface-elevated)',
+          borderRadius: 'var(--radius-card)',
+          padding: 'var(--card-padding-room)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--section-gap-compact)',
+          border: '1px solid var(--color-border)',
+          textAlign: 'left',
+          cursor: onNavigate ? 'pointer' : 'default',
+        }}
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-md)',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span style={{
+              fontSize: 'var(--text-body)',
+              color: pulseColor,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <PulseIcon size={15} strokeWidth={1.9} />
+              {pulse}
+            </span>
+            <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text-muted)' }}>
+              Hur bandet rör sig senaste 48 timmarna
+            </span>
+          </div>
+          {onNavigate ? (
+            <div style={{
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-muted)',
+              flexShrink: 0,
+            }}>
+              <ChevronRight size={16} strokeWidth={1.9} />
+            </div>
+          ) : null}
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-heading)', color: 'var(--color-text)' }}>{xp48h}</div>
-          <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>XP / 48h</div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: 10,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-subheading)', color: 'var(--color-text)' }}>{activeToday}</div>
+            <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>aktiva idag</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-subheading)', color: 'var(--color-text)' }}>{xp48h}</div>
+            <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>XP / 48h</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-subheading)', color: 'var(--color-text)' }}>{Object.keys(MEMBERS).length}</div>
+            <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>i bandet</div>
+          </div>
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-heading)', color: 'var(--color-text)' }}>{Object.keys(MEMBERS).length}</div>
-          <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>members</div>
-        </div>
-      </div>
+      </Wrapper>
     </div>
   );
 }
