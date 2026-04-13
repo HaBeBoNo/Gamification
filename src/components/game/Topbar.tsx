@@ -1,5 +1,5 @@
 import React from 'react';
-import { S } from '@/state/store';
+import { S, useGameStore } from '@/state/store';
 import { Flame } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -18,6 +18,7 @@ export default function Topbar({
   notificationCount = 0,
   hasAttention = false,
 }: TopbarProps) {
+  useGameStore((state) => state.tick);
   const me = S.me;
   const char = me ? S.chars[me] : null;
   const streak = char?.streak ?? 0;

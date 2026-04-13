@@ -1,5 +1,14 @@
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 const CALENDAR_ID = import.meta.env.VITE_GOOGLE_CALENDAR_ID
+const UPCOMING_EVENTS_TTL_MS = 60_000
+
+type CalendarCacheEntry = {
+  ts: number
+  data: CalendarEvent[] | null
+  promise: Promise<CalendarEvent[]> | null
+}
+
+const upcomingEventsCache = new Map<number, CalendarCacheEntry>()
 
 export interface CalendarEvent {
   id: string
@@ -10,7 +19,7 @@ export interface CalendarEvent {
   description?: string
 }
 
-export async function getUpcomingEvents(maxResults = 10): Promise<CalendarEvent[]> {
+async function fetchUpcomingEvents(maxResults = 10): Promise<CalendarEvent[]> {
   const now = new Date().toISOString()
   const url = new URL(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`
@@ -33,6 +42,49 @@ export async function getUpcomingEvents(maxResults = 10): Promise<CalendarEvent[
     location: item.location,
     description: item.description,
   }))
+}
+
+export async function getUpcomingEvents(maxResults = 10): Promise<CalendarEvent[]> {
+  const now = Date.now()
+  const cached = upcomingEventsCache.get(maxResults)
+
+  if (cached?.data && now - cached.ts < UPCOMING_EVENTS_TTL_MS) {
+    return cached.data
+  }
+
+  if (cached?.promise) {
+    return cached.promise
+  }
+
+  const promise = fetchUpcomingEvents(maxResults)
+    .then((data) => {
+      upcomingEventsCache.set(maxResults, {
+        ts: Date.now(),
+        data,
+        promise: null,
+      })
+      return data
+    })
+    .catch((error) => {
+      if (cached?.data) {
+        upcomingEventsCache.set(maxResults, {
+          ts: cached.ts,
+          data: cached.data,
+          promise: null,
+        })
+        return cached.data
+      }
+      upcomingEventsCache.delete(maxResults)
+      throw error
+    })
+
+  upcomingEventsCache.set(maxResults, {
+    ts: cached?.ts || 0,
+    data: cached?.data || null,
+    promise,
+  })
+
+  return promise
 }
 
 export function formatEventDate(dateStr: string): string {

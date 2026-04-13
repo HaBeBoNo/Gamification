@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { S } from '@/state/store';
+import { S, save } from '@/state/store';
 import { MEMBERS, MEMBER_IDS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
+import { notifyMembersSignal } from '@/lib/notificationSignals';
+import { pushFeedEntry } from '@/lib/feed';
+import { applyQuestDelegation } from '@/lib/delegation';
 
 interface DelegationSheetProps {
   quest: any;
@@ -22,7 +25,54 @@ export default function DelegationSheet({ quest, onClose }: DelegationSheetProps
   }
 
   function handleSend() {
-    if (!selectedMember) return;
+    if (!selectedMember || !S.me) return;
+
+    const questIndex = (S.quests || []).findIndex((item: any) => item.id === quest?.id);
+    if (questIndex < 0) return;
+
+    const liveQuest = S.quests[questIndex];
+    const senderKey = S.me;
+    const senderName = MEMBERS[senderKey]?.name || senderKey;
+    const receiverName = MEMBERS[selectedMember]?.name || selectedMember;
+    const trimmedNote = note.trim();
+    const delegatedAt = Date.now();
+
+    applyQuestDelegation(liveQuest, {
+      delegatedBy: senderKey,
+      delegatedTo: selectedMember,
+      note: trimmedNote,
+      ts: delegatedAt,
+    });
+
+    pushFeedEntry({
+      who: senderKey,
+      action: `skickade "${liveQuest.title}" till ${receiverName}`,
+      xp: 0,
+      type: 'delegation_sent',
+    });
+
+    save();
+
+    void notifyMembersSignal({
+      targetMemberKeys: [selectedMember],
+      type: 'delegation_received',
+      title: `${senderName} skickade dig ett uppdrag`,
+      body: liveQuest.title,
+      dedupeKey: `delegation:${liveQuest.id}:${senderKey}:${selectedMember}:${delegatedAt}`,
+      payload: {
+        memberId: senderKey,
+        questId: liveQuest.id,
+        questTitle: liveQuest.title,
+        delegationNote: trimmedNote || undefined,
+      },
+      push: {
+        title: `${senderName} skickade dig ett uppdrag`,
+        body: `"${liveQuest.title}"`,
+        excludeMember: senderKey,
+        url: '/',
+      },
+    });
+
     handleClose();
   }
 

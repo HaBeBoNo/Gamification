@@ -1,6 +1,6 @@
 import React from 'react';
-import { S, SEASON_START_DATE } from '@/state/store';
-import { MEMBERS, MEMBER_IDS } from '@/data/members';
+import { S, SEASON_START_DATE, useGameStore } from '@/state/store';
+import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -13,16 +13,12 @@ const MILESTONES = [
   { name: 'Truminspelning', date: new Date('2026-07-01'), reached: false },
 ];
 
-function generateXPCurve(): { week: number; xp: number }[] {
-  const now = new Date();
-  const weeksSinceStart = Math.max(1, Math.floor((now.getTime() - SEASON_START_DATE.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+function generateXPCurve(totalXp: number, weeksSinceStart: number): { week: number; xp: number }[] {
   const data: { week: number; xp: number }[] = [];
-  let cumulative = 0;
   for (let w = 1; w <= weeksSinceStart; w++) {
-    const base = 100 + Math.floor(Math.random() * 80);
-    const growth = Math.floor(w * 15);
-    cumulative += base + growth;
-    data.push({ week: w, xp: cumulative });
+    const progress = weeksSinceStart <= 1 ? 1 : w / weeksSinceStart;
+    const easedProgress = Math.pow(progress, 1.18);
+    data.push({ week: w, xp: Math.round(totalXp * easedProgress) });
   }
   return data;
 }
@@ -35,8 +31,20 @@ const MEDAL_COLORS = ['hsl(45, 93%, 50%)', 'hsl(0, 0%, 72%)', 'hsl(30, 60%, 45%)
 const PODIUM_H = [80, 60, 48];
 
 export default function SeasonView() {
+  const tick = useGameStore((state) => state.tick);
   const daysActive = daysSince(SEASON_START_DATE);
-  const curveData = React.useMemo(generateXPCurve, []);
+  const weeksSinceStart = React.useMemo(() => {
+    const diffMs = Date.now() - SEASON_START_DATE.getTime();
+    return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+  }, [daysActive]);
+  const bandTotalXp = React.useMemo(
+    () => Object.values(S.chars).reduce((sum, char) => sum + Number(char?.totalXp || 0), 0),
+    [tick]
+  );
+  const curveData = React.useMemo(
+    () => generateXPCurve(bandTotalXp, weeksSinceStart),
+    [bandTotalXp, weeksSinceStart]
+  );
 
   const sorted = Object.entries(S.chars)
     .map(([id, char]) => ({ id, char, member: MEMBERS[id] }))

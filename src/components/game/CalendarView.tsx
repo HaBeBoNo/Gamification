@@ -11,8 +11,10 @@ import {
   getCalendarEventParticipationState,
   toggleCalendarEventResponse,
 } from '@/lib/calendarState'
+import { useGameStore } from '@/state/store'
 
 export default function CalendarView() {
+  useGameStore((state) => state.tick)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -21,16 +23,30 @@ export default function CalendarView() {
   useEffect(() => { loadEvents() }, [])
 
   useEffect(() => {
-    if (events.length === 0) return
-    if (expandedEventId && events.some((event) => event.id === expandedEventId)) return
+    if (events.length === 0) {
+      if (expandedEventId) setExpandedEventId(null)
+      return
+    }
+
+    const currentExpanded = expandedEventId
+      ? events.find((event) => event.id === expandedEventId) || null
+      : null
+
+    if (currentExpanded) {
+      const participation = getCalendarEventParticipationState(S.checkIns, currentExpanded.id, S.me || undefined)
+      const stillNeedsFocus = isEventActive(currentExpanded.start, currentExpanded.end) || (!participation.hasRsvp && !participation.hasDeclined)
+      if (stillNeedsFocus) return
+    }
 
     const nextExpanded = events.find((event) => {
       const participation = getCalendarEventParticipationState(S.checkIns, event.id, S.me || undefined)
       return isEventActive(event.start, event.end) || (!participation.hasRsvp && !participation.hasDeclined)
     }) || events[0]
 
-    setExpandedEventId(nextExpanded.id)
-  }, [events, expandedEventId])
+    if (nextExpanded.id !== expandedEventId) {
+      setExpandedEventId(nextExpanded.id)
+    }
+  }, [events, expandedEventId, S.checkIns, S.me])
 
   async function loadEvents() {
     setLoading(true)

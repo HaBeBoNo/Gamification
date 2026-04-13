@@ -15,6 +15,8 @@ const PUSH_SIGNAL_TYPES = new Set([
   'calendar_decline',
   'calendar_check_in',
   'delegation_received',
+  'delegation_accepted',
+  'delegation_declined',
 ]);
 
 export function getBandmateKeys(memberKey?: string | null): string[] {

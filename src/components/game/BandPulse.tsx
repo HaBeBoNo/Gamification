@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
 import { Flame, Moon, Zap } from 'lucide-react';
@@ -10,9 +10,11 @@ export function BandPulse() {
   const [xp48h, setXp48h] = useState(0);
   const [pulse, setPulse] = useState<PulseLevel>('Vilande');
   const [loading, setLoading] = useState(true);
+  const retriesRef = useRef(0);
 
   useEffect(() => {
-    let retries = 0;
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     async function loadWithRetry() {
       const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -22,13 +24,18 @@ export function BandPulse() {
         .select('who, xp, created_at')
         .gte('created_at', since48h);
 
-      if (!data && retries < 3) {
-        retries++;
-        setTimeout(loadWithRetry, 2000);
+      if (cancelled) return;
+
+      if (!data && retriesRef.current < 3) {
+        retriesRef.current += 1;
+        retryTimer = setTimeout(() => {
+          void loadWithRetry();
+        }, 2000);
         return;
       }
 
       if (data) {
+        retriesRef.current = 0;
         const todayStr = new Date().toDateString();
         const activeMemberKeys = new Set(
           data
@@ -48,17 +55,21 @@ export function BandPulse() {
       setLoading(false);
     }
 
-    loadWithRetry();
+    void loadWithRetry();
 
     const channel = supabase
       .channel('band-pulse')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, () => {
-        retries = 0;
-        loadWithRetry();
+        retriesRef.current = 0;
+        void loadWithRetry();
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   if (loading) return (

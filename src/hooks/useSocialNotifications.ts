@@ -35,10 +35,13 @@ export function useSocialNotifications() {
     seenCommentIds.current = new Set();
     seenReactionKeys.current = new Set();
     seenWitnessKeys.current = new Set();
-    const backfillCutoffTs = getSocialBackfillCutoff(S.me);
     let cancelled = false;
     let legacyChannel: ReturnType<typeof supabase.channel> | null = null;
     let remoteChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    function getBackfillCutoffTs() {
+      return S.me ? getSocialBackfillCutoff(S.me) : 0;
+    }
 
     function maybePersistSync(ts = Date.now()) {
       if (!S.me) return;
@@ -115,7 +118,7 @@ export function useSocialNotifications() {
 
       if (parsedComment?.targetKey === S.me && itemId) {
         seenCommentIds.current.add(itemId);
-        if (allowBackfill && item.who !== S.me && eventTs >= backfillCutoffTs) {
+        if (allowBackfill && item.who !== S.me && eventTs >= getBackfillCutoffTs()) {
           createCommentNotification(item, parsedComment, eventTs);
         }
       }
@@ -127,7 +130,7 @@ export function useSocialNotifications() {
             .forEach((memberId) => {
               const key = `${itemId}|${emoji}|${memberId}`;
               seenReactionKeys.current.add(key);
-              if (allowBackfill && eventTs >= backfillCutoffTs) {
+              if (allowBackfill && eventTs >= getBackfillCutoffTs()) {
                 createReactionNotification(item, memberId, emoji, eventTs);
               }
             });
@@ -135,13 +138,13 @@ export function useSocialNotifications() {
 
         (item.witnesses ?? [])
           .filter((memberId: string) => memberId && memberId !== S.me)
-          .forEach((memberId: string) => {
-            const key = `${itemId}|${memberId}`;
-            seenWitnessKeys.current.add(key);
-            if (allowBackfill && eventTs >= backfillCutoffTs) {
-              createWitnessNotification(item, memberId, eventTs);
-            }
-          });
+        .forEach((memberId: string) => {
+          const key = `${itemId}|${memberId}`;
+          seenWitnessKeys.current.add(key);
+          if (allowBackfill && eventTs >= getBackfillCutoffTs()) {
+            createWitnessNotification(item, memberId, eventTs);
+          }
+        });
       }
     }
 
