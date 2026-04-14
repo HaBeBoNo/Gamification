@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
-import { ChevronRight, Flame, Moon, Zap } from 'lucide-react';
+import { useGameStore } from '@/state/store';
+import { ChevronRight, Flame, Moon, Zap, Circle } from 'lucide-react';
 import { MOBILE_GUTTER } from '@/components/game/home/constants';
 
 type PulseLevel = 'Vilande' | 'Aktiv' | 'I eld';
@@ -16,6 +17,11 @@ export function BandPulse({ onNavigate }: BandPulseProps) {
   const [pulse, setPulse] = useState<PulseLevel>('Vilande');
   const [loading, setLoading] = useState(true);
   const retriesRef = useRef(0);
+  const presenceMembers = useGameStore((s) => s.presenceMembers);
+  const onlineCount = presenceMembers.filter((m) => m.is_online).length;
+  const onlineNames = presenceMembers
+    .filter((m) => m.is_online && MEMBERS[m.member_key])
+    .map((m) => MEMBERS[m.member_key].name);
 
   useEffect(() => {
     let cancelled = false;
@@ -177,6 +183,24 @@ export function BandPulse({ onNavigate }: BandPulseProps) {
             <div style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>i bandet</div>
           </div>
         </div>
+        {onlineCount > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            paddingTop: 2,
+          }}>
+            <Circle size={8} fill="#22c55e" stroke="none" />
+            <span style={{
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-text-muted)',
+            }}>
+              {onlineCount === 1
+                ? `${onlineNames[0]} online`
+                : `${onlineNames.slice(0, 3).join(', ')}${onlineCount > 3 ? ` +${onlineCount - 3}` : ''} online`}
+            </span>
+          </div>
+        )}
       </Wrapper>
     </div>
   );

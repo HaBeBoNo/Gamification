@@ -6,7 +6,8 @@ import { ReengagementCard } from '@/components/game/home/ReengagementCard';
 import { WaitingOnYouCard } from '@/components/game/home/WaitingOnYouCard';
 import { HomeBandEcho } from '@/components/game/home/HomeBandEcho';
 import { BandPulse } from '@/components/game/BandPulse';
-import { SECTION_GAP } from '@/components/game/home/constants';
+import CommunityGoal from '@/components/game/CommunityGoal';
+import { SECTION_GAP, MOBILE_GUTTER } from '@/components/game/home/constants';
 
 interface HomeScreenProps {
   rerender: () => void;
@@ -45,6 +46,9 @@ export function HomeScreen({
         surface={attentionSurface}
       />
       <BandPulse onNavigate={onNavigate} />
+      <div style={{ padding: `0 ${MOBILE_GUTTER}` }}>
+        <CommunityGoal />
+      </div>
       <HomeBandEcho onNavigate={onNavigate} />
     </div>
   );

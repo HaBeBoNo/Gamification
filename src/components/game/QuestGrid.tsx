@@ -5,9 +5,10 @@ import { getRoleHidden } from '@/data/quests';
 import QuestCard from './QuestCard';
 import SortableQuestList from './SortableQuestList';
 import DelegationInbox from './DelegationInbox';
+import DelegationOutbox from './DelegationOutbox';
 import WeeklyCheckout from './WeeklyCheckout';
 import { showSidequestNudge, generatePersonalQuests, getDailyCoachMessage } from '@/hooks/useAI';
-import { Compass, RefreshCw, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Compass, RefreshCw, Zap } from 'lucide-react';
 import QuestCardSkeleton from './skeletons/QuestCardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import CreateQuestModal from './CreateQuestModal';
@@ -64,6 +65,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
   const [coachMessage, setCoachMessage] = useState('');
   const [showCreateQuest, setShowCreateQuest] = useState(false);
   const [collabQuests, setCollabQuests] = useState<CollaborativeQuest[]>([]);
+  const [showAllPersonal, setShowAllPersonal] = useState(false);
 
   const me = S.me;
   const char = me ? S.chars[me] : null;
@@ -78,7 +80,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         .filter((q: any) => (q.owner === me || q.personal) && !isQuestDoneNow(q) && !q.collaborative)
         .sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
 
-      return allPersonalActive.slice(0, 5);
+      return showAllPersonal ? allPersonalActive : allPersonalActive.slice(0, 5);
     }
     if (tab === 'daily') return quests.filter((q: any) => q.recur === 'daily');
     if (tab === 'strategic') return quests.filter((q: any) => q.type === 'strategic');
@@ -96,6 +98,10 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
     return quests.filter((q: any) => getQuestOrigin(q) === filter);
   }
 
+  const totalPersonalActive = tab === 'personal'
+    ? (S.quests || []).filter((q: any) => (q.owner === me || q.personal) && !isQuestDoneNow(q) && !q.collaborative).length
+    : 0;
+  const hasHiddenPersonal = tab === 'personal' && !showAllPersonal && totalPersonalActive > 5;
   const baseVisible = getVisibleQuests();
   const visible = applyFilter(baseVisible);
   const active = visible.filter((q: any) => !isQuestDoneNow(q));
@@ -345,6 +351,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
       <WeeklyCheckout rerender={rerender} />
 
       <DelegationInbox rerender={rerender} />
+      <DelegationOutbox />
 
       <div className="quest-tabs stagger-2">
         {TABS.map(t => (
@@ -455,6 +462,58 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             showRW={showRW}
             showXP={showXP}
           />
+          {hasHiddenPersonal && (
+            <button
+              onClick={() => setShowAllPersonal(true)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                minHeight: CONTROL_HEIGHT,
+                padding: '0 14px',
+                fontSize: 'var(--text-caption)',
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-ui)',
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <ChevronDown size={14} strokeWidth={2} />
+              VISA ALLA ({totalPersonalActive})
+            </button>
+          )}
+          {showAllPersonal && tab === 'personal' && totalPersonalActive > 5 && (
+            <button
+              onClick={() => setShowAllPersonal(false)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-card)',
+                minHeight: CONTROL_HEIGHT,
+                padding: '0 14px',
+                fontSize: 'var(--text-caption)',
+                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-ui)',
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <ChevronUp size={14} strokeWidth={2} />
+              VISA FÄRRE
+            </button>
+          )}
         </>
       )}
 
