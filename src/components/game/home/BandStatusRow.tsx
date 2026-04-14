@@ -2,6 +2,7 @@ import { CalendarDays, ChevronRight, Trophy, Zap } from 'lucide-react';
 import { useRef } from 'react';
 import { MEMBERS } from '@/data/members';
 import { useHomeBandStatusCards } from '@/hooks/useHomeSurface';
+import { queueBandHubIntent } from '@/lib/navigationIntent';
 import { CARD_PAD_COMPACT, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
 const TOTAL_MEMBERS = Object.keys(MEMBERS).length;
@@ -13,9 +14,9 @@ const CARD_ICONS = {
 } as const;
 
 const CARD_TARGETS = {
-  activity: 'activity',
-  calendar: 'bandhub',
-  rank: 'leaderboard',
+  activity: { tab: 'activity' },
+  calendar: { tab: 'bandhub', bandHubTab: 'kalender' },
+  rank: { tab: 'leaderboard' },
 } as const;
 
 const CARD_ARIA = {
@@ -32,11 +33,20 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
   const cards = useHomeBandStatusCards(TOTAL_MEMBERS);
   const lastNavigationAt = useRef(0);
 
-  const navigateTo = (target: string) => {
+  const navigateTo = (kind: keyof typeof CARD_TARGETS) => {
     const now = Date.now();
     if (now - lastNavigationAt.current < 250) return;
     lastNavigationAt.current = now;
-    onNavigate?.(target);
+
+    const target = CARD_TARGETS[kind];
+    if ('bandHubTab' in target) {
+      queueBandHubIntent({
+        tab: target.bandHubTab,
+        source: `home-status:${kind}`,
+      });
+    }
+
+    onNavigate?.(target.tab);
   };
 
   return (
@@ -48,15 +58,17 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
     }}>
       {cards.map((card) => {
         const Icon = CARD_ICONS[card.kind];
-        const target = CARD_TARGETS[card.kind];
         return (
           <button
             key={card.kind}
             type="button"
-            onClick={() => navigateTo(target)}
-            onTouchEndCapture={(event) => {
+            onClick={(event) => {
               event.stopPropagation();
-              navigateTo(target);
+              navigateTo(card.kind);
+            }}
+            onPointerUp={(event) => {
+              event.stopPropagation();
+              navigateTo(card.kind);
             }}
             style={{
               background: 'var(--color-surface-elevated)',

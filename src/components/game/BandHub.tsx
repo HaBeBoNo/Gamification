@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
   Clock3,
@@ -16,6 +16,7 @@ import CalendarView from './CalendarView';
 import GoogleConnectButton from './GoogleConnectButton';
 import { BAND_HUB_TABS, DRIVE_FILTERS, formatRelativeDriveDate, type BandHubTabId } from '@/lib/bandHubSurface';
 import { useDriveSurface } from '@/hooks/useDriveSurface';
+import { consumeBandHubIntent } from '@/lib/navigationIntent';
 import { CalendarSpotlight } from '@/components/game/bandhub/CalendarSpotlight';
 import { SectionEyebrow } from '@/components/game/bandhub/SectionEyebrow';
 import { StatCard } from '@/components/game/bandhub/StatCard';
@@ -25,7 +26,11 @@ import { emptyCardStyle, iconButtonStyle, primaryButtonStyle } from '@/component
 
 export default function BandHub() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const [activeTab, setActiveTab] = useState<BandHubTabId>('kalender');
+  const initialTab = useMemo<BandHubTabId>(() => {
+    const intent = consumeBandHubIntent();
+    return intent?.tab || 'kalender';
+  }, []);
+  const [activeTab, setActiveTab] = useState<BandHubTabId>(initialTab);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeTabMeta = BAND_HUB_TABS.find((tab) => tab.id === activeTab) || BAND_HUB_TABS[0];
   const {
