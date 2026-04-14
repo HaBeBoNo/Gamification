@@ -104,13 +104,13 @@ export function CalendarSpotlight() {
             />
             <StatCard
               icon={<Clock3 size={15} />}
-              label="Kommer"
+              label="Ja-svar"
               value={nextEvent ? String(rsvpCount) : '0'}
               detail={nextEvent ? (rsvpCount > 0 ? 'Svarat ja' : 'Inga ännu') : '—'}
             />
             <StatCard
               icon={<CircleOff size={15} />}
-              label="Kan inte"
+              label="Nej-svar"
               value={nextEvent ? String(declineCount) : '0'}
               detail={nextEvent ? (declineCount > 0 ? 'Svarat nej' : 'Inga ännu') : '—'}
             />
@@ -147,7 +147,7 @@ export function CalendarSpotlight() {
               {active
                 ? `${checkInCount} incheckad${checkInCount === 1 ? '' : 'e'}`
                 : needsResponse
-                  ? `${rsvpCount} kommer${declineCount > 0 ? ` · ${declineCount} kan inte` : ''}`
+                  ? `${rsvpCount} ja-svar${declineCount > 0 ? ` · ${declineCount} nej-svar` : ''}`
                   : nextEvent
                     ? `${nextLabel} · ${nextTime}`
                     : 'Inget nära'}

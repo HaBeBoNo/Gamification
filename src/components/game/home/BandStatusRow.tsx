@@ -26,6 +26,12 @@ const CARD_ARIA = {
   rank: 'Öppna ranking',
 } as const;
 
+const CARD_CTA = {
+  activity: 'Till aktivitet',
+  calendar: 'Till kalender',
+  rank: 'Till ranking',
+} as const;
+
 type BandStatusRowProps = {
   onNavigate?: (tab: string) => void;
 };
@@ -65,10 +71,6 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
             key={card.kind}
             type="button"
             onClick={(event) => {
-              event.stopPropagation();
-              navigateTo(card);
-            }}
-            onPointerUp={(event) => {
               event.stopPropagation();
               navigateTo(card);
             }}
@@ -148,6 +150,20 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
               marginTop: 2,
             }}>
               {card.sub}
+            </span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 8,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-micro)',
+              color: 'var(--color-primary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              {CARD_CTA[card.kind]}
+              <ChevronRight size={12} strokeWidth={2} />
             </span>
           </button>
         );
