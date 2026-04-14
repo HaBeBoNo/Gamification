@@ -33,7 +33,6 @@ Returnera detta JSON-objekt:
   "pronounDominance": "jag" | "vi" | "man",
   "dominantTheme": "kortaste möjliga beskrivning av vad personen återkommer till",
   "silences": ["dimensioner som är helt frånvarande i svaren"],
-  "tensions": ["par av svar som pekar i olika riktningar"],
   "engagement": "surface" | "deep",
   "resonantQuestions": [index på de 1-2 frågor som väckte mest, 0-baserat],
   "onboardingSnapshot": {

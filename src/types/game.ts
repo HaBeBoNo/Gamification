@@ -106,7 +106,6 @@ export interface ResponseProfile {
   pronounDominance:   'jag' | 'vi' | 'man';
   dominantTheme:      string;
   silences:           string[];
-  tensions:           string[];
   engagement:         'surface' | 'deep';
   resonantQuestions:  number[];
   onboardingSnapshot: { rawAnswers: string[]; completedAt: number };

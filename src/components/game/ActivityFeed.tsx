@@ -59,6 +59,21 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
   const commentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const customReactionInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const lastHandledIntentId = useRef<string | null>(null);
+  // Rensa bort nycklar ur expandedCommentGroups som inte längre finns i feeden
+  useEffect(() => {
+    setExpandedCommentGroups(prev => {
+      const keys = Object.keys(prev);
+      if (keys.length === 0) return prev;
+      const ids = new Set(feedItems.map(item => String(item.id || '')));
+      const next: Record<string, boolean> = {};
+      let changed = false;
+      for (const k of keys) {
+        if (ids.has(k)) { next[k] = prev[k]; } else { changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [feedItems]);
+
   const presentation = useMemo(() => buildFeedPresentation(feedItems), [feedItems]);
   const activeThreadItem = useMemo(
     () => feedItems.find((item) => String(item.id || '') === threadItemId) || null,
