@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { APP_BUILD_LABEL } from '@/lib/buildInfo';
+import { APP_BUILD_STAMP } from '@/lib/buildInfo';
 
 export type OverflowItem = {
   id: string;
@@ -86,7 +86,7 @@ export function OverflowSheet({
               );
             })}
             <div className="overflow-build-stamp">
-              Version uppdaterad {APP_BUILD_LABEL}
+              Version {APP_BUILD_STAMP}
             </div>
           </motion.div>
         </>

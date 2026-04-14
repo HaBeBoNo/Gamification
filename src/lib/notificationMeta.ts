@@ -1,6 +1,7 @@
 import { MEMBERS } from '@/data/members';
 import type { Notification } from '@/types/game';
 import type { FeedIntent } from '@/lib/feedIntent';
+import type { QueuedBandHubIntent } from '@/lib/navigationIntent';
 
 export type NotificationTarget = 'activity' | 'quests' | 'coach' | 'profile' | 'bandhub' | 'notifications';
 
@@ -161,6 +162,17 @@ export function getNotificationActionLabel(notification: Notification): string {
     default:
       return 'Visa alla';
   }
+}
+
+export function getNotificationBandHubIntent(notification: Notification): QueuedBandHubIntent | null {
+  if (getNotificationTarget(notification) !== 'bandhub') return null;
+
+  const eventId = notification.payload?.eventId;
+  return {
+    tab: 'kalender',
+    eventId: typeof eventId === 'string' && eventId ? eventId : undefined,
+    source: `notification:${notification.type}`,
+  };
 }
 
 export function getNotificationPriority(notification: Notification): number {

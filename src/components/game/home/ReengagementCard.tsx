@@ -1,4 +1,5 @@
 import { useReengagementSurface } from '@/hooks/useHomeSurface';
+import { queueBandHubIntent } from '@/lib/navigationIntent';
 import { CARD_PAD_ROOM, CONTROL_HEIGHT, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
 export function ReengagementCard({
@@ -62,6 +63,12 @@ export function ReengagementCard({
                 if (plan.target === 'coach') {
                   onOpenCoach?.();
                   return;
+                }
+                if (plan.target === 'bandhub') {
+                  queueBandHubIntent(plan.bandHubIntent || {
+                    tab: 'kalender',
+                    source: 'reengagement',
+                  });
                 }
                 onNavigate?.(plan.target);
               }}

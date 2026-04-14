@@ -4,9 +4,10 @@ import { markAllRead, markRead, type Notification } from '@/state/notifications'
 import { useGameStore } from '@/state/store';
 import { ArrowRightLeft, Zap, Award, Target, CheckCircle, Bell, X, MessageCircle, Eye, CalendarDays, MapPin, Users, Hand, Inbox } from 'lucide-react';
 import { setFeedIntent } from '@/lib/feedIntent';
-import { getNotificationActionLabel, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention } from '@/lib/notificationMeta';
+import { getNotificationActionLabel, getNotificationBandHubIntent, getNotificationFeedIntent, getNotificationTarget, getNotificationText, sortNotificationsForAttention } from '@/lib/notificationMeta';
 import { markHomeAttentionSeen } from '@/lib/homeAttentionState';
 import { useWaitingOnYouInboxSurface } from '@/hooks/useHomeSurface';
+import { queueBandHubIntent } from '@/lib/navigationIntent';
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   delegation_received: ArrowRightLeft,
@@ -130,6 +131,12 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
     }
 
     if (target !== 'notifications') {
+      if (target === 'bandhub') {
+        queueBandHubIntent(getNotificationBandHubIntent(notification) || {
+          tab: 'kalender',
+          source: `notification:${notification.type}`,
+        });
+      }
       onNavigate?.(target);
       onClose();
     }
@@ -157,6 +164,13 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
     }
 
     if (signal.target === 'notifications') return;
+
+    if (signal.target === 'bandhub') {
+      queueBandHubIntent(signal.bandHubIntent || {
+        tab: 'kalender',
+        source: `signal:${signal.id}`,
+      });
+    }
 
     onNavigate?.(signal.target);
     onClose();

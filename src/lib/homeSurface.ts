@@ -2,6 +2,7 @@ import { MEMBERS } from '@/data/members';
 import { getFeedCommentMeta } from '@/lib/feed';
 import type { Notification } from '@/types/game';
 import type { NotificationTarget } from '@/lib/notificationMeta';
+import type { QueuedBandHubIntent } from '@/lib/navigationIntent';
 
 export type HomeRankSummary = {
   pos: number;
@@ -14,6 +15,7 @@ export type HomeBandStatusCard = {
   value: string;
   label: string;
   sub: string;
+  eventId?: string;
 };
 
 export type HomeAttentionSignal = {
@@ -22,6 +24,7 @@ export type HomeAttentionSignal = {
   subtitle: string;
   target: NotificationTarget | 'notifications';
   cta: string;
+  bandHubIntent?: QueuedBandHubIntent;
   notificationId?: string | number;
   notification?: Notification;
   tone:
@@ -44,6 +47,7 @@ export type HomeReengagementPlan = {
   subtitle: string;
   cta: string;
   target: NotificationTarget | 'notifications';
+  bandHubIntent?: QueuedBandHubIntent;
 };
 
 export function getMemberName(memberKey?: string): string {
@@ -152,7 +156,7 @@ export function buildHomeBandStatusCards(params: {
   activeToday: number;
   activeNow: number | null;
   xp48h: number;
-  nextEvent: { title: string; date: string } | null;
+  nextEvent: { id: string; title: string; date: string } | null;
   myRank: HomeRankSummary | null;
 }): HomeBandStatusCard[] {
   const { totalMembers, activeToday, activeNow, xp48h, nextEvent, myRank } = params;
@@ -168,6 +172,7 @@ export function buildHomeBandStatusCards(params: {
       value: nextEvent.date,
       label: nextEvent.title,
       sub: 'Kalender',
+      eventId: nextEvent.id,
     } : {
       kind: 'calendar',
       value: '—',

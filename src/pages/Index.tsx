@@ -18,7 +18,6 @@ import { SecondaryTabShell } from '@/components/app/SecondaryTabShell';
 import { TabContentRouter } from '@/components/app/TabContentRouter';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useOverlays } from '@/hooks/useOverlays';
-import { markAllRead } from '@/state/notifications';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +30,7 @@ import { clearSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { unregisterPush } from '@/lib/webPush';
 import { clearHomeAttentionSeen, markCurrentHomeAttentionSeen } from '@/lib/homeAttentionState';
 import { clearBaselineSession, consumePushOpenMarker, recordAppOpenOncePerSession } from '@/lib/productBaseline';
+import { consumeBandHubIntentFromUrl, queueBandHubIntent } from '@/lib/navigationIntent';
 const viewTransition = { duration: 0.2, ease: 'easeOut' as const };
 
 const PRIMARY_TAB_IDS = new Set(['quests', 'bandhub', 'leaderboard']);
@@ -139,6 +139,14 @@ export default function Index() {
     setActiveTab(tabId);
   }, []);
 
+  useEffect(() => {
+    const intent = consumeBandHubIntentFromUrl();
+    if (!intent) return;
+
+    queueBandHubIntent(intent);
+    handleTabTap('bandhub');
+  }, [handleTabTap]);
+
   const { handleTouchStart, handleTouchEnd } = useSwipeNavigation(mobileTab, handleTabTap);
 
   const handleMobileTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -160,7 +168,6 @@ export default function Index() {
       markCurrentHomeAttentionSeen(S.me);
     }
     setShowNotifications(true);
-    markAllRead();
   }
 
   const closeAll = useCallback(() => {

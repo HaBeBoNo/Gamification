@@ -9,6 +9,7 @@ import { fetchMyCollaborativeQuests, type CollaborativeQuest } from '@/lib/colla
 import { fetchSharedBandActivitySnapshot } from '@/lib/socialData';
 import {
   getNotificationActionLabel,
+  getNotificationBandHubIntent,
   getNotificationTarget,
   getNotificationText,
   sortNotificationsForAttention,
@@ -177,7 +178,7 @@ export function useHomeBandStatusCards(totalMembers: number) {
   const [activeToday, setActiveToday] = useState(0);
   const [activeNow, setActiveNow] = useState<number | null>(null);
   const [xp48h, setXp48h] = useState(0);
-  const [nextEvent, setNextEvent] = useState<{ title: string; date: string } | null>(null);
+  const [nextEvent, setNextEvent] = useState<{ id: string; title: string; date: string } | null>(null);
   const [myRank, setMyRank] = useState<HomeRankSummary | null>(null);
 
   useEffect(() => {
@@ -198,6 +199,7 @@ export function useHomeBandStatusCards(totalMembers: number) {
         const ev = events?.[0];
         if (!ev) return;
         setNextEvent({
+          id: ev.id,
           title: ev.title,
           date: getRelativeCalendarLabel(ev.start),
         });
@@ -441,6 +443,11 @@ export function useReengagementSurface() {
                 : `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
             cta: 'Kalender',
             target: 'bandhub',
+            bandHubIntent: {
+              tab: 'kalender',
+              eventId: nextEvent.id,
+              source: 'reengagement:calendar',
+            },
           };
         } else if (collabWaiting) {
           nextPlan = {
@@ -457,6 +464,7 @@ export function useReengagementSurface() {
             subtitle: getNotificationText(unreadActionable).subtitle || getReengagementContext(daysSinceActivity, stage),
             cta: getNotificationActionLabel(unreadActionable),
             target: getNotificationTarget(unreadActionable),
+            bandHubIntent: getNotificationBandHubIntent(unreadActionable) || undefined,
           };
         } else if (focusQuest) {
           nextPlan = {
@@ -593,6 +601,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
           subtitle: subtitle || 'Svar väntar',
           target: getNotificationTarget(notification),
           cta: getNotificationActionLabel(notification),
+          bandHubIntent: getNotificationBandHubIntent(notification) || undefined,
           notificationId: notification.id,
           notification,
         });
@@ -621,6 +630,11 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
                 : `${getRelativeCalendarLabel(nextEvent.start)} · ${participation.rsvpCount} kommer`,
               target: 'bandhub',
               cta: live ? 'Checka in' : 'Svara',
+              bandHubIntent: {
+                tab: 'kalender',
+                eventId: nextEvent.id,
+                source: live ? 'waiting:calendar-live' : 'waiting:calendar-respond',
+              },
             });
           } else if (soon && nextSignals.length < 2) {
             nextSignals.push({
@@ -630,6 +644,11 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
               subtitle: `${nextEvent.title} · ${getRelativeCalendarLabel(nextEvent.start)}`,
               target: 'bandhub',
               cta: 'Kalender',
+              bandHubIntent: {
+                tab: 'kalender',
+                eventId: nextEvent.id,
+                source: 'waiting:calendar-upcoming',
+              },
             });
           }
         }

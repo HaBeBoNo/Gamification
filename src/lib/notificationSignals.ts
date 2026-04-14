@@ -1,5 +1,6 @@
 import { MEMBER_IDS } from '@/data/members';
 import { createRemoteNotifications } from '@/lib/socialData';
+import { buildBandHubIntentUrl } from '@/lib/navigationIntent';
 import { sendPush } from '@/lib/sendPush';
 
 const PUSH_SIGNAL_TYPES = new Set([
@@ -21,6 +22,27 @@ const PUSH_SIGNAL_TYPES = new Set([
 
 export function getBandmateKeys(memberKey?: string | null): string[] {
   return MEMBER_IDS.filter((candidate) => candidate !== memberKey);
+}
+
+function getCalendarPushUrl(
+  type: string,
+  payload?: Record<string, unknown>,
+  explicitUrl?: string,
+): string | null {
+  if (!type.startsWith('calendar_')) {
+    return explicitUrl || null;
+  }
+
+  if (explicitUrl && explicitUrl !== '/') {
+    return explicitUrl;
+  }
+
+  const eventId = payload?.eventId;
+  return buildBandHubIntentUrl({
+    tab: 'kalender',
+    eventId: typeof eventId === 'string' && eventId ? eventId : undefined,
+    source: `push:${type}`,
+  });
 }
 
 export async function notifyMembersSignal(params: {
@@ -65,7 +87,7 @@ export async function notifyMembersSignal(params: {
       {
         excludeMember: params.push.excludeMember,
         targetMemberKeys,
-        url: params.push.url || '/',
+        url: getCalendarPushUrl(params.type, params.payload, params.push.url) || '/',
       }
     );
   }

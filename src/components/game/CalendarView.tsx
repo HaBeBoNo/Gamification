@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { MapPin, Clock, RefreshCw, CheckCircle, Check, Bell, BellOff, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
@@ -13,12 +13,19 @@ import {
 } from '@/lib/calendarState'
 import { useGameStore } from '@/state/store'
 
-export default function CalendarView() {
+type CalendarViewProps = {
+  focusedEventId?: string;
+  focusIntentTs?: number;
+};
+
+export default function CalendarView({ focusedEventId, focusIntentTs }: CalendarViewProps) {
   useGameStore((state) => state.tick)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
+  const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null)
+  const eventRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   useEffect(() => { loadEvents() }, [])
 
@@ -47,6 +54,34 @@ export default function CalendarView() {
       setExpandedEventId(nextExpanded.id)
     }
   }, [events, expandedEventId, S.checkIns, S.me])
+
+  useEffect(() => {
+    if (!focusedEventId || events.length === 0) return
+
+    const targetEvent = events.find((event) => event.id === focusedEventId)
+    if (!targetEvent) return
+
+    setExpandedEventId(targetEvent.id)
+    setHighlightedEventId(targetEvent.id)
+
+    const frameId = typeof window !== 'undefined'
+      ? window.requestAnimationFrame(() => {
+          eventRefs.current[targetEvent.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+      : 0
+    const clearTimer = typeof window !== 'undefined'
+      ? window.setTimeout(() => {
+          setHighlightedEventId((current) => current === targetEvent.id ? null : current)
+        }, 1800)
+      : 0
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.cancelAnimationFrame(frameId)
+        window.clearTimeout(clearTimer)
+      }
+    }
+  }, [events, focusedEventId, focusIntentTs])
 
   async function loadEvents() {
     setLoading(true)
@@ -225,12 +260,28 @@ export default function CalendarView() {
                   : 'Öppna'
 
         return (
-          <div key={event.id} style={{
-            background: active ? 'var(--color-primary-muted, rgba(124,106,247,0.08))' : 'var(--color-surface-elevated)',
-            border: `1px solid ${active ? 'var(--color-primary)' : soon ? 'var(--color-accent)' : 'var(--color-border)'}`,
-            borderRadius: '18px',
-            overflow: 'hidden',
-          }}>
+          <div
+            key={event.id}
+            ref={(node) => {
+              eventRefs.current[event.id] = node
+            }}
+            style={{
+              background: active ? 'var(--color-primary-muted, rgba(124,106,247,0.08))' : 'var(--color-surface-elevated)',
+              border: `1px solid ${highlightedEventId === event.id
+                ? 'var(--color-primary)'
+                : active
+                  ? 'var(--color-primary)'
+                  : soon
+                    ? 'var(--color-accent)'
+                    : 'var(--color-border)'}`,
+              borderRadius: '18px',
+              overflow: 'hidden',
+              boxShadow: highlightedEventId === event.id
+                ? '0 0 0 2px color-mix(in srgb, var(--color-primary) 22%, transparent), 0 14px 28px rgba(0,0,0,0.08)'
+                : 'none',
+              transition: 'box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out)',
+            }}
+          >
             <button
               onClick={() => setExpandedEventId((current) => current === event.id ? null : event.id)}
               style={{

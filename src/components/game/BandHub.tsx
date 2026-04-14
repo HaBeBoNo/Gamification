@@ -16,7 +16,7 @@ import CalendarView from './CalendarView';
 import GoogleConnectButton from './GoogleConnectButton';
 import { BAND_HUB_TABS, DRIVE_FILTERS, formatRelativeDriveDate, type BandHubTabId } from '@/lib/bandHubSurface';
 import { useDriveSurface } from '@/hooks/useDriveSurface';
-import { consumeBandHubIntent } from '@/lib/navigationIntent';
+import { consumeBandHubIntent, subscribeToBandHubIntent } from '@/lib/navigationIntent';
 import { CalendarSpotlight } from '@/components/game/bandhub/CalendarSpotlight';
 import { SectionEyebrow } from '@/components/game/bandhub/SectionEyebrow';
 import { StatCard } from '@/components/game/bandhub/StatCard';
@@ -26,11 +26,14 @@ import { emptyCardStyle, iconButtonStyle, primaryButtonStyle } from '@/component
 
 export default function BandHub() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const initialTab = useMemo<BandHubTabId>(() => {
-    const intent = consumeBandHubIntent();
-    return intent?.tab || 'kalender';
+  const initialIntent = useMemo(() => {
+    return consumeBandHubIntent();
   }, []);
+  const initialTab = useMemo<BandHubTabId>(() => {
+    return initialIntent?.tab || 'kalender';
+  }, [initialIntent]);
   const [activeTab, setActiveTab] = useState<BandHubTabId>(initialTab);
+  const [currentIntent, setCurrentIntent] = useState(initialIntent);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeTabMeta = BAND_HUB_TABS.find((tab) => tab.id === activeTab) || BAND_HUB_TABS[0];
   const {
@@ -56,6 +59,14 @@ export default function BandHub() {
     latestDocument,
     latestImage,
   } = useDriveSurface(activeTab === 'drive');
+
+  React.useEffect(() => {
+    return subscribeToBandHubIntent((incomingIntent) => {
+      const nextIntent = consumeBandHubIntent() || incomingIntent;
+      setCurrentIntent(nextIntent);
+      setActiveTab(nextIntent.tab);
+    });
+  }, []);
 
   return (
     <div style={{ paddingBottom: '96px' }}>
@@ -114,7 +125,10 @@ export default function BandHub() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setCurrentIntent(null);
+                  setActiveTab(tab.id);
+                }}
                 style={{
                   flex: 1,
                   minHeight: '44px',
@@ -149,7 +163,10 @@ export default function BandHub() {
           <section style={{ marginTop: 'var(--section-gap)' }}>
             <SectionEyebrow title="Allt i kalendern" />
           </section>
-          <CalendarView />
+          <CalendarView
+            focusedEventId={currentIntent?.tab === 'kalender' ? currentIntent.eventId : undefined}
+            focusIntentTs={currentIntent?.ts}
+          />
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { MEMBERS } from '@/data/members';
 import { useHomeBandStatusCards } from '@/hooks/useHomeSurface';
 import { queueBandHubIntent } from '@/lib/navigationIntent';
+import type { HomeBandStatusCard } from '@/lib/homeSurface';
 import { CARD_PAD_COMPACT, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
 const TOTAL_MEMBERS = Object.keys(MEMBERS).length;
@@ -33,16 +34,17 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
   const cards = useHomeBandStatusCards(TOTAL_MEMBERS);
   const lastNavigationAt = useRef(0);
 
-  const navigateTo = (kind: keyof typeof CARD_TARGETS) => {
+  const navigateTo = (card: HomeBandStatusCard) => {
     const now = Date.now();
     if (now - lastNavigationAt.current < 250) return;
     lastNavigationAt.current = now;
 
-    const target = CARD_TARGETS[kind];
+    const target = CARD_TARGETS[card.kind];
     if ('bandHubTab' in target) {
       queueBandHubIntent({
         tab: target.bandHubTab,
-        source: `home-status:${kind}`,
+        eventId: card.eventId,
+        source: `home-status:${card.kind}`,
       });
     }
 
@@ -64,11 +66,11 @@ export function BandStatusRow({ onNavigate }: BandStatusRowProps) {
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              navigateTo(card.kind);
+              navigateTo(card);
             }}
             onPointerUp={(event) => {
               event.stopPropagation();
-              navigateTo(card.kind);
+              navigateTo(card);
             }}
             style={{
               background: 'var(--color-surface-elevated)',

@@ -4,6 +4,7 @@ import { setFeedIntent } from '@/lib/feedIntent';
 import { getNotificationFeedIntent } from '@/lib/notificationMeta';
 import { markHomeAttentionSeen } from '@/lib/homeAttentionState';
 import { useWaitingOnYouSurface, type HomeAttentionSurfaceState } from '@/hooks/useHomeSurface';
+import { queueBandHubIntent } from '@/lib/navigationIntent';
 import { CARD_PAD, CARD_PAD_ROOM, ICON_BUTTON_SIZE, MOBILE_GUTTER, SECTION_GAP_COMPACT } from './constants';
 
 function getSignalIcon(tone: string) {
@@ -90,6 +91,13 @@ export function WaitingOnYouCard({
                 if (signal.target === 'coach') {
                   onOpenCoach?.();
                   return;
+                }
+
+                if (signal.target === 'bandhub') {
+                  queueBandHubIntent(signal.bandHubIntent || {
+                    tab: 'kalender',
+                    source: `waiting:${signal.id}`,
+                  });
                 }
 
                 onNavigate?.(signal.target);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Notification } from '@/types/game';
 import {
   getNotificationPriority,
+  getNotificationBandHubIntent,
   getNotificationTarget,
   getNotificationText,
   sortNotificationsForAttention,
@@ -92,6 +93,11 @@ describe('notificationMeta', () => {
     expect(getNotificationText(notification)).toMatchObject({
       title: 'Check-in är öppen',
       subtitle: 'Kvällsrep',
+    });
+    expect(getNotificationBandHubIntent(notification)).toMatchObject({
+      tab: 'kalender',
+      eventId: 'rep-1',
+      source: 'notification:calendar_check_in_open',
     });
   });
 
