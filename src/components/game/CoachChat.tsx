@@ -217,7 +217,7 @@ export default function CoachChat({ rerender, initialMessage }: CoachChatProps) 
           rows={1}
           disabled={loading}
         />
-        <button
+        <button type="button"
           className={`cc-send ${active ? 'active' : ''}`}
           onClick={handleSend}
           disabled={!active || loading}

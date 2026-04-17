@@ -51,7 +51,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'var(--color-overlay-backdrop)',
         zIndex: 200,
         display: 'flex',
         alignItems: 'center',
@@ -69,7 +69,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
         maxWidth: '360px',
         position: 'relative',
       }}>
-        <button
+        <button type="button"
           onClick={onClose}
           style={{
             position: 'absolute', top: 16, right: 16,
@@ -104,7 +104,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {REASONS.map(r => (
-            <button
+            <button type="button"
               key={r.id}
               onClick={() => handleDelete(r.id)}
               style={{

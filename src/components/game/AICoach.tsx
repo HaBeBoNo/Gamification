@@ -43,7 +43,7 @@ export default function AICoach({ rerender }: { rerender: () => void }) {
             <span className="coach-caption">Scout</span>
           </div>
         </div>
-        <button className="coach-refresh" onClick={handleRefresh} disabled={loading || cooldown > 0} style={{ opacity: (loading || cooldown > 0) ? 0.5 : 1 }}>
+        <button type="button" className="coach-refresh" onClick={handleRefresh} disabled={loading || cooldown > 0} style={{ opacity: (loading || cooldown > 0) ? 0.5 : 1 }}>
           <RefreshCw size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
           {loading ? '...' : cooldown > 0 ? `${cooldown}s` : 'UPPDATERA'}
         </button>

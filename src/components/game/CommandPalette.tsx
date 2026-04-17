@@ -69,7 +69,7 @@ export default function CommandPalette({ onClose, isMobile, onOpenAdminCenter }:
         {filtered.map((cmd, i) => {
           const Icon = cmd.icon;
           return (
-            <button
+            <button type="button"
               key={cmd.id}
               className={`cmd-item ${i === selectedIdx ? 'selected' : ''}`}
               onClick={() => {

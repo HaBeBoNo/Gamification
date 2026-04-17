@@ -5,6 +5,7 @@ import { MEMBERS } from '@/data/members';
 import { awardInsightBonus } from '@/hooks/useXP';
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { pushFeedEntry } from '@/lib/feed';
+import { fireAndForget } from '@/lib/async';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
@@ -82,7 +83,7 @@ export default function QuestCompleteModal({
         action: `gav en high-five till ${targetName}`,
         xp: 0,
       });
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: [highFiveTo],
         type: 'high_five',
         title: `${meName} gav dig en high-five`,
@@ -97,7 +98,7 @@ export default function QuestCompleteModal({
           body: `Efter "${quest.title}"`,
           excludeMember: me,
         },
-      });
+      }), 'send high five notification');
       save();
     }
     rerender();
@@ -109,7 +110,7 @@ export default function QuestCompleteModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: isMobile ? 'var(--color-base)' : 'rgba(0,0,0,0.75)',
+        background: isMobile ? 'var(--color-base)' : 'var(--color-overlay-backdrop)',
         zIndex: 200,
         display: 'flex',
         alignItems: isMobile ? 'stretch' : 'center',
@@ -162,7 +163,7 @@ export default function QuestCompleteModal({
             }}>
               Coach → Quest → Reflektion
             </div>
-            <button
+            <button type="button"
               onClick={onClose}
               aria-label="Stäng"
               style={{
@@ -325,12 +326,12 @@ export default function QuestCompleteModal({
               Ta 20 sekunder och landa det här innan du går vidare.
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button
+              <button type="button"
                 onClick={submitPhase1}
                 style={{
                   flex: 1,
                   background: 'var(--color-primary)',
-                  color: '#fff',
+                  color: 'var(--color-text-primary)',
                   border: 'none',
                   borderRadius: 'var(--radius-pill)',
                   padding: '12px',
@@ -343,7 +344,7 @@ export default function QuestCompleteModal({
               >
                 REFLEKTERA KORT
               </button>
-              <button
+              <button type="button"
                 onClick={onClose}
                 style={{
                   flex: 1,
@@ -429,13 +430,13 @@ export default function QuestCompleteModal({
                 boxSizing: 'border-box',
               }}
             />
-            <button
+            <button type="button"
               onClick={submitPhase2}
               style={{
                 marginTop: 16,
                 width: '100%',
                 background: 'var(--color-primary)',
-                color: '#fff',
+                color: 'var(--color-text-primary)',
                 border: 'none',
                 borderRadius: 'var(--radius-pill)',
                 padding: '12px',
@@ -498,7 +499,7 @@ export default function QuestCompleteModal({
               marginBottom: 20,
             }}>
               {otherMembers.map(([id, m]) => (
-                <button
+                <button type="button"
                   key={id}
                   onClick={() => setHighFiveTo(
                     highFiveTo === id ? null : id
@@ -514,7 +515,7 @@ export default function QuestCompleteModal({
                       ? 'var(--color-primary)'
                       : 'transparent',
                     color: highFiveTo === id
-                      ? '#fff'
+                      ? 'var(--color-text-primary)'
                       : 'var(--color-text-muted)',
                     fontSize: 13,
                     cursor: 'pointer',
@@ -527,12 +528,12 @@ export default function QuestCompleteModal({
               ))}
             </div>
 
-            <button
+            <button type="button"
               onClick={submitHighFive}
               style={{
                 width: '100%',
                 background: 'var(--color-primary)',
-                color: '#fff',
+                color: 'var(--color-text-primary)',
                 border: 'none',
                 borderRadius: 'var(--radius-pill)',
                 padding: '12px',

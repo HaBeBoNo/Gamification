@@ -73,7 +73,7 @@ export function BottomNav({
       {TABS.map(({ id, label, icon: Icon }) => {
         const active = activeView === 'tab' && activeTab === id && !showMore;
         return (
-          <button
+          <button type="button"
             key={id}
             role="tab"
             aria-selected={active}
@@ -88,7 +88,7 @@ export function BottomNav({
       })}
 
       {/* More / overflow button */}
-      <button
+      <button type="button"
         role="tab"
         aria-selected={showMore || overflowActive}
         aria-label="Mer"

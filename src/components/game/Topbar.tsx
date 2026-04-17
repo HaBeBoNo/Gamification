@@ -44,7 +44,7 @@ export default function Topbar({
         gap: 'var(--space-md)',
       }}>
         {/* Vänster — logotyp */}
-        <button
+        <button type="button"
           ref={logoRef}
           onClick={onLogoClick}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}

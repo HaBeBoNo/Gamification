@@ -145,7 +145,7 @@ export function DailyCoachCard({
         )}
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-          <button
+          <button type="button"
             onClick={(event) => {
               event.stopPropagation();
               onNavigate?.('quests');
@@ -167,7 +167,7 @@ export function DailyCoachCard({
           >
             Quests
           </button>
-          <button
+          <button type="button"
             onClick={(event) => {
               event.stopPropagation();
               onOpenCoach?.(message);

@@ -123,13 +123,13 @@ export default function AuthScreen() {
         Ange din email för att logga in
       </div>
 
-      <button
+      <button type="button"
         onClick={handleGoogleLogin}
         style={{
           width: '100%', maxWidth: 320,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          background: '#fff',
-          color: '#333',
+          background: 'var(--color-text-primary)',
+          color: 'var(--color-base)',
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-pill)',
           padding: '13px', fontSize: 13,
@@ -184,7 +184,7 @@ export default function AuthScreen() {
         </div>
       )}
 
-      <button
+      <button type="button"
         onClick={handleSendLink}
         disabled={!email.trim() || loading}
         style={{
@@ -192,7 +192,7 @@ export default function AuthScreen() {
           background: email.trim() && !loading
             ? 'var(--color-primary)' : 'var(--color-border)',
           color: email.trim() && !loading
-            ? '#fff' : 'var(--color-text-muted)',
+            ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
           border: 'none',
           borderRadius: 'var(--radius-pill)',
           padding: '14px', fontSize: 13,

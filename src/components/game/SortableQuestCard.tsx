@@ -47,7 +47,7 @@ export default function SortableQuestCard({
       className={`sortable-quest-wrapper ${isOver ? 'drop-target' : ''}`}
       {...attributes}
     >
-      <button
+      <button type="button"
         className="drag-handle"
         {...listeners}
         aria-label="Dra för att ändra ordning"

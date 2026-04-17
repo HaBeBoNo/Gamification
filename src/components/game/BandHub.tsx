@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '@/lib/googleDrive';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import CalendarView from './CalendarView';
 import GoogleConnectButton from './GoogleConnectButton';
 import { BAND_HUB_TABS, DRIVE_FILTERS, formatRelativeDriveDate, type BandHubTabId } from '@/lib/bandHubSurface';
@@ -123,7 +124,7 @@ export default function BandHub() {
           {BAND_HUB_TABS.map((tab) => {
             const active = activeTab === tab.id;
             return (
-              <button
+              <button type="button"
                 key={tab.id}
                 onClick={() => {
                   setCurrentIntent(null);
@@ -137,7 +138,7 @@ export default function BandHub() {
                   justifyContent: 'center',
                   gap: 8,
                   background: active ? 'var(--color-primary)' : 'transparent',
-                  color: active ? '#fff' : 'var(--color-text-muted)',
+                  color: active ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                   border: 'none',
                   borderRadius: '12px',
                   fontSize: '12px',
@@ -199,10 +200,10 @@ export default function BandHub() {
               Sektionen Drive
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => void loadDriveSurface()} style={iconButtonStyle} aria-label="Ladda om filer">
+              <button type="button" onClick={() => fireAndForget(loadDriveSurface(), 'reload drive surface')} style={iconButtonStyle} aria-label="Ladda om filer">
                 <RefreshCw size={16} />
               </button>
-              <button
+              <button type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 style={{ ...primaryButtonStyle, opacity: uploading ? 0.7 : 1 }}
@@ -215,7 +216,7 @@ export default function BandHub() {
                 type="file"
                 style={{ display: 'none' }}
                 onChange={(event) => {
-                  void handleUpload(event.target.files?.[0] || null);
+                  fireAndForget(handleUpload(event.target.files?.[0] || null), 'upload drive file');
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
               />
@@ -303,7 +304,7 @@ export default function BandHub() {
                   ? driveStats.pinned
                   : driveStats.categoryCounts[filter.id] || 0;
               return (
-                <button
+                <button type="button"
                   key={filter.id}
                   onClick={() => setDriveFilter(filter.id)}
                   style={{
@@ -346,7 +347,7 @@ export default function BandHub() {
           {error && !loading && (
             <div style={{ ...emptyCardStyle, textAlign: 'center' }}>
               <div style={{ marginBottom: 14 }}>{error}</div>
-              <button onClick={() => void loadFiles()} style={primaryButtonStyle}>
+              <button type="button" onClick={() => fireAndForget(loadFiles(), 'reload drive files')} style={primaryButtonStyle}>
                 Försök igen
               </button>
             </div>
@@ -384,7 +385,7 @@ export default function BandHub() {
                 {flowFiles.length === 0 && featuredFiles.length === 0 && files.length === 0 && (
                   <div style={{ ...emptyCardStyle, textAlign: 'center' }}>
                     <div style={{ marginBottom: 14 }}>Tomt i Drive just nu.</div>
-                    <button
+                    <button type="button"
                       onClick={async () => {
                         if (supabase) await supabase.auth.signOut();
                         localStorage.removeItem('sektionen_google_token');

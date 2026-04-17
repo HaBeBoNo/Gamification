@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import { getUpcomingEvents, isEventActive, isEventSoon, type CalendarEvent } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
@@ -233,9 +234,9 @@ export function useHomeBandStatusCards(totalMembers: number) {
       }
     }
 
-    void loadPulse();
-    void loadNextEvent();
-    void loadRank();
+    fireAndForget(loadPulse(), 'load home pulse');
+    fireAndForget(loadNextEvent(), 'load home next event');
+    fireAndForget(loadRank(), 'load home rank');
 
     if (!supabase) return;
 
@@ -246,14 +247,14 @@ export function useHomeBandStatusCards(totalMembers: number) {
         schema: 'public',
         table: 'activity_feed',
       }, () => {
-        void loadPulse({ forceFresh: true });
+        fireAndForget(loadPulse({ forceFresh: true }), 'refresh home pulse');
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'member_presence',
       }, () => {
-        void loadPulse({ forceFresh: true });
+        fireAndForget(loadPulse({ forceFresh: true }), 'refresh home pulse');
       })
       .subscribe();
 
@@ -508,7 +509,7 @@ export function useReengagementSurface() {
       }
     }
 
-    void loadPlan();
+    fireAndForget(loadPlan(), 'load reengagement plan');
 
     return () => {
       cancelled = true;
@@ -749,7 +750,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
       }
     }
 
-    void loadSignals();
+    fireAndForget(loadSignals(), 'load waiting signals');
 
     if (!supabase) return () => { cancelled = true; };
 
@@ -759,7 +760,7 @@ function useWaitingOnYouSurfaceInternal(includeSeen: boolean, enabled: boolean):
         event: '*',
         schema: 'public',
         table: 'collaborative_quests',
-      }, () => { void loadSignals(); })
+      }, () => { fireAndForget(loadSignals(), 'refresh waiting signals'); })
       .subscribe();
 
     return () => {

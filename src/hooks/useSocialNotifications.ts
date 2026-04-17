@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { getFeedCommentMeta, getFeedContextLabel, getFeedMemberName } from '@/lib/feed';
 import { addNotification, getNotifications, NOTIF_TYPES, upsertNotifications } from '@/state/notifications';
 import { S } from '@/state/store';
+import { fireAndForget } from '@/lib/async';
 import { getSocialBackfillCutoff, setLastSocialSignalSync } from '@/lib/socialSignalPolicy';
 import { fetchRemoteNotifications, subscribeToRemoteNotifications } from '@/lib/socialData';
 import { hasRecordedSocialLatency, recordSocialResponseLatencies } from '@/lib/productBaseline';
@@ -286,13 +287,13 @@ export function useSocialNotifications() {
 
       if (remoteResult.supported) {
         remoteChannel = subscribeToRemoteNotifications(S.me!, () => {
-          void syncRemote();
+          fireAndForget(syncRemote(), 'refresh remote social notifications');
         });
 
         if (remoteResult.transientError) {
           remoteRetryTimer.current = window.setTimeout(() => {
             if (!cancelled) {
-              void syncRemote();
+              fireAndForget(syncRemote(), 'retry remote social notifications');
             }
           }, 5000);
         }
@@ -323,7 +324,7 @@ export function useSocialNotifications() {
         .subscribe();
     }
 
-    void initialize();
+    fireAndForget(initialize(), 'initialize social notifications');
 
     return () => {
       cancelled = true;

@@ -53,7 +53,7 @@ export function ReengagementCard({
                 {plan.subtitle}
               </div>
             ) : null}
-            <button
+            <button type="button"
               onClick={() => {
                 if (!plan) return;
                 if (plan.target === 'notifications') {

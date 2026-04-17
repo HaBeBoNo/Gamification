@@ -3,6 +3,7 @@ import { MapPin, Clock, RefreshCw, CheckCircle, Check, Bell, BellOff, Plus, X, C
 import {
   getUpcomingEvents, formatEventDate, isEventSoon, isEventActive, CalendarEvent
 } from '@/lib/googleCalendar'
+import { fireAndForget } from '@/lib/async'
 import { S, save } from '@/state/store'
 import { checkIn } from '@/hooks/useCheckIn'
 import { MEMBERS } from '@/data/members'
@@ -98,7 +99,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
 
   function handleCheckIn(event: CalendarEvent) {
     if (getCalendarEventParticipationState(S.checkIns, event.id, S.me || undefined).checkedIn) return
-    void checkIn(event.id, event.title)
+    fireAndForget(checkIn(event.id, event.title), 'calendar check-in')
   }
 
   function handleRSVP(event: CalendarEvent) {
@@ -116,7 +117,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
 
     if (S.checkIns.length > currentLength) {
       const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: getBandmateKeys(S.me),
         type: 'calendar_rsvp',
         title: `${memberName} kommer`,
@@ -134,7 +135,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
           excludeMember: S.me,
           url: '/',
         },
-      })
+      }), 'calendar RSVP notification')
     }
     save()
   }
@@ -154,7 +155,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
 
     if (S.checkIns.length > currentLength) {
       const memberName = (MEMBERS as Record<string, { name?: string }>)[S.me]?.name || S.me
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: getBandmateKeys(S.me),
         type: 'calendar_decline',
         title: `${memberName} kan inte komma`,
@@ -172,7 +173,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
           excludeMember: S.me,
           url: '/',
         },
-      })
+      }), 'calendar decline notification')
     }
 
     save()
@@ -216,7 +217,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
       <p style={{ color: 'var(--color-error, #e05555)', fontSize: 'var(--text-caption)', marginBottom: 'var(--space-md)' }}>
         {error}
       </p>
-      <button onClick={loadEvents} style={{
+      <button type="button" onClick={loadEvents} style={{
         display: 'flex', alignItems: 'center', gap: 6,
         background: 'var(--color-surface-elevated)', border: '1px solid var(--color-border)',
         borderRadius: 'var(--radius-md)', padding: '8px 14px',
@@ -282,7 +283,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
               transition: 'box-shadow var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out)',
             }}
           >
-            <button
+            <button type="button"
               onClick={() => setExpandedEventId((current) => current === event.id ? null : event.id)}
               style={{
                 width: '100%',
@@ -387,7 +388,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
                 {!event.location && <div style={{ paddingTop: 14 }} />}
 
                 {canCheckIn && (
-                  <button
+                  <button type="button"
                     onClick={() => handleCheckIn(event)}
                     disabled={checkedIn}
                     style={{
@@ -397,7 +398,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
                       gap: 6,
                       minHeight: 44,
                       background: checkedIn ? 'transparent' : 'var(--color-primary)',
-                      color: checkedIn ? 'var(--color-accent)' : '#fff',
+                      color: checkedIn ? 'var(--color-accent)' : 'var(--color-text-primary)',
                       border: checkedIn ? '1px solid var(--color-accent)' : 'none',
                       borderRadius: '999px',
                       padding: '0 16px',
@@ -419,7 +420,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
                   gap: 8,
                   flexWrap: 'wrap',
                 }}>
-                  <button
+                  <button type="button"
                     onClick={() => handleRSVP(event)}
                     style={{
                       display: 'inline-flex',
@@ -439,7 +440,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
                     }}>
                     {hasRsvp ? <><Check size={13} /> Jag kommer</> : <><Plus size={13} /> Jag kommer</>}
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => handleDecline(event)}
                     style={{
                       display: 'inline-flex',
@@ -460,7 +461,7 @@ export default function CalendarView({ focusedEventId, focusIntentTs }: Calendar
                   >
                     {hasDeclined ? <><X size={13} /> Kan inte</> : 'Kan inte'}
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => handleReminder(event)}
                     style={{
                       display: 'inline-flex',

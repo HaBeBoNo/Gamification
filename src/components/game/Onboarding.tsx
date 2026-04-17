@@ -8,6 +8,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { createFirstLoginNotif, addNotifToAll } from '@/state/notifications';
+import { fireAndForget } from '@/lib/async';
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 
@@ -129,7 +130,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
         const memberName = (MEMBERS as any)[selectedMember]?.name || selectedMember;
         const notif = createFirstLoginNotif(selectedMember, memberName);
         addNotifToAll(notif);
-        void notifyMembersSignal({
+        fireAndForget(notifyMembersSignal({
           targetMemberKeys: getBandmateKeys(selectedMember),
           type: 'first_login',
           title: `${memberName} har anslutit sig till Headquarters! 🎉`,
@@ -138,7 +139,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
           payload: {
             memberId: selectedMember,
           },
-        });
+        }), 'send onboarding welcome notification');
       }
       // Synka till Supabase direkt
       try { await syncToSupabase(selectedMember!); } catch {}
@@ -378,7 +379,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
                 marginBottom: 100,
               }}>
                 {Object.entries(MEMBERS).map(([key, m]: [string, any]) => (
-                  <button
+                  <button type="button"
                     key={key}
                     className={`ob-member-btn${selectedMember === key ? ' selected' : ''}`}
                     onClick={() => setSelectedMember(key)}
@@ -466,11 +467,11 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
       {/* Navigation */}
       <div className="ob-nav">
         {step > 1 && (
-          <button className="ob-back-btn" onClick={back}>
+          <button type="button" className="ob-back-btn" onClick={back}>
             <ArrowLeft size={16} />
           </button>
         )}
-        <button
+        <button type="button"
           className="ob-primary-btn"
           onClick={handlePrimary}
           disabled={!canProceed()}
@@ -479,7 +480,7 @@ export default function Onboarding({ rerender }: { rerender: () => void }) {
             bottom: 'calc(24px + env(safe-area-inset-bottom))',
             left: 24, right: 24,
             background: 'var(--color-primary)',
-            color: '#fff',
+            color: 'var(--color-text-primary)',
             border: 'none',
             borderRadius: '999px',
             padding: '16px',

@@ -29,7 +29,7 @@ export default function NotificationBell({ onClick, count: countProp, hasAttenti
   const display = count > 9 ? '9+' : count;
 
   return (
-    <button
+    <button type="button"
       className={`notif-bell ${pulse ? 'pulse' : ''}`}
       onClick={onClick}
       aria-label="Notifikationer"
@@ -51,8 +51,8 @@ export default function NotificationBell({ onClick, count: countProp, hasAttenti
             position: 'absolute',
             top: '-5px',
             right: '-5px',
-            background: '#ff4444',
-            color: '#fff',
+            background: 'var(--color-red)',
+            color: 'var(--color-text-primary)',
             borderRadius: '999px',
             fontSize: '12px',
             fontWeight: 700,

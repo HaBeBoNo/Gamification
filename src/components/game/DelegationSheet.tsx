@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { S, save } from '@/state/store';
 import { MEMBERS, MEMBER_IDS } from '@/data/members';
+import { fireAndForget } from '@/lib/async';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
@@ -53,7 +54,7 @@ export default function DelegationSheet({ quest, onClose }: DelegationSheetProps
 
     save();
 
-    void notifyMembersSignal({
+    fireAndForget(notifyMembersSignal({
       targetMemberKeys: [selectedMember],
       type: 'delegation_received',
       title: `${senderName} skickade dig ett uppdrag`,
@@ -71,7 +72,7 @@ export default function DelegationSheet({ quest, onClose }: DelegationSheetProps
         excludeMember: senderKey,
         url: '/',
       },
-    });
+    }), 'send delegation notification');
 
     handleClose();
   }
@@ -112,7 +113,7 @@ export default function DelegationSheet({ quest, onClose }: DelegationSheetProps
                 const member = MEMBERS[id];
                 if (!member) return null;
                 return (
-                  <button
+                  <button type="button"
                     key={id}
                     className={`deleg-member-row ${selectedMember === id ? 'selected' : ''}`}
                     onClick={() => setSelectedMember(id)}
@@ -131,7 +132,7 @@ export default function DelegationSheet({ quest, onClose }: DelegationSheetProps
               onChange={e => setNote(e.target.value)}
             />
 
-            <button
+            <button type="button"
               className="deleg-send-btn"
               onClick={handleSend}
               disabled={!selectedMember}

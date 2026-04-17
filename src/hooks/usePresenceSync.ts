@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { fetchActivePresenceMembers, upsertPresence } from '@/lib/socialData';
+import { fireAndForget } from '@/lib/async';
 import { CoachPolicy } from '@/lib/coach';
 import { supabase } from '@/lib/supabase';
 
@@ -43,24 +44,24 @@ export function usePresenceSync(currentSurface: string) {
       } else {
         removePresenceMember(S.me);
       }
-      void upsertPresence({
+      fireAndForget(upsertPresence({
         memberKey: S.me,
         currentSurface,
         isOnline,
         metadata: {
           visibility: document.visibilityState,
         },
-      });
+      }), 'presence heartbeat');
     };
 
-    void refreshPresenceSnapshot();
+    fireAndForget(refreshPresenceSnapshot(), 'presence snapshot refresh');
     heartbeat(true);
     intervalId = window.setInterval(() => heartbeat(document.visibilityState === 'visible'), HEARTBEAT_MS);
 
     const scheduleRefresh = () => {
       if (refreshTimer) window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
-        void refreshPresenceSnapshot();
+        fireAndForget(refreshPresenceSnapshot(), 'presence snapshot refresh');
       }, 80);
     };
 

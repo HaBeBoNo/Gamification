@@ -5,6 +5,7 @@ import { MemberIcon } from '@/components/icons/MemberIcons';
 import { ScrollText, Activity, MessageCircle, X, Zap, Radio, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import { getFeedIntent, isFreshFeedIntent, resolveFeedIntentItem, subscribeFeedIntent } from '@/lib/feedIntent';
 import { shouldPushForSocialSignal } from '@/lib/socialSignalPolicy';
 import {
@@ -509,7 +510,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
         }}>
           {commentItem.parsedComment?.comment || ''}
         </div>
-        <button
+        <button type="button"
           onClick={(e) => {
             e.stopPropagation();
             openThread(parentItem, {
@@ -574,7 +575,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
             }}>
               Svarar till {replyTarget.memberName}
             </span>
-            <button
+            <button type="button"
               onClick={() => clearReplyTarget(itemId)}
               style={{
                 background: 'transparent',
@@ -605,7 +606,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                void handleSubmitComment(item);
+                fireAndForget(handleSubmitComment(item), 'submit feed comment');
               }
             }}
             placeholder={replyTarget
@@ -622,15 +623,15 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
               fontSize: 'var(--text-caption)',
             }}
           />
-          <button
-            onClick={() => { void handleSubmitComment(item); }}
+          <button type="button"
+            onClick={() => { fireAndForget(handleSubmitComment(item), 'submit feed comment'); }}
             disabled={!canSubmitComment || submittingCommentId === itemId}
             style={{
               padding: '8px 12px',
               borderRadius: 'var(--radius-pill)',
               border: 'none',
               background: canSubmitComment ? 'var(--color-primary)' : 'var(--color-border)',
-              color: canSubmitComment ? '#fff' : 'var(--color-text-muted)',
+              color: canSubmitComment ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
               cursor: canSubmitComment ? 'pointer' : 'not-allowed',
               fontSize: 'var(--text-caption)',
               whiteSpace: 'nowrap',
@@ -693,7 +694,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
               <MessageCircle size={14} />
               Aktivitet
             </div>
-            <button
+            <button type="button"
               onClick={closeThread}
               style={{
                 background: 'none',
@@ -802,7 +803,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                 flexWrap: 'wrap',
                 marginTop: 14,
               }}>
-                <button
+                <button type="button"
                   onClick={() => {
                     if (isReactionPickerOpen) {
                       closeReactionPicker(itemId);
@@ -829,7 +830,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                 >
                   Reagera
                 </button>
-                <button
+                <button type="button"
                   onClick={() => openCommentComposer(activeThreadItem)}
                   style={{
                     display: 'inline-flex',
@@ -850,8 +851,8 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                 >
                   Kommentera
                 </button>
-                <button
-                  onClick={() => { void handleToggleWitness(activeThreadItem); }}
+                <button type="button"
+                  onClick={() => { fireAndForget(handleToggleWitness(activeThreadItem), 'toggle feed witness'); }}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -893,10 +894,10 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                       const reactors = itemReactions[emoji] ?? [];
                       const hasReacted = S.me ? reactors.includes(S.me) : false;
                       return (
-                        <button
+                        <button type="button"
                           key={emoji}
                           onClick={() => {
-                            void handleToggleReaction(activeThreadItem, emoji);
+                            fireAndForget(handleToggleReaction(activeThreadItem, emoji), 'toggle feed reaction');
                             closeReactionPicker(itemId);
                           }}
                           style={{
@@ -916,7 +917,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                         </button>
                       );
                     })}
-                    <button
+                    <button type="button"
                       onClick={() => {
                         setCustomReactionInputId((current) => current === itemId ? null : itemId);
                         window.setTimeout(() => {
@@ -954,7 +955,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            void handleSubmitCustomReaction(activeThreadItem);
+                            fireAndForget(handleSubmitCustomReaction(activeThreadItem), 'submit custom feed reaction');
                           }
                         }}
                         placeholder="😀"
@@ -969,15 +970,15 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                           fontSize: 'var(--text-caption)',
                         }}
                       />
-                      <button
-                        onClick={() => { void handleSubmitCustomReaction(activeThreadItem); }}
+                      <button type="button"
+                        onClick={() => { fireAndForget(handleSubmitCustomReaction(activeThreadItem), 'submit custom feed reaction'); }}
                         disabled={!canSubmitCustomReaction}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 'var(--radius-pill)',
                           border: 'none',
                           background: canSubmitCustomReaction ? 'var(--color-primary)' : 'var(--color-border)',
-                          color: canSubmitCustomReaction ? '#fff' : 'var(--color-text-muted)',
+                          color: canSubmitCustomReaction ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                           cursor: canSubmitCustomReaction ? 'pointer' : 'not-allowed',
                           fontSize: 'var(--text-caption)',
                           whiteSpace: 'nowrap',
@@ -1407,7 +1408,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                               gap: 'var(--space-sm)',
                               flexWrap: 'wrap',
                             }}>
-                              <button
+                              <button type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleCommentExpansion(itemId);
@@ -1428,7 +1429,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                                   ? 'Dölj svar'
                                   : `Visa ${inlineComments.length - INLINE_COMMENT_PREVIEW_COUNT} till`}
                               </button>
-                              <button
+                              <button type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   openThread(item);
@@ -1458,7 +1459,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                     style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)', flexWrap: 'wrap' }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
+                    <button type="button"
                       onClick={() => {
                         if (isReactionPickerOpen) {
                           closeReactionPicker(itemId);
@@ -1481,7 +1482,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                     >
                       Reagera
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => {
                         if (hasOpenComment && !replyTarget) {
                           setOpenCommentId(null);
@@ -1525,10 +1526,10 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                           const reactors = itemReactions[emoji] ?? [];
                           const hasReacted = S.me ? reactors.includes(S.me) : false;
                           return (
-                            <button
+                            <button type="button"
                               key={emoji}
                               onClick={() => {
-                                void handleToggleReaction(item, emoji);
+                                fireAndForget(handleToggleReaction(item, emoji), 'toggle feed reaction');
                                 closeReactionPicker(itemId);
                               }}
                               style={{
@@ -1548,9 +1549,9 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                             </button>
                           );
                         })}
-                        <button
+                        <button type="button"
                           onClick={() => {
-                            void handleToggleWitness(item);
+                            fireAndForget(handleToggleWitness(item), 'toggle feed witness');
                             closeReactionPicker(itemId);
                           }}
                           style={{
@@ -1569,7 +1570,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                           <Radio size={12} strokeWidth={1.9} />
                           Var där {witnessCount > 0 && <span>{witnessCount}</span>}
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => {
                             setCustomReactionInputId((current) => current === itemId ? null : itemId);
                             window.setTimeout(() => {
@@ -1607,7 +1608,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
-                                void handleSubmitCustomReaction(item);
+                                fireAndForget(handleSubmitCustomReaction(item), 'submit custom feed reaction');
                               }
                             }}
                             placeholder="😀"
@@ -1622,15 +1623,15 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
                               fontSize: 'var(--text-caption)',
                             }}
                           />
-                          <button
-                            onClick={() => { void handleSubmitCustomReaction(item); }}
+                          <button type="button"
+                            onClick={() => { fireAndForget(handleSubmitCustomReaction(item), 'submit custom feed reaction'); }}
                             disabled={!canSubmitCustomReaction}
                             style={{
                               padding: '8px 12px',
                               borderRadius: 'var(--radius-pill)',
                               border: 'none',
                               background: canSubmitCustomReaction ? 'var(--color-primary)' : 'var(--color-border)',
-                              color: canSubmitCustomReaction ? '#fff' : 'var(--color-text-muted)',
+                              color: canSubmitCustomReaction ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                               cursor: canSubmitCustomReaction ? 'pointer' : 'not-allowed',
                               fontSize: 'var(--text-caption)',
                               whiteSpace: 'nowrap',

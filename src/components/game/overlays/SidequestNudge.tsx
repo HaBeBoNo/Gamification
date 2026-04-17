@@ -19,7 +19,7 @@ export default function SidequestNudge({ quests, onClose, rerender }: { quests: 
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()}>
-        <button className="overlay-close" onClick={onClose}><X size={14} /></button>
+        <button type="button" className="overlay-close" onClick={onClose}><X size={14} /></button>
         <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <Zap size={20} strokeWidth={2} />
           Sidequest-förslag
@@ -37,7 +37,7 @@ export default function SidequestNudge({ quests, onClose, rerender }: { quests: 
             </div>
           ))}
         </div>
-        <button className="nudge-accept-btn" onClick={acceptAll}>ACCEPTERA ALLA</button>
+        <button type="button" className="nudge-accept-btn" onClick={acceptAll}>ACCEPTERA ALLA</button>
       </div>
     </div>
   );

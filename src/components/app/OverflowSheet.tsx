@@ -65,7 +65,7 @@ export function OverflowSheet({
                   ) : (
                     <div className="overflow-sep" />
                   )}
-                  <button
+                  <button type="button"
                     className={`overflow-row ${active ? 'is-active' : ''}`}
                     onClick={() => onSelect(item.id)}
                   >

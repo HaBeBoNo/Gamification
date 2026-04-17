@@ -126,7 +126,7 @@ export default function GoogleConnectButton({
             Ansluten
           </div>
         </div>
-        <button
+        <button type="button"
           onClick={handleSignOut}
           disabled={loading}
           style={{
@@ -152,7 +152,7 @@ export default function GoogleConnectButton({
   // ── Unauthenticated state ──
   return (
     <div>
-      <button
+      <button type="button"
         className="bh-connect-btn"
         onClick={() => login()}
         disabled={loading}

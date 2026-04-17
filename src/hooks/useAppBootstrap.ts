@@ -3,6 +3,7 @@ import { useFeedSync } from '@/hooks/useFeedSync';
 import { useSocialNotifications } from '@/hooks/useSocialNotifications';
 import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { useSupabaseData } from '@/hooks/useAuth';
+import { fireAndForget } from '@/lib/async';
 import { ensurePushRegistration } from '@/lib/webPush';
 
 export function useAppBootstrap(currentSurface: string, memberKey: string | null) {
@@ -15,24 +16,24 @@ export function useAppBootstrap(currentSurface: string, memberKey: string | null
     if (!memberKey || typeof document === 'undefined' || typeof window === 'undefined') return;
     const currentMemberKey = memberKey;
 
-    void ensurePushRegistration(currentMemberKey, {
+    fireAndForget(ensurePushRegistration(currentMemberKey, {
       promptIfNeeded: false,
       reason: 'bootstrap',
-    });
+    }), 'bootstrap push registration');
 
     function handleVisibilityChange() {
       if (document.visibilityState !== 'visible') return;
-      void ensurePushRegistration(currentMemberKey, {
+      fireAndForget(ensurePushRegistration(currentMemberKey, {
         promptIfNeeded: false,
         reason: 'resume',
-      });
+      }), 'resume push registration');
     }
 
     function handleOnline() {
-      void ensurePushRegistration(currentMemberKey, {
+      fireAndForget(ensurePushRegistration(currentMemberKey, {
         promptIfNeeded: false,
         reason: 'online',
-      });
+      }), 'online push registration');
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);

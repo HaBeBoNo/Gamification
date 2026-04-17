@@ -48,7 +48,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: isMobile ? 'var(--color-base)' : 'rgba(0,0,0,0.75)',
+        background: isMobile ? 'var(--color-base)' : 'var(--color-overlay-backdrop)',
         zIndex: 200,
         display: 'flex',
         alignItems: isMobile ? 'stretch' : 'center',
@@ -88,7 +88,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
           }}>
             Uppdrag
           </div>
-          <button
+          <button type="button"
             style={{
               background: 'none',
               border: 'none',
@@ -219,7 +219,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
                     fontFamily: 'var(--font-body)',
                   }}
                 />
-                <button
+                <button type="button"
                   onClick={() => {
                     if (!statusUpdate.trim() || !S.me) return;
                     const ownerName = (MEMBERS as any)[S.me]?.name || S.me;
@@ -237,7 +237,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
                   }}
                   style={{
                     background: 'var(--color-primary)',
-                    color: '#fff', border: 'none',
+                    color: 'var(--color-text-primary)', border: 'none',
                     borderRadius: 12, padding: '0 16px',
                     minHeight: 44,
                     fontSize: 13, cursor: 'pointer',
@@ -291,12 +291,12 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
           background: 'color-mix(in srgb, var(--color-surface) 96%, transparent)',
           flexShrink: 0,
         }}>
-          <button
+          <button type="button"
             onClick={() => { onComplete(quest); onClose(); }}
             style={{
               width: '100%',
               background: 'var(--color-primary)',
-              color: '#fff', border: 'none',
+              color: 'var(--color-text-primary)', border: 'none',
               borderRadius: 'var(--radius-pill)',
               minHeight: 48,
               padding: '0 14px', fontSize: 13,
@@ -309,7 +309,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
             Slutför uppdrag
           </button>
 
-          <button
+          <button type="button"
             onClick={() => setShowDelete(true)}
             style={{
               width: '100%',

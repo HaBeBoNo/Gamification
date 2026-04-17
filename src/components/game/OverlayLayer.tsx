@@ -139,7 +139,7 @@ export default function OverlayLayer(props: OverlayLayerProps) {
       {detailQuest?.__season && (
         <div className="overlay-backdrop" onClick={() => setDetailQuest(null)}>
           <div className="overlay-card" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <button className="overlay-close" onClick={() => setDetailQuest(null)}>✕</button>
+            <button type="button" className="overlay-close" onClick={() => setDetailQuest(null)}>✕</button>
             <SeasonView />
           </div>
         </div>

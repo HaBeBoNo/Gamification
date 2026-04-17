@@ -138,7 +138,7 @@ export default function SortableQuestList({ quests, rerender, showLU, showRW, sh
     <div className="sortable-quest-list">
       {hasCustomOrder && (
         <div className="sqlist-reset-row">
-          <button className="sqlist-reset-btn" onClick={handleReset}>
+          <button type="button" className="sqlist-reset-btn" onClick={handleReset}>
             {resetConfirm ? 'Säker?' : 'Återställ ordning'}
           </button>
         </div>

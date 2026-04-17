@@ -178,7 +178,7 @@ export default function SkillNodes() {
                     <div className="sn-expanded-header">
                       <span className="sn-cat-dot" style={{ background: cat.color }} />
                       <span className="sn-expanded-title">{cat.label}</span>
-                      <button className="sn-expanded-close" onClick={() => setExpanded(null)}>✕</button>
+                      <button type="button" className="sn-expanded-close" onClick={() => setExpanded(null)}>✕</button>
                     </div>
                     <div className="sn-expanded-graph">
                       <NodeGraph filled={filled} color={cat.color} large />

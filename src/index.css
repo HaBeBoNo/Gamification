@@ -21,8 +21,10 @@
 
     /* ── Extended palette ── */
     --color-base: hsl(0, 0%, 3.5%);
+    --color-bg: var(--color-inset);
     --color-hover: hsla(0, 0%, 100%, 0.04);
     --color-inset: hsl(240, 5%, 5%);
+    --color-overlay-backdrop: color-mix(in srgb, var(--color-base) 75%, transparent);
     --color-green: hsl(160, 84%, 39%);
     --color-red: hsl(0, 84%, 60%);
     --color-blue: hsl(213, 60%, 57%);

@@ -19,6 +19,7 @@
 import { S, save } from '../state/store';
 import { MEMBERS, ROLE_TYPES } from '../data/members';
 import { createLevelUpNotif, createStreakNotif, addNotifToAll } from '../state/notifications';
+import { fireAndForget } from '@/lib/async';
 import { pushFeedEntry } from '../lib/feed';
 import { getBandmateKeys, notifyMembersSignal } from '../lib/notificationSignals';
 import { getQuestCycleKey } from '../lib/questUtils';
@@ -267,7 +268,7 @@ export function awardXP(
   if (streakMilestones.includes(c.streak)) {
     const memberName = (MEMBERS as any)[memberKey]?.name || memberKey;
     addNotifToAll(createStreakNotif(memberKey, memberName as string, c.streak));
-    void notifyMembersSignal({
+    fireAndForget(notifyMembersSignal({
       targetMemberKeys: getBandmateKeys(memberKey),
       type: 'streak',
       title: `${memberName} har ${c.streak} dagars streak! 🔥`,
@@ -277,7 +278,7 @@ export function awardXP(
         memberId: memberKey,
         streakDays: c.streak,
       },
-    });
+    }), 'send streak notification');
   }
 
   // XP och level
@@ -291,7 +292,7 @@ export function awardXP(
   if (leveled) {
     const memberName = (MEMBERS as any)[memberKey]?.name || memberKey;
     addNotifToAll(createLevelUpNotif(memberKey, memberName as string, c.level));
-    void notifyMembersSignal({
+    fireAndForget(notifyMembersSignal({
       targetMemberKeys: getBandmateKeys(memberKey),
       type: 'level_up',
       title: `${memberName} nådde nivå ${c.level}! ⚡`,
@@ -301,7 +302,7 @@ export function awardXP(
         memberId: memberKey,
         level: c.level,
       },
-    });
+    }), 'send level up notification');
   }
 
   // Karaktärs-stats

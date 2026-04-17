@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Lightbulb, Send, Sparkles, ArrowRight, Users, Target } from 'lucide-react';
 import { S, save, useGameStore } from '@/state/store';
+import { fireAndForget } from '@/lib/async';
 import { callClaude } from '@/lib/claudeApi';
 import { pushFeedEntry } from '@/lib/feed';
 import type { IdeaEntry } from '@/types/game';
@@ -139,7 +140,7 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
     const currentInput = input.trim();
     setInput('');
     setSubmitting(false);
-    void enrichIdea(newIdeaId, currentInput);
+    fireAndForget(enrichIdea(newIdeaId, currentInput), 'enrich captured idea');
   }
 
   function handleSendToCoach(idea: IdeaEntry) {
@@ -225,7 +226,7 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
   function onKey(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      void addIdea();
+      fireAndForget(addIdea(), 'submit idea with enter');
     }
   }
 
@@ -325,9 +326,9 @@ export default function IdeasView({ onOpenCoach, onNavigate }: IdeasViewProps) {
             onKeyDown={onKey}
             rows={1}
           />
-          <button
+          <button type="button"
             className={`cc-send ${active ? 'active' : ''}`}
-            onClick={() => void addIdea()}
+            onClick={() => fireAndForget(addIdea(), 'submit idea')}
             disabled={!active || submitting}
           >
             <Send size={16} />
@@ -361,15 +362,15 @@ function IdeaCard({
         <div className="idea-ai-note">{idea.aiNote}</div>
       )}
       <div className="idea-actions">
-        <button className="idea-board-btn" onClick={onOpenCoach}>
+        <button type="button" className="idea-board-btn" onClick={onOpenCoach}>
           <Sparkles size={14} />
           Coachen
         </button>
-        <button className="idea-board-btn" onClick={onCreateQuest}>
+        <button type="button" className="idea-board-btn" onClick={onCreateQuest}>
           <Target size={14} />
           {idea.status === 'activated' ? 'Öppna uppdrag' : 'Gör uppdrag'}
         </button>
-        <button className="idea-board-btn" onClick={onShare}>
+        <button type="button" className="idea-board-btn" onClick={onShare}>
           <Users size={14} />
           {idea.status === 'shared' ? 'Dela igen' : 'Dela med bandet'}
         </button>

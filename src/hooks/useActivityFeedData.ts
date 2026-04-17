@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import { fetchSharedBandActivitySnapshot } from '@/lib/socialData';
 import type { FeedEntry } from '@/types/game';
 
@@ -23,7 +24,7 @@ export function useActivityFeedData() {
       setBandSnapshot(snapshot);
     }
 
-    void loadBandSnapshot();
+    fireAndForget(loadBandSnapshot(), 'load activity band snapshot');
 
     const channel = supabase
       .channel('activity-band-snapshot')
@@ -32,14 +33,14 @@ export function useActivityFeedData() {
         schema: 'public',
         table: 'activity_feed',
       }, () => {
-        void loadBandSnapshot({ forceFresh: true });
+        fireAndForget(loadBandSnapshot({ forceFresh: true }), 'refresh activity band snapshot');
       })
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'member_presence',
       }, () => {
-        void loadBandSnapshot({ forceFresh: true });
+        fireAndForget(loadBandSnapshot({ forceFresh: true }), 'refresh activity band snapshot');
       })
       .subscribe();
 

@@ -19,6 +19,7 @@
 
 import { S, persistNotificationsSlice, useGameStore } from './store';
 import type { Notification } from '../types/game';
+import { fireAndForget } from '@/lib/async';
 import { markRemoteNotificationsRead } from '@/lib/socialData';
 
 export type { Notification };
@@ -234,7 +235,7 @@ export function markAllRead(): void {
   });
 
   if (S.me && remoteIds.length > 0) {
-    void markRemoteNotificationsRead(S.me, remoteIds);
+    fireAndForget(markRemoteNotificationsRead(S.me, remoteIds), 'mark all notifications as read');
   }
 }
 
@@ -250,7 +251,10 @@ export function markRead(id: string | number): void {
   });
 
   if (S.me && notification?.source === 'supabase') {
-    void markRemoteNotificationsRead(S.me, [notification.remoteId || String(notification.id)]);
+    fireAndForget(
+      markRemoteNotificationsRead(S.me, [notification.remoteId || String(notification.id)]),
+      'mark notification as read',
+    );
   }
 }
 

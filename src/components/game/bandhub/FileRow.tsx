@@ -122,7 +122,7 @@ export function FileRow({
       </a>
 
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button
+        <button type="button"
           onClick={onTogglePin}
           style={iconButtonStyle}
           title={pinned ? 'Ta bort fästning' : 'Fäst fil'}

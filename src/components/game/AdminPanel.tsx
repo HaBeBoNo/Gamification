@@ -79,13 +79,13 @@ export default function AdminPanel({ rerender, onClose }: AdminPanelProps) {
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
-        <button className="overlay-close" onClick={onClose}>✕</button>
+        <button type="button" className="overlay-close" onClick={onClose}>✕</button>
         <div className="overlay-title">⚙️ Admin Panel</div>
         <div className="admin-panel">
           <div className="admin-section-title">Operation</div>
           <div className="admin-row">
             <input className="admin-input" value={opName} onChange={e => setOpName(e.target.value)} placeholder="Operation namn..." />
-            <button className="admin-btn" onClick={handleSaveOpName}>SPARA</button>
+            <button type="button" className="admin-btn" onClick={handleSaveOpName}>SPARA</button>
           </div>
           <div className="admin-section-title">XP</div>
           <div className="admin-row">
@@ -94,17 +94,17 @@ export default function AdminPanel({ rerender, onClose }: AdminPanelProps) {
               {Object.entries(MEMBERS).map(([id, m]: [string, Member]) => (<option key={id} value={id}>{m.name}</option>))}
             </select>
             <input className="admin-input" type="number" placeholder="XP-mängd" value={xpAmount} onChange={e => setXpAmount(e.target.value)} style={{ flex: 0, width: 100 }} />
-            <button className="admin-btn" onClick={handleAddXP}>LÄGG TILL XP</button>
+            <button type="button" className="admin-btn" onClick={handleAddXP}>LÄGG TILL XP</button>
           </div>
           <div className="admin-section-title">Uppdrag</div>
           <div className="admin-row">
-            <button className="admin-btn" onClick={handleResetQuests}>ÅTERSTÄLL UPPDRAG</button>
+            <button type="button" className="admin-btn" onClick={handleResetQuests}>ÅTERSTÄLL UPPDRAG</button>
           </div>
           <div className="admin-section-title">Data</div>
           <div className="admin-row">
-            <button className="admin-btn" onClick={handleExport}>EXPORTERA</button>
-            <button className="admin-btn" onClick={handleImport}>IMPORTERA</button>
-            <button className="admin-btn danger" onClick={handleReset}>FULL RESET</button>
+            <button type="button" className="admin-btn" onClick={handleExport}>EXPORTERA</button>
+            <button type="button" className="admin-btn" onClick={handleImport}>IMPORTERA</button>
+            <button type="button" className="admin-btn danger" onClick={handleReset}>FULL RESET</button>
           </div>
         </div>
       </div>

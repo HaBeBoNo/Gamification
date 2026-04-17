@@ -94,7 +94,7 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
           transition={{ type: 'spring', stiffness: 350, damping: 40 }}
         >
           <div className="qd-header">
-            <button className="qd-back" onClick={onClose}>
+            <button type="button" className="qd-back" onClick={onClose}>
               <ChevronLeft size={24} strokeWidth={1.5} />
             </button>
           </div>
@@ -206,7 +206,7 @@ export default function QuestDetail({ quest, onClose, rerender, showLU, showRW, 
                 <Check size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Avklarad {quest.completedAt ? new Date(quest.completedAt).toLocaleDateString('sv-SE') : ''}
               </div>
             ) : (
-              <button
+              <button type="button"
                 className="qd-complete-btn"
                 onClick={handleComplete}
                 disabled={!canComplete || completing}

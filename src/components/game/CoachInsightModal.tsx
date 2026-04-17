@@ -53,7 +53,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'var(--color-overlay-backdrop)',
         zIndex: 400,
         display: 'flex', alignItems: 'flex-end',
         justifyContent: 'center',
@@ -84,7 +84,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
           }}>
             {coachName.toUpperCase()}
           </div>
-          <button onClick={onClose} style={{
+          <button type="button" onClick={onClose} style={{
             background: 'none', border: 'none',
             color: 'var(--color-text-muted)',
             cursor: 'pointer', padding: 4,
@@ -106,7 +106,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
               background: msg.role === 'user'
                 ? 'var(--color-primary)'
                 : 'var(--color-bg)',
-              color: msg.role === 'user' ? '#fff' : 'var(--color-text)',
+              color: msg.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text)',
               border: msg.role === 'user' ? 'none' : '1px solid var(--color-border)',
               borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
               padding: '10px 14px',
@@ -150,12 +150,12 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
               fontFamily: 'var(--font-body)',
             }}
           />
-          <button
+          <button type="button"
             onClick={handleSend}
             disabled={!input.trim() || loading}
             style={{
               background: input.trim() ? 'var(--color-primary)' : 'var(--color-border)',
-              color: '#fff', border: 'none',
+              color: 'var(--color-text-primary)', border: 'none',
               borderRadius: '999px',
               padding: '10px 16px',
               fontSize: 13,

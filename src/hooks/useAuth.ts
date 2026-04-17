@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { EMAIL_TO_MEMBER } from '@/data/members';
 import { S, save } from '@/state/store';
+import { fireAndForget } from '@/lib/async';
 import { syncFromSupabase } from './useSupabaseSync';
 
 async function ensureProfileRecord(supabaseUser: any, memberKey: string): Promise<boolean> {
@@ -48,7 +49,7 @@ export function useAuth() {
       }));
       setLoading(false);
       setSynced(true);
-      if (supabase) void supabase.auth.signOut();
+      if (supabase) fireAndForget(supabase.auth.signOut(), 'sign out unknown member');
       return;
     }
 

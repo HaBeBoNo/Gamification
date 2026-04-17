@@ -24,6 +24,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
+import { fireAndForget } from '@/lib/async';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY } from '@/lib/config';
@@ -207,11 +208,11 @@ export default function Index() {
     };
 
     const checkForUpdates = () => {
-      void navigator.serviceWorker.getRegistration().then((registration) => {
+      fireAndForget(navigator.serviceWorker.getRegistration().then((registration) => {
         if (!mounted || !registration) return;
         activeRegistration = registration;
-        void registration.update().catch(() => undefined);
-      });
+        fireAndForget(registration.update(), 'update service worker registration');
+      }), 'check service worker updates');
     };
 
     const handleControllerChange = () => {
@@ -241,12 +242,12 @@ export default function Index() {
       });
     };
 
-    navigator.serviceWorker.ready.then((registration) => {
+    fireAndForget(navigator.serviceWorker.ready.then((registration) => {
       if (!mounted) return;
       activeRegistration = registration;
       registration.addEventListener('updatefound', handleUpdateFound);
-      void registration.update().catch(() => undefined);
-    });
+      fireAndForget(registration.update(), 'refresh ready service worker registration');
+    }), 'await service worker readiness');
 
     const updateInterval = window.setInterval(checkForUpdates, 60_000);
 

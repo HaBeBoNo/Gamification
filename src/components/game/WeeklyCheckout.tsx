@@ -122,7 +122,7 @@ export default function WeeklyCheckout({ rerender }: { rerender: () => void }) {
             <span style={{ fontSize: 'var(--text-micro)', color: 'var(--color-text-muted)' }}>h</span>
           </label>
         )}
-        <button
+        <button type="button"
           className={`checkout-btn ${isDone ? 'done' : ''}`}
           onClick={handleCheckout}
           disabled={isDone || parsedHours === null}

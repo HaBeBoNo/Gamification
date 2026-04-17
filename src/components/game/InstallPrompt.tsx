@@ -104,12 +104,12 @@ export default function InstallPrompt() {
       </div>
 
       {platform === 'android-native' ? (
-        <button className="install-banner-btn" onClick={handleInstall}>
+        <button type="button" className="install-banner-btn" onClick={handleInstall}>
           INSTALLERA
         </button>
       ) : null}
 
-      <button className="install-banner-close" onClick={dismiss} aria-label="Stäng">
+      <button type="button" className="install-banner-close" onClick={dismiss} aria-label="Stäng">
         <X size={16} />
       </button>
     </div>

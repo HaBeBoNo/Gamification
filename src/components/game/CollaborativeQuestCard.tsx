@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Check, Users, Zap } from 'lucide-react'
 import { MEMBERS } from '@/data/members'
 import { S } from '@/state/store'
+import { fireAndForget } from '@/lib/async'
 import { completeMyPart } from '@/lib/collaborativeQuests'
 import { awardXP } from '@/hooks/useXP'
 import { notifyMembersSignal } from '@/lib/notificationSignals'
@@ -54,7 +55,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
     // Push-notis
     const memberName = (S.me && (MEMBERS as any)[S.me]?.name) || S.me || 'Unknown'
     if (result.allDone) {
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: participants.filter((p: string) => p !== S.me),
         type: 'collaborative_complete',
         title: `${memberName} slutförde ert gemensamma uppdrag`,
@@ -70,13 +71,13 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           body: `"${q.title}" — alla klara!`,
           excludeMember: S.me || undefined,
         },
-      })
+      }), 'send collaborative completion notification')
     } else {
       const remainingParticipants = participants.filter(
         (p: string) => !result.completedBy.includes(p)
       )
       const remaining = remainingParticipants.length
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: remainingParticipants.filter((p: string) => p !== S.me),
         type: 'collaborative_progress',
         title: `${memberName} slutförde sin del`,
@@ -94,7 +95,7 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           body: `"${q.title}" — ${remaining} kvar`,
           excludeMember: S.me || undefined,
         },
-      })
+      }), 'send collaborative progress notification')
     }
   }
 
@@ -183,12 +184,12 @@ export default function CollaborativeQuestCard({ quest, onUpdate }: Props) {
           {q.xp} XP
         </div>
         {!hasCompleted && (
-          <button
+          <button type="button"
             onClick={handleComplete}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'var(--color-primary)',
-              color: '#fff',
+              color: 'var(--color-text-primary)',
               border: 'none',
               borderRadius: '999px',
               padding: '8px 16px',

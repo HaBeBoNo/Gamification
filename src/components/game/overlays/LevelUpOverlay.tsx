@@ -48,7 +48,7 @@ export default function LevelUpOverlay({ level, onClose }: { level: number | nul
         <div className="lu-label">LEVEL UP!</div>
         <div className="lu-level">{level}</div>
         <div className="overlay-subtitle" style={{ textAlign: 'center' }}>Du har nått en ny nivå. Fortsätt kämpa!</div>
-        <button className="complete-btn" style={{ alignSelf: 'center' }} onClick={onClose}>FORTSÄTT</button>
+        <button type="button" className="complete-btn" style={{ alignSelf: 'center' }} onClick={onClose}>FORTSÄTT</button>
       </motion.div>
     </div>
   );

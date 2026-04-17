@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { S, useGameStore } from '@/state/store';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import type { FeedEntry } from '@/types/game';
 import { getFeedCommentMeta, getFeedContextLabel } from '@/lib/feed';
 import { hydrateFeedItems } from '@/lib/socialData';
@@ -97,7 +98,7 @@ export function useFeedSync() {
       }
     }
 
-    void bootstrapFeed();
+    fireAndForget(bootstrapFeed(), 'bootstrap feed sync');
 
     return () => {
       cancelled = true;
@@ -202,7 +203,7 @@ export function useFeedSync() {
       }
     }
 
-    void syncItems();
+    fireAndForget(syncItems(), 'sync local feed items');
   }, [feed, feedHydrated, me, setFeed]);
 
   useEffect(() => {
@@ -242,7 +243,7 @@ export function useFeedSync() {
     function scheduleRefresh() {
       if (refreshTimer) clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => {
-        void refreshFeedFromServer();
+        fireAndForget(refreshFeedFromServer(), 'refresh feed from server');
       }, 80);
     }
 

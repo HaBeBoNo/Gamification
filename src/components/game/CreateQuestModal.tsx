@@ -122,7 +122,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
     <div
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'var(--color-overlay-backdrop)',
         zIndex: 200,
         display: 'flex', alignItems: 'flex-end',
         justifyContent: 'center',
@@ -143,7 +143,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
         overflowY: 'auto',
       }}>
         {/* Stäng */}
-        <button
+        <button type="button"
           onClick={onClose}
           style={{
             position: 'absolute', top: 16, right: 16,
@@ -262,7 +262,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {CATEGORIES.map(c => (
-              <button
+              <button type="button"
                 key={c.id}
                 onClick={() => setCat(c.id)}
                 style={{
@@ -270,7 +270,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
                   borderRadius: 'var(--radius-pill)',
                   border: '1px solid ' + (cat === c.id ? 'var(--color-primary)' : 'var(--color-border)'),
                   background: cat === c.id ? 'var(--color-primary)' : 'transparent',
-                  color: cat === c.id ? '#fff' : 'var(--color-text-muted)',
+                  color: cat === c.id ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
                   fontSize: 12,
                   fontFamily: 'var(--font-ui)',
                   cursor: 'pointer',
@@ -323,7 +323,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
               Bjud in bandmedlemmar att delta
             </div>
           </div>
-          <button
+          <button type="button"
             onClick={() => setCollaborative(v => !v)}
             style={{
               width: 44, height: 24,
@@ -342,7 +342,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
               left: collaborative ? 22 : 2,
               width: 20, height: 20,
               borderRadius: '50%',
-              background: '#fff',
+              background: 'var(--color-text-primary)',
               transition: 'left 0.2s',
             }} />
           </button>
@@ -362,7 +362,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
               {otherMembers.map(([id, member]) => {
                 const isInvited = invitedMembers.includes(id);
                 return (
-                  <button
+                  <button type="button"
                     key={id}
                     onClick={() => toggleInvite(id)}
                     style={{
@@ -416,13 +416,13 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
         )}
 
         {/* Skapa-knapp */}
-        <button
+        <button type="button"
           onClick={handleCreate}
           disabled={!title.trim()}
           style={{
             width: '100%',
             background: title.trim() ? 'var(--color-primary)' : 'var(--color-border)',
-            color: title.trim() ? '#fff' : 'var(--color-text-muted)',
+            color: title.trim() ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
             border: 'none',
             borderRadius: 'var(--radius-pill)',
             padding: '14px',

@@ -41,12 +41,12 @@ export default function AdminCenter({ onClose, rerender }: AdminCenterProps) {
       >
         <div className="ac-header">
           <div className="ac-title">Admin Center</div>
-          <button className="ac-close" onClick={onClose}><X size={24} /></button>
+          <button type="button" className="ac-close" onClick={onClose}><X size={24} /></button>
         </div>
 
         <div className="ac-tabs">
           {TABS.map(t => (
-            <button
+            <button type="button"
               key={t}
               className={`ac-tab ${tab === t ? 'active' : ''}`}
               onClick={() => setTab(t)}
@@ -99,7 +99,7 @@ function QuestsTab({ rerender }: { rerender: () => void }) {
       {S.quests.map((q: any, i: number) => {
         const ownerMember = q.owner ? MEMBERS[q.owner] : null;
         return (
-          <button key={q.id || i} className="ac-quest-row" onClick={() => setEditIdx(i)}>
+          <button type="button" key={q.id || i} className="ac-quest-row" onClick={() => setEditIdx(i)}>
             <div className={`quest-cat-dot cat-${q.cat || 'global'}`} />
             <div className="ac-quest-info">
               <span className="ac-quest-title">{q.title}</span>
@@ -148,7 +148,7 @@ function QuestsTab({ rerender }: { rerender: () => void }) {
                 <label className="ac-field-label">Kategori</label>
                 <div className="ac-segmented">
                   {CATEGORIES.map(c => (
-                    <button
+                    <button type="button"
                       key={c}
                       className={`ac-seg-btn ${quest.cat === c ? 'active' : ''}`}
                       onClick={() => updateField('cat', c)}
@@ -159,7 +159,7 @@ function QuestsTab({ rerender }: { rerender: () => void }) {
                 <label className="ac-field-label">Upprepning</label>
                 <div className="ac-segmented">
                   {RECUR_OPTS.map(r => (
-                    <button
+                    <button type="button"
                       key={r}
                       className={`ac-seg-btn ${(quest.recur || 'none') === r ? 'active' : ''}`}
                       onClick={() => updateField('recur', r)}
@@ -178,7 +178,7 @@ function QuestsTab({ rerender }: { rerender: () => void }) {
                   <input className="ac-field-input" type="number" placeholder="XP" value={bonusXP} onChange={e => setBonusXP(e.target.value)} style={{ width: 80 }} />
                 </div>
                 <input className="ac-field-input" placeholder="Notering (valfritt)" value={bonusNote} onChange={e => setBonusNote(e.target.value)} />
-                <button className="ac-primary-btn" onClick={handleBonusXP} disabled={!bonusMember || !bonusXP}>Tilldela bonus-XP</button>
+                <button type="button" className="ac-primary-btn" onClick={handleBonusXP} disabled={!bonusMember || !bonusXP}>Tilldela bonus-XP</button>
               </div>
             </motion.div>
           </>
@@ -231,7 +231,7 @@ function MembersTab({ rerender }: { rerender: () => void }) {
           const m = MEMBERS[id];
           const c = S.chars[id];
           return (
-            <button key={id} className="ac-member-card" onClick={() => { setDetailId(id); setResetConfirm(false); }}>
+            <button type="button" key={id} className="ac-member-card" onClick={() => { setDetailId(id); setResetConfirm(false); }}>
               <MemberIcon id={id} size={32} color={m.xpColor} />
               <span className="ac-member-name">{m.name}</span>
               <span className="ac-member-xp">{c?.totalXp || 0} XP</span>
@@ -275,11 +275,11 @@ function MembersTab({ rerender }: { rerender: () => void }) {
                   <input className="ac-field-input" type="number" placeholder="XP" value={bonusXP} onChange={e => setBonusXP(e.target.value)} style={{ width: 100 }} />
                   <input className="ac-field-input" placeholder="Notering" value={bonusNote} onChange={e => setBonusNote(e.target.value)} style={{ flex: 1 }} />
                 </div>
-                <button className="ac-primary-btn" onClick={handleBonusXP} disabled={!bonusXP}>Ge bonus-XP</button>
+                <button type="button" className="ac-primary-btn" onClick={handleBonusXP} disabled={!bonusXP}>Ge bonus-XP</button>
 
                 <div className="ac-divider" />
 
-                <button className={`ac-warning-btn ${resetConfirm ? 'confirmed' : ''}`} onClick={handleResetQuests}>
+                <button type="button" className={`ac-warning-btn ${resetConfirm ? 'confirmed' : ''}`} onClick={handleResetQuests}>
                   {resetConfirm ? 'Bekräfta — Återställ quests' : 'Återställ quests'}
                 </button>
               </div>
@@ -342,7 +342,7 @@ function MetricsTab({ rerender }: { rerender: () => void }) {
           </div>
         );
       })}
-      <button className="ac-primary-btn ac-full-width" onClick={handleSave}>Spara</button>
+      <button type="button" className="ac-primary-btn ac-full-width" onClick={handleSave}>Spara</button>
     </div>
   );
 }
@@ -391,7 +391,7 @@ function SeasonTab({ rerender }: { rerender: () => void }) {
 
       <div className="ac-divider" />
 
-      <button className={`ac-warning-btn ${endStep > 0 ? 'confirmed' : ''}`} onClick={handleEndSeason}>
+      <button type="button" className={`ac-warning-btn ${endStep > 0 ? 'confirmed' : ''}`} onClick={handleEndSeason}>
         {endStep > 0 ? 'Bekräfta — Avsluta säsong' : 'Avsluta säsong'}
       </button>
       {endStep > 0 && (
@@ -408,7 +408,7 @@ function SeasonTab({ rerender }: { rerender: () => void }) {
 
       <div className="ac-divider" />
 
-      <button className="ac-export-btn" onClick={handleExport}>
+      <button type="button" className="ac-export-btn" onClick={handleExport}>
         <Download size={14} /> Exportera säsongsdata
       </button>
     </div>

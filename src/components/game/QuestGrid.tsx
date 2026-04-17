@@ -340,7 +340,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
         {/* Filter pills */}
         <div className="qf-pills stagger-1">
           {FILTERS.map(f => (
-            <button
+            <button type="button"
               key={f.id}
               className={'qf-pill ' + (filter === f.id ? 'active' : '')}
               onClick={() => handleFilterChange(f.id)}
@@ -356,20 +356,20 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
       <div className="quest-tabs stagger-2">
         {TABS.map(t => (
-          <button
+          <button type="button"
             key={t.id}
             className={'tab-btn ' + (tab === t.id ? 'active' : '')}
             onClick={() => handleTabChange(t.id)}
           >{t.label}</button>
         ))}
         {tab === 'personal' && (
-          <button className="tab-btn" onClick={handleRefreshPersonal} disabled={refreshing}>
+          <button type="button" className="tab-btn" onClick={handleRefreshPersonal} disabled={refreshing}>
             <RefreshCw size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
             {refreshing ? '...' : 'NY'}
           </button>
         )}
         {tab === 'sidequest' && (
-          <button className="tab-btn" onClick={handleSidequestNudgeClick}>
+          <button type="button" className="tab-btn" onClick={handleSidequestNudgeClick}>
             <Zap size={12} strokeWidth={2} style={{ display: 'inline', verticalAlign: '-2px', marginRight: 4 }} />
             FORSLAG
           </button>
@@ -464,7 +464,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             showXP={showXP}
           />
           {hasHiddenPersonal && (
-            <button
+            <button type="button"
               onClick={() => setShowAllPersonal(true)}
               style={{
                 width: '100%',
@@ -490,7 +490,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
             </button>
           )}
           {showAllPersonal && tab === 'personal' && totalPersonalActive > 5 && (
-            <button
+            <button type="button"
               onClick={() => setShowAllPersonal(false)}
               style={{
                 width: '100%',
@@ -520,7 +520,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
 
 
       {/* Skapa uppdrag-knapp */}
-      <button
+      <button type="button"
         onClick={() => setShowCreateQuest(true)}
         style={{
           width: '100%',

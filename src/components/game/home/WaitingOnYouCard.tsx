@@ -71,7 +71,7 @@ export function WaitingOnYouCard({
           </div>
         ) : (
           signals.map((signal, index) => (
-            <button
+            <button type="button"
               key={signal.id}
               onClick={() => {
                 if (me) {

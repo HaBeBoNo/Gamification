@@ -7,7 +7,7 @@ export const primaryButtonStyle: React.CSSProperties = {
   gap: 8,
   minHeight: '40px',
   background: 'var(--color-primary)',
-  color: '#fff',
+  color: 'var(--color-text-primary)',
   border: 'none',
   borderRadius: '999px',
   padding: '0 14px',
@@ -19,15 +19,15 @@ export const primaryButtonStyle: React.CSSProperties = {
 };
 
 export const iconButtonStyle: React.CSSProperties = {
-  width: 36,
-  height: 36,
+  width: 'var(--icon-button-size)',
+  height: 'var(--icon-button-size)',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   background: 'var(--color-surface-elevated)',
   color: 'var(--color-text-muted)',
   border: '1px solid var(--color-border)',
-  borderRadius: '12px',
+  borderRadius: 'var(--radius-md)',
   cursor: 'pointer',
   touchAction: 'manipulation',
 };

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MEMBERS } from '@/data/members';
 import { useGameStore } from '@/state/store';
+import { fireAndForget } from '@/lib/async';
 import { ChevronRight, Flame, Moon, Zap, Circle } from 'lucide-react';
 import { MOBILE_GUTTER } from '@/components/game/home/constants';
 
@@ -40,7 +41,7 @@ export function BandPulse({ onNavigate }: BandPulseProps) {
       if (!data && retriesRef.current < 3) {
         retriesRef.current += 1;
         retryTimer = setTimeout(() => {
-          void loadWithRetry();
+          fireAndForget(loadWithRetry(), 'retry band pulse load');
         }, 2000);
         return;
       }
@@ -66,13 +67,13 @@ export function BandPulse({ onNavigate }: BandPulseProps) {
       setLoading(false);
     }
 
-    void loadWithRetry();
+    fireAndForget(loadWithRetry(), 'load band pulse');
 
     const channel = supabase
       .channel('band-pulse')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_feed' }, () => {
         retriesRef.current = 0;
-        void loadWithRetry();
+        fireAndForget(loadWithRetry(), 'refresh band pulse');
       })
       .subscribe();
 

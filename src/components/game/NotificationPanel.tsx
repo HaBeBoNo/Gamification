@@ -191,7 +191,7 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
         }}>
           NOTIFIKATIONER
         </div>
-        <button
+        <button type="button"
           onClick={onClose}
           style={{
             background: 'none', border: 'none',
@@ -206,7 +206,7 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
 
       {notifications.some(n => !n.read) && (
         <div className="notif-header">
-          <button className="notif-mark-all" onClick={markAllRead}>
+          <button type="button" className="notif-mark-all" onClick={markAllRead}>
             Markera alla som lästa
           </button>
         </div>
@@ -232,7 +232,7 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
           {liveSignals.slice(0, 3).map((signal) => {
             const Icon = getAttentionIcon(signal.tone);
             return (
-              <button
+              <button type="button"
                 key={signal.id}
                 onClick={() => handleSignalPress(signal)}
                 style={{

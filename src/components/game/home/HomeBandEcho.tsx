@@ -36,7 +36,7 @@ export function HomeBandEcho({
             <div style={{ fontSize: 'var(--text-caption)', color: 'var(--color-text)', fontWeight: 600 }}>
               Tyst just nu.
             </div>
-            <button
+            <button type="button"
               onClick={() => onNavigate?.('activity')}
               style={{
                 alignSelf: 'flex-start',
@@ -63,7 +63,7 @@ export function HomeBandEcho({
               const summary = getHomeEchoSummary(item);
               const actor = item?.who;
               return (
-                <button
+                <button type="button"
                   key={String(item?.id || index)}
                   onClick={() => onNavigate?.('activity')}
                   style={{
@@ -106,7 +106,7 @@ export function HomeBandEcho({
               );
             })}
             <div style={{ padding: `0 ${CARD_PAD_ROOM} ${CARD_PAD_ROOM}` }}>
-              <button
+              <button type="button"
                 onClick={() => onNavigate?.('activity')}
                 style={{
                   width: '100%',

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ActivityHeatmap from './ActivityHeatmap';
 import MemberStatusDot from './MemberStatusDot';
 import { supabase } from '@/lib/supabase';
+import { fireAndForget } from '@/lib/async';
 import { wasQuestCompletedByMember } from '@/lib/questUtils';
 
 type SortKey = 'xp' | 'week' | 'streak';
@@ -142,7 +143,7 @@ function LeaderboardView() {
       setLoadingData(false);
     }
 
-    void fetchAllMembers();
+    fireAndForget(fetchAllMembers(), 'load leaderboard member data');
 
     const channel = supabase
       .channel('leaderboard_realtime')
@@ -271,7 +272,7 @@ function LeaderboardView() {
         <h1 className="lbv-title">Leaderboard</h1>
         <div className="lbv-pills">
           {SORT_PILLS.map(pill => (
-            <button
+            <button type="button"
               key={pill.key}
               className={`lbv-pill ${sortKey === pill.key ? 'active' : ''}`}
               onClick={() => setSortKey(pill.key)}
@@ -442,7 +443,7 @@ function LeaderboardView() {
                                 const endorsers = endorsementsMap[row.id]?.[stat] ?? [];
                                 const hasEndorsed = endorsers.includes(S.me!);
                                 return (
-                                  <button
+                                  <button type="button"
                                     key={stat}
                                     onClick={() => giveEndorsement(row.id, stat)}
                                     disabled={hasEndorsed}

@@ -3,6 +3,7 @@ import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { awardXP } from '@/hooks/useXP';
 import { aiValidate } from '@/hooks/useAI';
+import { fireAndForget } from '@/lib/async';
 import { Check, X, Zap, Paperclip, Globe2, MapPin, User } from 'lucide-react';
 import { getQuestOrigin, ORIGIN_LABELS, isQuestDoneNow } from '@/lib/questUtils';
 import { pushFeedEntry } from '@/lib/feed';
@@ -89,7 +90,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
       if (everyoneDone) {
         q.done = true;
         const memberName = (MEMBERS as any)[me]?.name || me;
-        void notifyMembersSignal({
+        fireAndForget(notifyMembersSignal({
           targetMemberKeys: (q.participants as string[]).filter((id: string) => id !== me),
           type: 'collaborative_complete',
           title: `${memberName} slutförde ert gemensamma uppdrag`,
@@ -105,14 +106,14 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
             body: `"${quest.title}" — alla deltagare klara!`,
             excludeMember: me,
           },
-        });
+        }), 'quest collaborative completion notification');
       } else {
         const memberName = (MEMBERS as any)[me]?.name || me;
         const remainingParticipants = (q.participants as string[]).filter(
           (id: string) => !completedBy.includes(id)
         );
         const remaining = remainingParticipants.length;
-        void notifyMembersSignal({
+        fireAndForget(notifyMembersSignal({
           targetMemberKeys: remainingParticipants.filter((id: string) => id !== me),
           type: 'collaborative_progress',
           title: `${memberName} slutförde sin del`,
@@ -130,7 +131,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
             body: `"${quest.title}" — ${remaining} kvar`,
             excludeMember: me,
           },
-        });
+        }), 'quest collaborative progress notification');
       }
 
       if (!S.chars[me].completedQuests) S.chars[me].completedQuests = [];
@@ -279,7 +280,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
         {isDone && <div className="done-stamp"><Check size={20} strokeWidth={3} /></div>}
 
         {!isDone && (
-          <button
+          <button type="button"
             className="quest-menu-trigger"
             onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
             aria-label="Meny"
@@ -290,7 +291,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
 
         {menuOpen && (
           <div className="quest-menu-dropdown" onClick={e => e.stopPropagation()}>
-            <button
+            <button type="button"
               className="quest-menu-item"
               onClick={() => { setMenuOpen(false); setShowDeleg(true); }}
             >
@@ -404,13 +405,13 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
                 </p>
               </div>
             )}
-            <button
+            <button type="button"
               onClick={(e) => { e.stopPropagation(); handleJoin(quest); }}
               style={{
                 background: isParticipant
                   ? 'var(--color-accent)20'
                   : 'var(--color-primary)',
-                color: isParticipant ? 'var(--color-accent)' : '#fff',
+                color: isParticipant ? 'var(--color-accent)' : 'var(--color-text-primary)',
                 border: 'none',
                 borderRadius: '999px',
                 padding: '6px 14px',
@@ -488,7 +489,7 @@ export default function QuestCard({ quest, rerender, showLU, showRW, showXP }: Q
               </div>
             )}
             {!verdict && !thinking && (
-              <button className="complete-btn" onClick={handleAIValidate} disabled={!aiDesc.trim()}>
+              <button type="button" className="complete-btn" onClick={handleAIValidate} disabled={!aiDesc.trim()}>
                 VALIDERA MED AI
               </button>
             )}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { S, save, useGameStore } from '@/state/store';
 import { MEMBERS } from '@/data/members';
+import { fireAndForget } from '@/lib/async';
 import { MemberIcon } from '@/components/icons/MemberIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
@@ -41,7 +42,7 @@ export default function DelegationInbox({ rerender }: DelegationInboxProps) {
     save();
 
     if (delegatorKey && delegatorKey !== memberKey) {
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: [delegatorKey],
         type: 'delegation_accepted',
         title: `${memberName} accepterade ditt uppdrag`,
@@ -58,7 +59,7 @@ export default function DelegationInbox({ rerender }: DelegationInboxProps) {
           excludeMember: memberKey,
           url: '/',
         },
-      });
+      }), 'send delegation accepted notification');
     }
 
     setDismissing(p => ({ ...p, [questId]: 'accept' }));
@@ -85,7 +86,7 @@ export default function DelegationInbox({ rerender }: DelegationInboxProps) {
     save();
 
     if (delegatorKey && delegatorKey !== memberKey) {
-      void notifyMembersSignal({
+      fireAndForget(notifyMembersSignal({
         targetMemberKeys: [delegatorKey],
         type: 'delegation_declined',
         title: `${memberName} tackade nej till ditt uppdrag`,
@@ -102,7 +103,7 @@ export default function DelegationInbox({ rerender }: DelegationInboxProps) {
           excludeMember: memberKey,
           url: '/',
         },
-      });
+      }), 'send delegation declined notification');
     }
 
     setDismissing(p => ({ ...p, [questId]: 'decline' }));
@@ -141,8 +142,8 @@ export default function DelegationInbox({ rerender }: DelegationInboxProps) {
               <div className="inbox-quest-title">{q.title}</div>
               {q.delegationNote && <div className="inbox-note">{q.delegationNote}</div>}
               <div className="inbox-actions">
-                <button className="inbox-accept" onClick={() => handleAccept(q.id)}>Acceptera</button>
-                <button className="inbox-decline" onClick={() => handleDecline(q.id)}>Tacka nej</button>
+                <button type="button" className="inbox-accept" onClick={() => handleAccept(q.id)}>Acceptera</button>
+                <button type="button" className="inbox-decline" onClick={() => handleDecline(q.id)}>Tacka nej</button>
               </div>
             </motion.div>
           );

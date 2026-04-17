@@ -15,6 +15,7 @@ import {
   getDriveSurfaceModel,
   type DriveFilterId,
 } from '@/lib/bandHubSurface';
+import { fireAndForget } from '@/lib/async';
 
 export function useDriveSurface(enabled: boolean) {
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -29,7 +30,7 @@ export function useDriveSurface(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-    void loadDriveSurface();
+    fireAndForget(loadDriveSurface(), 'load drive surface');
   }, [enabled]);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export function useDriveSurface(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     const channel = subscribePinnedFiles(() => {
-      void loadPins();
+      fireAndForget(loadPins(), 'load drive pins');
     });
     return () => {
       if (channel && supabase) supabase.removeChannel(channel);

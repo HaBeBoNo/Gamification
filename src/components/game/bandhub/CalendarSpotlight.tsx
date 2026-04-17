@@ -1,6 +1,7 @@
 import { CalendarDays, CircleOff, Clock3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { S, useGameStore } from '@/state/store';
+import { fireAndForget } from '@/lib/async';
 import { getUpcomingEvents, isEventActive } from '@/lib/googleCalendar';
 import { isCalendarResponseNeeded } from '@/lib/reengagement';
 import { getCalendarEventParticipationState } from '@/lib/calendarState';
@@ -55,7 +56,7 @@ export function CalendarSpotlight() {
       }
     }
 
-    void loadEvents();
+    fireAndForget(loadEvents(), 'load calendar spotlight');
     return () => {
       cancelled = true;
     };
