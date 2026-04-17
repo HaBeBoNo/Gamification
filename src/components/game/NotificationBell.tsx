@@ -27,12 +27,15 @@ export default function NotificationBell({ onClick, count: countProp, hasAttenti
   }, [count, isActive]);
 
   const display = count > 9 ? '9+' : count;
+  const ariaLabel = count > 0
+    ? `${count} olästa notifikationer`
+    : 'Öppna notifikationer';
 
   return (
     <button type="button"
       className={`notif-bell ${pulse ? 'pulse' : ''}`}
       onClick={onClick}
-      aria-label="Notifikationer"
+      aria-label={ariaLabel}
       style={{
         position: 'relative',
         background: 'none',

@@ -1,27 +1,41 @@
 import { MEMBERS } from '@/data/members';
 import { MemberIcon } from '@/components/icons/MemberIcons';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { S, useGameStore } from '@/state/store';
 import { CARD_PAD, CARD_PAD_ROOM, ROOM_GUTTER, SECTION_GAP } from './constants';
 
 export function HeroCard() {
   // Prenumerera på tick så att XP/level-ändringar via save() triggar re-render
   useGameStore((s) => s.tick);
+  const isCompact = useMediaQuery('(max-width: 420px)');
   const memberKey = S.me!;
   const member = (MEMBERS as Record<string, any>)[memberKey];
   const char = (S.chars as Record<string, any>)?.[memberKey];
+  const avatarSize = isCompact ? 72 : 96;
+  const avatarInset = isCompact ? 6 : 8;
+  const radius = isCompact ? 33 : 44;
+  const center = avatarSize / 2;
 
   if (!char) {
     return (
       <div style={{
         background: 'linear-gradient(160deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
         borderBottom: '1px solid var(--color-border)',
-        padding: `${CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
+        padding: `${isCompact ? CARD_PAD : CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
         display: 'flex',
-        alignItems: 'center',
-        gap: SECTION_GAP,
+        flexDirection: isCompact ? 'column' : 'row',
+        alignItems: isCompact ? 'stretch' : 'center',
+        gap: isCompact ? 'var(--space-md)' : SECTION_GAP,
         animation: 'pulse 2s ease-in-out infinite',
       }}>
-        <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--color-border)', flexShrink: 0 }} />
+        <div style={{
+          width: avatarSize,
+          height: avatarSize,
+          borderRadius: '50%',
+          background: 'var(--color-border)',
+          flexShrink: 0,
+          alignSelf: isCompact ? 'center' : 'flex-start',
+        }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ height: 20, borderRadius: 4, background: 'var(--color-border)', marginBottom: 'var(--space-sm)', width: '60%' }} />
           <div style={{ height: 16, borderRadius: 4, background: 'var(--color-border)', marginBottom: 'var(--space-sm)', width: '40%' }} />
@@ -36,7 +50,6 @@ export function HeroCard() {
   const xpToNext = char?.xpToNext ?? 100;
   const level = char?.level ?? 1;
   const pct = Math.min(100, Math.round((xp / xpToNext) * 100));
-  const radius = 44;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (pct / 100) * circumference;
 
@@ -44,17 +57,24 @@ export function HeroCard() {
     <div style={{
       background: 'linear-gradient(160deg, var(--color-surface-elevated) 0%, var(--color-surface) 100%)',
       borderBottom: '1px solid var(--color-border)',
-      padding: `${CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
+      padding: `${isCompact ? CARD_PAD : CARD_PAD_ROOM} ${ROOM_GUTTER} ${CARD_PAD}`,
       display: 'flex',
-      alignItems: 'center',
-      gap: SECTION_GAP,
+      flexDirection: isCompact ? 'column' : 'row',
+      alignItems: isCompact ? 'stretch' : 'center',
+      gap: isCompact ? 'var(--space-md)' : SECTION_GAP,
     }}>
-      <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 }}>
-        <svg width={96} height={96} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
-          <circle cx={48} cy={48} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={4} />
+      <div style={{
+        position: 'relative',
+        width: avatarSize,
+        height: avatarSize,
+        flexShrink: 0,
+        alignSelf: isCompact ? 'center' : 'flex-start',
+      }}>
+        <svg width={avatarSize} height={avatarSize} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={4} />
           <circle
-            cx={48}
-            cy={48}
+            cx={center}
+            cy={center}
             r={radius}
             fill="none"
             stroke="var(--color-primary)"
@@ -67,19 +87,26 @@ export function HeroCard() {
         </svg>
         <div style={{
           position: 'absolute',
-          inset: 8,
+          inset: avatarInset,
           borderRadius: '50%',
           background: 'var(--color-surface)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <MemberIcon id={memberKey} size={40} />
+          <MemberIcon id={memberKey} size={isCompact ? 30 : 40} />
         </div>
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 2 }}>
+      <div style={{ flex: 1, minWidth: 0, textAlign: isCompact ? 'center' : 'left' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isCompact ? 'center' : 'flex-start',
+          gap: 'var(--space-sm)',
+          marginBottom: 2,
+          flexWrap: 'wrap',
+        }}>
           <span style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-micro)',
@@ -101,7 +128,7 @@ export function HeroCard() {
           margin: '0 0 2px',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
-          whiteSpace: 'nowrap',
+          whiteSpace: isCompact ? 'normal' : 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>

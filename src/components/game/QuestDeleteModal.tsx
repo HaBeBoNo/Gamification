@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { isQuestDoneNow } from '@/lib/questUtils';
 
 const REASONS = [
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
   function handleDelete(reasonId: string) {
     // Ta bort quest
     S.quests = S.quests.filter((q: any) => q.id !== quest.id);
@@ -60,17 +62,23 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div
+        style={{
         background: 'var(--color-surface)',
         borderRadius: 'var(--radius-card)',
         border: '1px solid var(--color-border)',
-        padding: '28px 24px',
+        padding: isMobile ? '24px 20px' : '28px 24px',
         width: '100%',
-        maxWidth: '360px',
+        maxWidth: isMobile ? 'min(100%, 24rem)' : 'min(100%, 22.5rem)',
         position: 'relative',
-      }}>
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ta bort uppdrag"
+      >
         <button type="button"
           onClick={onClose}
+          aria-label="Stäng"
           style={{
             position: 'absolute', top: 16, right: 16,
             background: 'none', border: 'none',

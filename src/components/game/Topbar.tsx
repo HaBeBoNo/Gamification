@@ -47,6 +47,7 @@ export default function Topbar({
         <button type="button"
           ref={logoRef}
           onClick={onLogoClick}
+          aria-label="Gå till hemskärmen"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minWidth: 0 }}
         >
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-caption)', fontWeight: 700, color: 'var(--color-text)', letterSpacing: '0.08em' }}>

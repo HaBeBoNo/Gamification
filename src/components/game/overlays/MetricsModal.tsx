@@ -34,7 +34,7 @@ export default function MetricsModal({ onClose, rerender }: { onClose: () => voi
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()}>
-        <button type="button" className="overlay-close" onClick={onClose}>
+        <button type="button" className="overlay-close" onClick={onClose} aria-label="Stäng metrics">
           <X size={14} />
         </button>
         <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>

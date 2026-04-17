@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { buildCoachPrompt } from '@/hooks/useAI';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface Props {
   insight: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function CoachInsightModal({ insight, onClose }: Props) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: 'assistant', content: insight }
   ]);
@@ -60,16 +62,23 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div
+        style={{
         background: 'var(--color-surface)',
-        borderRadius: '16px 16px 0 0',
+        borderRadius: isMobile ? '16px 16px 0 0' : '24px',
         border: '1px solid var(--color-border)',
-        borderBottom: 'none',
-        width: '100%', maxWidth: 480,
-        maxHeight: '70dvh',
+        borderBottom: isMobile ? 'none' : '1px solid var(--color-border)',
+        width: '100%',
+        maxWidth: isMobile ? '100%' : 'min(100%, 32rem)',
+        maxHeight: isMobile ? '70dvh' : 'min(80dvh, 44rem)',
         display: 'flex', flexDirection: 'column',
         paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
+        boxShadow: isMobile ? 'none' : 'var(--shadow-float)',
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Coachdialog med ${coachName}`}
+      >
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center',
@@ -84,7 +93,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
           }}>
             {coachName.toUpperCase()}
           </div>
-          <button type="button" onClick={onClose} style={{
+          <button type="button" onClick={onClose} aria-label="Stäng coachdialog" style={{
             background: 'none', border: 'none',
             color: 'var(--color-text-muted)',
             cursor: 'pointer', padding: 4,
@@ -139,6 +148,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Svara..."
+            aria-label="Skriv svar till coachen"
             style={{
               flex: 1,
               background: 'var(--color-bg)',
@@ -153,6 +163,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
           <button type="button"
             onClick={handleSend}
             disabled={!input.trim() || loading}
+            aria-label="Skicka svar"
             style={{
               background: input.trim() ? 'var(--color-primary)' : 'var(--color-border)',
               color: 'var(--color-text-primary)', border: 'none',

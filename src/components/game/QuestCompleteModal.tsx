@@ -9,6 +9,7 @@ import { fireAndForget } from '@/lib/async';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -30,7 +31,7 @@ export default function QuestCompleteModal({
 }: QuestCompleteModalProps) {
   const [phase, setPhase] = useState(1);
   const [reflection, setReflection] = useState('');
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const me = S.me;
   const nextQuest = getRelevantActiveQuests(
     (S.quests || []).filter((item: any) => item.id !== quest.id),
@@ -131,9 +132,9 @@ export default function QuestCompleteModal({
           borderRadius: isMobile ? '0' : '24px',
           border: isMobile ? 'none' : '1px solid var(--color-border)',
           width: '100%',
-          maxWidth: isMobile ? '100%' : '500px',
-          height: isMobile ? '100dvh' : 'min(92vh, 840px)',
-          maxHeight: isMobile ? '100dvh' : 'min(92vh, 840px)',
+          maxWidth: isMobile ? '100%' : 'min(100%, 31.25rem)',
+          height: isMobile ? '100dvh' : 'min(92vh, 52.5rem)',
+          maxHeight: isMobile ? '100dvh' : 'min(92vh, 52.5rem)',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -387,13 +388,14 @@ export default function QuestCompleteModal({
             }}>
               Vad vill du ta med dig från det här?
             </div>
-            <textarea
-              autoFocus
-              rows={4}
-              value={reflection}
-              onChange={(e) => setReflection(e.target.value)}
-              placeholder="Kort reflektion. Vad lärde du dig, eller vad kändes viktigt?"
-              style={{
+          <textarea
+            autoFocus
+            rows={4}
+            value={reflection}
+            onChange={(e) => setReflection(e.target.value)}
+            placeholder="Kort reflektion. Vad lärde du dig, eller vad kändes viktigt?"
+            aria-label="Reflektion"
+            style={{
                 width: '100%',
                 background: 'var(--color-bg)',
                 border: '1px solid var(--color-border)',
@@ -418,6 +420,7 @@ export default function QuestCompleteModal({
               value={nextStep}
               onChange={(e) => setNextStep(e.target.value)}
               placeholder="Skriv nästa steg medan känslan är färsk..."
+              aria-label="Nästa steg"
               style={{
                 width: '100%',
                 background: 'var(--color-bg)',
@@ -504,6 +507,8 @@ export default function QuestCompleteModal({
                   onClick={() => setHighFiveTo(
                     highFiveTo === id ? null : id
                   )}
+                  aria-pressed={highFiveTo === id}
+                  aria-label={`High-five till ${String((m as any).name || id)}`}
                   style={{
                     padding: '8px 14px',
                     borderRadius: 'var(--radius-pill)',

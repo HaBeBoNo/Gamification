@@ -5,6 +5,7 @@ import { MEMBERS } from '@/data/members';
 import { createCollaborativeQuest, fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { MemberIcon } from '@/components/icons/MemberIcons';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function CreateQuestModal({ onClose, rerender }: Props) {
+  const isMobile = useMediaQuery('(max-width: 640px)');
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [xp, setXp] = useState(50);
@@ -130,21 +132,28 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div
+        style={{
         background: 'var(--color-surface)',
-        borderRadius: '16px 16px 0 0',
+        borderRadius: isMobile ? '16px 16px 0 0' : '24px 24px 0 0',
         border: '1px solid var(--color-border)',
         borderBottom: 'none',
-        padding: '28px 24px 40px',
+        padding: isMobile ? '24px 20px calc(32px + env(safe-area-inset-bottom))' : '28px 24px 40px',
         width: '100%',
-        maxWidth: '480px',
+        maxWidth: isMobile ? '100%' : 'min(100%, 32rem)',
         position: 'relative',
-        maxHeight: '90vh',
+        maxHeight: isMobile ? '90dvh' : 'min(90dvh, 52rem)',
         overflowY: 'auto',
-      }}>
+        boxShadow: isMobile ? 'none' : 'var(--shadow-float)',
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Skapa uppdrag"
+      >
         {/* Stäng */}
         <button type="button"
           onClick={onClose}
+          aria-label="Stäng skapa uppdrag"
           style={{
             position: 'absolute', top: 16, right: 16,
             background: 'none', border: 'none',
@@ -186,6 +195,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Vad ska göras?"
+            aria-label="Titel"
             style={{
               width: '100%',
               background: 'var(--color-bg)',
@@ -211,6 +221,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
             value={desc}
             onChange={e => setDesc(e.target.value)}
             placeholder="Beskriv uppdraget (valfritt)"
+            aria-label="Beskrivning"
             rows={3}
             style={{
               width: '100%',
@@ -239,6 +250,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
             value={motivation}
             onChange={e => setMotivation(e.target.value)}
             placeholder="Varför är det här viktigt?"
+            aria-label="Motivation"
             style={{
               width: '100%',
               background: 'var(--color-bg)',
@@ -265,6 +277,8 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
               <button type="button"
                 key={c.id}
                 onClick={() => setCat(c.id)}
+                aria-pressed={cat === c.id}
+                aria-label={`Kategori ${c.label}`}
                 style={{
                   padding: '6px 14px',
                   borderRadius: 'var(--radius-pill)',
@@ -300,6 +314,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
             step={10}
             value={xp}
             onChange={e => setXp(Number(e.target.value))}
+            aria-label="XP"
             style={{ width: '100%', accentColor: 'var(--color-primary)' }}
           />
         </div>
@@ -325,6 +340,8 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
           </div>
           <button type="button"
             onClick={() => setCollaborative(v => !v)}
+            aria-label="Kollaborativt uppdrag"
+            aria-pressed={collaborative}
             style={{
               width: 44, height: 24,
               borderRadius: 12,
@@ -365,6 +382,8 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
                   <button type="button"
                     key={id}
                     onClick={() => toggleInvite(id)}
+                    aria-pressed={isInvited}
+                    aria-label={`${isInvited ? 'Ta bort' : 'Bjud in'} ${String((member as any).name || id)}`}
                     style={{
                       display: 'flex', alignItems: 'center',
                       gap: 10,

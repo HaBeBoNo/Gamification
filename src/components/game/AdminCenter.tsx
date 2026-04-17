@@ -41,7 +41,7 @@ export default function AdminCenter({ onClose, rerender }: AdminCenterProps) {
       >
         <div className="ac-header">
           <div className="ac-title">Admin Center</div>
-          <button type="button" className="ac-close" onClick={onClose}><X size={24} /></button>
+          <button type="button" className="ac-close" onClick={onClose} aria-label="Stäng admincenter"><X size={24} /></button>
         </div>
 
         <div className="ac-tabs">

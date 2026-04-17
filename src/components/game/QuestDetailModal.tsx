@@ -4,6 +4,7 @@ import QuestDeleteModal from './QuestDeleteModal';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { calcCollaborativeBonus } from '@/hooks/useXP';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { addNotifToAll } from '@/state/notifications';
 
 const CAT_COLORS: Record<string, string> = {
@@ -32,7 +33,7 @@ interface Props {
 export default function QuestDetailModal({ quest, onClose, onComplete, rerender }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [statusUpdate, setStatusUpdate] = useState('');
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   if (showDelete) {
     return (
@@ -57,19 +58,24 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
       }}
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div
+        style={{
         background: 'var(--color-surface)',
         borderRadius: isMobile ? '0' : '24px',
         border: isMobile ? 'none' : '1px solid var(--color-border)',
         width: '100%',
-        maxWidth: isMobile ? '100%' : '560px',
-        height: isMobile ? '100dvh' : 'min(92vh, 860px)',
-        maxHeight: isMobile ? '100dvh' : 'min(92vh, 860px)',
+        maxWidth: isMobile ? '100%' : 'min(100%, 35rem)',
+        height: isMobile ? '100dvh' : 'min(92vh, 53.75rem)',
+        maxHeight: isMobile ? '100dvh' : 'min(92vh, 53.75rem)',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-      }}>
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Uppdragsdetaljer för ${quest.title}`}
+      >
         <div style={{
           padding: `${isMobile ? 'max(16px, env(safe-area-inset-top))' : '18px'} 20px 14px`,
           borderBottom: '1px solid var(--color-border)',
@@ -89,6 +95,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
             Uppdrag
           </div>
           <button type="button"
+            aria-label="Stäng uppdragsdetaljer"
             style={{
               background: 'none',
               border: 'none',
@@ -210,6 +217,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
                   value={statusUpdate}
                   onChange={e => setStatusUpdate(e.target.value)}
                   placeholder="Vad har hänt sedan sist?"
+                  aria-label="Statusuppdatering"
                   style={{
                     flex: 1,
                     background: 'var(--color-bg)',

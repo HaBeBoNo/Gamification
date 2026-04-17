@@ -193,6 +193,7 @@ export default function NotificationPanel({ onClose, onNavigate, onOpenCoach }: 
         </div>
         <button type="button"
           onClick={onClose}
+          aria-label="Stäng notifikationer"
           style={{
             background: 'none', border: 'none',
             color: 'var(--color-text-muted)',

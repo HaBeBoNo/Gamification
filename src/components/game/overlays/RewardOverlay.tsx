@@ -6,7 +6,7 @@ export default function RewardOverlay({ reward, tier, onClose }: { reward: any; 
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()}>
-        <button type="button" className="overlay-close" onClick={onClose}><X size={14} /></button>
+        <button type="button" className="overlay-close" onClick={onClose} aria-label="Stäng belöning"><X size={14} /></button>
         <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <Gift size={20} strokeWidth={2} />
           Belöning!

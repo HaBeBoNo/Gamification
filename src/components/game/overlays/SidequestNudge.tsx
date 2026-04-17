@@ -19,7 +19,7 @@ export default function SidequestNudge({ quests, onClose, rerender }: { quests: 
   return (
     <div className="overlay-backdrop" onClick={onClose}>
       <div className="overlay-card" onClick={e => e.stopPropagation()}>
-        <button type="button" className="overlay-close" onClick={onClose}><X size={14} /></button>
+        <button type="button" className="overlay-close" onClick={onClose} aria-label="Stäng sidequest-förslag"><X size={14} /></button>
         <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <Zap size={20} strokeWidth={2} />
           Sidequest-förslag
