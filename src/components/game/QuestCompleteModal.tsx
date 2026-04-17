@@ -7,6 +7,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { pushFeedEntry } from '@/lib/feed';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -40,7 +41,7 @@ export default function QuestCompleteModal({
 
   const otherMembers = Object.entries(MEMBERS).filter(([id]) => id !== me);
   const trapRef = useFocusTrap<HTMLDivElement>(true);
-  const coachName = me ? ((S.chars[me] as any)?.coachName || 'Coach') : 'Coach';
+  const coachName = me ? ((S.chars[me] as any)?.coachName || DEFAULT_COACH_NAMES[me] || 'Coach') : 'Coach';
   const nextDirection = buildCoachNextDirection(quest, nextQuest);
   const totalXp = xpGained + (reflection.trim() ? 15 : 0);
 

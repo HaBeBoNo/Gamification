@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase';
 import CollaborativeQuestCard from './CollaborativeQuestCard';
 import type { CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { getQuestOrigin, isQuestDoneNow, refreshRecurringQuestStates } from '@/lib/questUtils';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 import { getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 
 const SECTION_GAP = 'var(--section-gap)';
@@ -221,7 +222,7 @@ function QuestGrid({ rerender, showLU, showRW, showSidequestNudge: onSidequestNu
     getDailyCoachMessage(me).then(setCoachMessage).catch(() => {});
   }, [me]);
 
-  const coachName = (S.chars[me!] as any)?.coachName || 'Coach';
+  const coachName = (S.chars[me!] as any)?.coachName || DEFAULT_COACH_NAMES[me!] || 'Coach';
 
   function handleFilterChange(nextFilter: string) {
     setFilter(nextFilter);

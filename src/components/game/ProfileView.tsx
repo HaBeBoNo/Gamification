@@ -7,6 +7,7 @@ import { getFeedCommentMeta } from '@/lib/feed';
 import { formatRelativeActivity, getFeedTimestampValue } from '@/lib/activityFeed';
 import { isQuestDoneNow, isQuestRelevantToMember, wasQuestCompletedByMember } from '@/lib/questUtils';
 import { S, useGameStore } from '@/state/store';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 import type { FeedEntry } from '@/types/game';
 import { SectionEyebrow } from '@/components/game/bandhub/SectionEyebrow';
 import { StatCard } from '@/components/game/bandhub/StatCard';
@@ -261,16 +262,7 @@ export default function ProfileView() {
   const questsDone = character.questsDone || 0;
   const temporalPattern = character.temporalBehavior?.pattern;
   const xpPercent = xpToNext > 0 ? Math.max(0, Math.min(100, Math.round((xp / xpToNext) * 100))) : 0;
-  const coachName = (character as any).coachName || ({
-    hannes: 'Scout',
-    martin: 'Brodern',
-    niklas: 'Arkitekten',
-    carl: 'Analytikern',
-    nisse: 'Spegeln',
-    simon: 'Rådgivaren',
-    johannes: 'Kartläggaren',
-    ludvig: 'Katalysatorn',
-  } as Record<string, string>)[me] || 'Coach';
+  const coachName = (character as any).coachName || DEFAULT_COACH_NAMES[me] || 'Coach';
   const [dominantCategory, dominantCount] = getDominantCategory(categoryCounts);
   const focusLabel = dominantCount > 0 ? CAT_LABELS[dominantCategory] : 'Tar form';
   const rhythmLabel = getTemporalLabel(temporalPattern);

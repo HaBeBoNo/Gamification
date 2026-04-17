@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { getUpcomingEvents, isEventActive, isEventSoon, type CalendarEvent } from '@/lib/googleCalendar';
 import { isQuestDoneNow } from '@/lib/questUtils';
 import { getDailyCoachMessage } from '@/hooks/useAI';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 import { fetchMyCollaborativeQuests, type CollaborativeQuest } from '@/lib/collaborativeQuests';
 import { fetchSharedBandActivitySnapshot } from '@/lib/socialData';
 import {
@@ -316,7 +317,7 @@ export function useDailyCoachSurface() {
     };
   }, [me]);
 
-  const coachName = me ? ((S.chars[me] as any)?.coachName || 'Coach') : 'Coach';
+  const coachName = me ? ((S.chars[me] as any)?.coachName || DEFAULT_COACH_NAMES[me] || 'Coach') : 'Coach';
   // tick som dep istället för S.quests — S.quests är en mutable referens som aldrig
   // byts ut, men tick inkrementeras vid varje save() som muterar quests.
   const relevantQuests = useMemo(() => (

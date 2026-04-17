@@ -9,19 +9,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { createFirstLoginNotif, addNotifToAll } from '@/state/notifications';
 import { getBandmateKeys, notifyMembersSignal } from '@/lib/notificationSignals';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 
 const TOTAL_STEPS = 8;
-
-const DEFAULT_COACH_NAMES: Record<string, string> = {
-  hannes:   'Scout',
-  martin:   'Brodern',
-  niklas:   'Arkitekten',
-  carl:     'Analytikern',
-  nisse:    'Spegeln',
-  simon:    'Rådgivaren',
-  johannes: 'Kartläggaren',
-  ludvig:   'Katalysatorn',
-};
 
 /* ── Five universal onboarding questions ── */
 const ONBOARDING_QUESTIONS = [

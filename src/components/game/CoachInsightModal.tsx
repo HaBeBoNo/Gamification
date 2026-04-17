@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { buildCoachPrompt } from '@/hooks/useAI';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 
 interface Props {
   insight: string;
@@ -14,7 +15,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const coachName = (S.me && S.chars[S.me]?.coachName as string | undefined) || 'Coach';
+  const coachName = (S.me && S.chars[S.me]?.coachName as string | undefined) || (S.me && DEFAULT_COACH_NAMES[S.me]) || 'Coach';
 
   async function handleSend() {
     if (!input.trim()) return;

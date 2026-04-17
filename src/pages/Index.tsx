@@ -23,6 +23,7 @@ import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppBootstrap } from '@/hooks/useAppBootstrap';
 import { useWaitingOnYouSurface } from '@/hooks/useHomeSurface';
+import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { supabase } from '@/lib/supabase';
 import { STORAGE_KEY } from '@/lib/config';
@@ -312,9 +313,7 @@ export default function Index() {
     setActiveTab(id);
   }
 
-  const COACH_NAMES_INDEX: Record<string, string> = { hannes: 'Scout', martin: 'Brodern', niklas: 'Arkitekten', carl: 'Analytikern',
-       nisse: 'Spegeln', simon: 'Rådgivaren', johannes: 'Kartläggaren', ludvig: 'Katalysatorn' };
-  const coachName: string = (S.chars[S.me!]?.coachName || (S.me ? COACH_NAMES_INDEX[S.me] : undefined) || 'Coach') as string;
+  const coachName: string = (S.chars[S.me!]?.coachName || (S.me ? DEFAULT_COACH_NAMES[S.me] : undefined) || 'Coach') as string;
 
   const overflowItems: OverflowItem[] = [
     {
