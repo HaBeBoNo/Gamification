@@ -1,8 +1,10 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { isQuestDoneNow } from '@/lib/questUtils';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 const REASONS = [
   { id: 'irrelevant', label: 'Inte relevant för min roll' },
@@ -17,7 +19,8 @@ interface Props {
 }
 
 export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  const isMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   function handleDelete(reasonId: string) {
     // Ta bort quest
     S.quests = S.quests.filter((q: any) => q.id !== quest.id);
@@ -63,6 +66,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
         style={{
         background: 'var(--color-surface)',
         borderRadius: 'var(--radius-card)',
@@ -78,7 +82,7 @@ export default function QuestDeleteModal({ quest, onClose, rerender }: Props) {
       >
         <button type="button"
           onClick={onClose}
-          aria-label="Stäng"
+          aria-label="Stäng ta bort uppdrag"
           style={{
             position: 'absolute', top: 16, right: 16,
             background: 'none', border: 'none',

@@ -4,8 +4,10 @@ import QuestDeleteModal from './QuestDeleteModal';
 import { S, save } from '@/state/store';
 import { MEMBERS } from '@/data/members';
 import { calcCollaborativeBonus } from '@/hooks/useXP';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { addNotifToAll } from '@/state/notifications';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 const CAT_COLORS: Record<string, string> = {
   social:   '#7c6af7',
@@ -33,7 +35,8 @@ interface Props {
 export default function QuestDetailModal({ quest, onClose, onComplete, rerender }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [statusUpdate, setStatusUpdate] = useState('');
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
+  const trapRef = useFocusTrap<HTMLDivElement>(!showDelete);
 
   if (showDelete) {
     return (
@@ -59,6 +62,7 @@ export default function QuestDetailModal({ quest, onClose, onComplete, rerender 
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
         style={{
         background: 'var(--color-surface)',
         borderRadius: isMobile ? '0' : '24px',

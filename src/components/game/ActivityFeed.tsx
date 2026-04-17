@@ -33,6 +33,9 @@ import {
   type ReplyTarget,
 } from '@/lib/activityFeed';
 import { useActivityFeedData } from '@/hooks/useActivityFeedData';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 // ── Framer Motion ─────────────────────────────────────────────────
 const itemVariants = {
@@ -45,6 +48,7 @@ const QUICK_REACTIONS = ['👏', '🔥', '❤️', '🎯'] as const;
 // ── Komponent ─────────────────────────────────────────────────────
 function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?: boolean }) {
   const { feedItems, setFeedItems, loading, bandSnapshot } = useActivityFeedData();
+  const isThreadMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [submittingCommentId, setSubmittingCommentId] = useState<string | null>(null);
@@ -80,6 +84,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
     () => feedItems.find((item) => String(item.id || '') === threadItemId) || null,
     [feedItems, threadItemId]
   );
+  const threadTrapRef = useFocusTrap<HTMLDivElement>(Boolean(activeThreadItem));
 
   function updateFeedItemLocal(itemId: string, updater: (item: any) => any) {
     setFeedItems(prev => prev.map(item => item.id === itemId ? updater(item) : item));
@@ -648,7 +653,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
     if (!activeThreadItem) return null;
 
     const itemId = String(activeThreadItem.id || '');
-    const fullscreenThread = typeof window !== 'undefined' && window.innerWidth < 768;
+    const fullscreenThread = isThreadMobile;
     const member = (MEMBERS as any)[activeThreadItem.who] || null;
     const actionText = activeThreadItem.action || '';
     const questMatch = actionText.match(/[""]([^""]+)[""]/);
@@ -677,7 +682,11 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
     return (
       <div className={`overlay-backdrop activity-thread-backdrop${fullscreenThread ? ' is-mobile' : ''}`} onClick={closeThread}>
         <div
+          ref={threadTrapRef}
           className={`overlay-card activity-thread-card${fullscreenThread ? ' is-mobile' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={questTitle ? `Aktivitetstråd för ${questTitle}` : 'Aktivitetstråd'}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="activity-thread-header">
@@ -696,6 +705,7 @@ function ActivityFeed({ hideHeader, compact }: { hideHeader?: boolean; compact?:
             </div>
             <button type="button"
               onClick={closeThread}
+              aria-label="Stäng aktivitetstråd"
               style={{
                 background: 'none',
                 border: 'none',

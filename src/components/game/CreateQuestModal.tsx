@@ -5,7 +5,9 @@ import { MEMBERS } from '@/data/members';
 import { createCollaborativeQuest, fetchMyCollaborativeQuests } from '@/lib/collaborativeQuests';
 import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { MemberIcon } from '@/components/icons/MemberIcons';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 const CATEGORIES = [
   { id: 'social',   label: 'Social' },
@@ -21,7 +23,8 @@ interface Props {
 }
 
 export default function CreateQuestModal({ onClose, rerender }: Props) {
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  const isMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [xp, setXp] = useState(50);
@@ -133,6 +136,7 @@ export default function CreateQuestModal({ onClose, rerender }: Props) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
         style={{
         background: 'var(--color-surface)',
         borderRadius: isMobile ? '16px 16px 0 0' : '24px 24px 0 0',

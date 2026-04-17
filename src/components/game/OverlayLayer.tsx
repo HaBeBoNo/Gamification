@@ -1,4 +1,5 @@
 import React from 'react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 import NotificationPanel from './NotificationPanel';
 import QuestDetail from './QuestDetail';
@@ -47,6 +48,7 @@ interface OverlayLayerProps {
 }
 
 export default function OverlayLayer(props: OverlayLayerProps) {
+  const notificationsTrapRef = useFocusTrap<HTMLDivElement>(props.showNotifications);
   const {
     xpAmount, setXpAmount,
     levelUp, setLevelUp,
@@ -105,6 +107,7 @@ export default function OverlayLayer(props: OverlayLayerProps) {
           onClick={() => setShowNotifications(false)}
         >
           <div
+            ref={notificationsTrapRef}
             style={{
               position: 'absolute',
               top: 0, right: 0,
@@ -114,6 +117,9 @@ export default function OverlayLayer(props: OverlayLayerProps) {
               background: 'var(--color-surface)',
               overflowY: 'auto',
             }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notifikationer"
             onClick={e => e.stopPropagation()}
           >
             <NotificationPanel

@@ -10,6 +10,7 @@ import { notifyMembersSignal } from '@/lib/notificationSignals';
 import { buildCoachNextDirection, getQuestFocusReason, getRelevantActiveQuests } from '@/lib/questFocus';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 interface QuestCompleteModalProps {
   quest: {
@@ -31,7 +32,7 @@ export default function QuestCompleteModal({
 }: QuestCompleteModalProps) {
   const [phase, setPhase] = useState(1);
   const [reflection, setReflection] = useState('');
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
   const me = S.me;
   const nextQuest = getRelevantActiveQuests(
     (S.quests || []).filter((item: any) => item.id !== quest.id),
@@ -166,7 +167,7 @@ export default function QuestCompleteModal({
             </div>
             <button type="button"
               onClick={onClose}
-              aria-label="Stäng"
+              aria-label="Stäng questgenomgång"
               style={{
                 background: 'none',
                 border: 'none',

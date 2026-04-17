@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { S, save } from '@/state/store';
 import { awardMetricPts } from '@/hooks/useXP';
 import { X, BarChart3 } from 'lucide-react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 export default function MetricsModal({ onClose, rerender }: { onClose: () => void; rerender: () => void }) {
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const [vals, setVals] = useState({ ...S.metrics });
 
   function handleChange(key: string, val: string) {
@@ -33,7 +35,14 @@ export default function MetricsModal({ onClose, rerender }: { onClose: () => voi
 
   return (
     <div className="overlay-backdrop" onClick={onClose}>
-      <div className="overlay-card" onClick={e => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="overlay-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Uppdatera metrics"
+        onClick={e => e.stopPropagation()}
+      >
         <button type="button" className="overlay-close" onClick={onClose} aria-label="Stäng metrics">
           <X size={14} />
         </button>

@@ -1,8 +1,10 @@
 import React from 'react';
 import { S, save } from '@/state/store';
 import { X, Zap } from 'lucide-react';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 
 export default function SidequestNudge({ quests, onClose, rerender }: { quests: any[]; onClose: () => void; rerender: () => void }) {
+  const trapRef = useFocusTrap<HTMLDivElement>(Boolean(quests?.length));
   if (!quests || quests.length === 0) return null;
 
   function acceptAll() {
@@ -18,7 +20,14 @@ export default function SidequestNudge({ quests, onClose, rerender }: { quests: 
 
   return (
     <div className="overlay-backdrop" onClick={onClose}>
-      <div className="overlay-card" onClick={e => e.stopPropagation()}>
+      <div
+        ref={trapRef}
+        className="overlay-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sidequest-förslag"
+        onClick={e => e.stopPropagation()}
+      >
         <button type="button" className="overlay-close" onClick={onClose} aria-label="Stäng sidequest-förslag"><X size={14} /></button>
         <div className="overlay-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <Zap size={20} strokeWidth={2} />

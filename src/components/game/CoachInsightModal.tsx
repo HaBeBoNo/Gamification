@@ -3,7 +3,9 @@ import { X } from 'lucide-react';
 import { S, save } from '@/state/store';
 import { buildCoachPrompt } from '@/hooks/useAI';
 import { DEFAULT_COACH_NAMES } from '@/lib/coach';
+import { useFocusTrap } from '@/hooks/useFocusTrap';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { MOBILE_DIALOG_QUERY } from '@/lib/responsive';
 
 interface Props {
   insight: string;
@@ -11,7 +13,8 @@ interface Props {
 }
 
 export default function CoachInsightModal({ insight, onClose }: Props) {
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  const isMobile = useMediaQuery(MOBILE_DIALOG_QUERY);
+  const trapRef = useFocusTrap<HTMLDivElement>(true);
   const [messages, setMessages] = useState<{role: string, content: string}[]>([
     { role: 'assistant', content: insight }
   ]);
@@ -63,6 +66,7 @@ export default function CoachInsightModal({ insight, onClose }: Props) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={trapRef}
         style={{
         background: 'var(--color-surface)',
         borderRadius: isMobile ? '16px 16px 0 0' : '24px',
